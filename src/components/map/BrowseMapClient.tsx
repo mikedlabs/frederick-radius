@@ -6,6 +6,7 @@ import AppMapClient, {
   type EventPin,
   type MapLineFC,
 } from "@/components/map/AppMapClient";
+import AmenityFallbackList from "./AmenityFallbackList";
 import type { MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
 import {
   EMPTY_DEFERRED_BROWSE_LAYERS,
@@ -33,6 +34,7 @@ import {
   getScope,
   parseScope,
   scopeCentroid,
+  scopeTownSlug,
   subscribeScopeChange,
   SCOPE_PARAM,
   type Scope,
@@ -520,6 +522,12 @@ export default function BrowseMapClient({
   }
 
   if (placeLoad.status === "error") {
+    if (initialAmenityGroups?.length) {
+      return <div className="h-full overflow-y-auto bg-[var(--app-bg)] pb-24">
+        <p role="alert" className="mx-auto max-w-2xl px-4 pt-5 text-sm">The map is unavailable. You can still browse mapped amenities.</p>
+        <AmenityFallbackList groups={initialAmenityGroups} amenities={amenities} extraAmenities={extraAmenities} town={scopeTownSlug(explicitScope ?? activeScope)} />
+      </div>;
+    }
     return (
       <div
         role="alert"
@@ -608,6 +616,7 @@ export default function BrowseMapClient({
       initialBounds={initialBounds}
       cameraMinZoom={FREDERICK_BROWSE_MIN_ZOOM}
       cameraMaxBounds={FREDERICK_BROWSE_MAX_BOUNDS}
+      fallbackTown={scopeTownSlug(explicitScope ?? activeScope)}
       initialAmenityGroups={initialAmenityGroups}
       // The map dock (MapDock) — the one instrument that replaced the
       // intent banner, sub strip, Open-now pill, and Layers drawer. The

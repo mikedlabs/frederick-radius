@@ -138,6 +138,14 @@ describe("place sheet task-first actions", () => {
     expect(host.querySelector('[data-place-sheet-action="reserve-search"]')?.closest("details")).not.toBeNull();
   });
 
+  it("uses City garage operating hours and sends drivers to parking without a ParkMobile link", async () => {
+    await render(fixture({ slug: "church-street-garage", category: "parking", commerce_links: [], parkmobile_zone: "needs_verification" }));
+    expect(host.querySelector("[data-city-garage-status]")?.textContent).toContain("Open 24 hours every day");
+    expect(host.querySelector('[data-place-sheet-action="directions"]')?.getAttribute("href")).toContain("travelmode=driving");
+    expect(host.querySelector('[data-place-sheet-action="garage-rates"]')?.getAttribute("href")).toBe("/parking#garage-basics-heading");
+    expect(host.querySelector('a[href*="parkmobile"]')).toBeNull();
+  });
+
   it("preserves parking's existing primary policy while keeping Directions in the same high row", async () => {
     await render(fixture({ category: "parking", commerce_links: [], parkmobile_zone: "1234" }));
     const row = host.querySelector("[data-place-sheet-quick-actions]")!;

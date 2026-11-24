@@ -46,8 +46,10 @@ import { useMapTabResumeQuery } from "@/hooks/useMapTabResumeQuery";
 import { rememberMapTabView } from "@/lib/primary-tab-session";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult } from "@/lib/search/index";
+import { roundCoord } from "@/lib/walkTime";
 import {
   getScope,
+  deviceOriginForScope,
   parseScope,
   scopeTownSlug,
   scopeToParam,
@@ -57,6 +59,7 @@ import {
   type Scope,
 } from "@/lib/scope";
 import { normalizeMapReturnTo } from "@/lib/map-return";
+import AmenityFallbackList from "./AmenityFallbackList";
 import { mapFallbackResults } from "./mapFallbackResults";
 import { getIntentByKey } from "@/data/intents";
 import { TIME_WINDOW_LABEL } from "./dockCaption";
@@ -796,7 +799,7 @@ export default function AppMap({
   // moves the initial camera when the route explicitly opts in. Keeping those
   // decisions separate makes county browse local without changing its frame.
   const [locationSeed] = useState(() =>
-    resolveMapLocationSeed(readCachedPosition(), recenterToKnownLocation),
+    resolveMapLocationSeed(deviceOriginForScope(null, readCachedPosition()), recenterToKnownLocation),
   );
   const effectiveCenter: [number, number] = locationSeed.camera
     ? [locationSeed.camera.lng, locationSeed.camera.lat]
@@ -1669,16 +1672,19 @@ export default function AppMap({
           available?: boolean;
           status?: "ok" | "degraded" | "unavailable";
           alerts?: unknown[];
+          countyBulletin?: string[];
         };
         if (!active) return;
+        const countyBulletin = body.countyBulletin?.join(" ");
         if (body.available === false || body.status === "unavailable" || !Array.isArray(body.alerts)) {
-          setTransitAlertSnapshot({ status: "error", count: 0 });
+          setTransitAlertSnapshot({ status: "error", count: 0, countyBulletin });
         } else if (body.status === "degraded") {
-          setTransitAlertSnapshot({ status: "stale", count: body.alerts.length });
+          setTransitAlertSnapshot({ status: "stale", count: body.alerts.length, countyBulletin });
         } else {
           setTransitAlertSnapshot({
             status: body.alerts.length > 0 ? "ready" : "empty",
             count: body.alerts.length,
+            countyBulletin,
           });
         }
       } catch (error) {
@@ -3382,7 +3388,7 @@ export default function AppMap({
   // layer with no marks. Wait for optional OSM enrichment, then keep only
   // groups that have at least one verified point and make the URL truthful.
   useEffect(() => {
-    if (osmLoading || osmError || amenityGroups.size === 0) return;
+    if (!mapLoaded || mapError || osmLoading || osmError || amenityGroups.size === 0) return;
     const unavailable = [...amenityGroups].filter(
       (key) => (amenityGroupCounts[key] ?? 0) === 0,
     );
@@ -3407,7 +3413,7 @@ export default function AppMap({
     setGeoMsg(
       `No verified map points are available yet for ${labels.join(", ")}.`,
     );
-  }, [amenityGroupCounts, amenityGroups, osmError, osmLoading]);
+  }, [amenityGroupCounts, amenityGroups, mapLoaded, mapError, osmError, osmLoading]);
   const communityReportCount = extraAmenities.filter((point) =>
     point.category_slug.startsWith("report-"),
   ).length;
@@ -3460,11 +3466,13 @@ export default function AppMap({
     const t = setTimeout(async () => {
       const params = new URLSearchParams({ q: term, limit: String(MAP_SEARCH_RESULT_LIMIT), origin: "map" });
       params.set(SCOPE_PARAM, scopeToParam(resultScope));
-      // About 11m precision is plenty for nearest-first ranking and avoids
-      // sending an unnecessarily exact coordinate.
-      if (userLoc || !mapQueryNeedsDeviceLocation(term)) {
-        params.set("lat", origin.lat.toFixed(4));
-        params.set("lng", origin.lng.toFixed(4));
+      // An explicit town or county overrides any device origin on the API.
+      // In Near me, only a still-fresh fix can stand in for the visitor.
+      const deviceOrigin = () => deviceOriginForScope(explicitSearchScope ?? getScope(), userLoc && readCachedPosition());
+      const rankingOrigin = resultScope === "nearme" ? deviceOrigin() : null;
+      if (rankingOrigin) {
+        params.set("lat", String(rankingOrigin.lat));
+        params.set("lng", String(rankingOrigin.lng));
       }
       try {
         const response = await fetch(`/api/search?${params.toString()}`, {
@@ -3494,7 +3502,7 @@ export default function AppMap({
         setSearchMatches(local);
         if (local.length > 0) {
           setSearchSettledQuery(term);
-          const routedCandidates = userLoc && !mapError
+          const routedCandidates = deviceOrigin() && !mapError
             ? local
                 .filter(
                   (result) =>
@@ -3522,13 +3530,15 @@ export default function AppMap({
             });
             if (ctrl.signal.aborted || requestId !== searchRequestRef.current) return;
 
+            const walkingOrigin = deviceOrigin();
+            if (!walkingOrigin) return;
             const matrixResponse = await fetch("/api/travel-matrix", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               signal: ctrl.signal,
               body: JSON.stringify({
                 profile: "walking",
-                origin: userLoc,
+                origin: walkingOrigin,
                 destinations: routedCandidates.map((result) => ({
                   lng: result.lng,
                   lat: result.lat,
@@ -3585,6 +3595,9 @@ export default function AppMap({
         searchSessionRef.current = sessionToken;
         if (!sessionAlreadyStarted) searchSessionStartedAtRef.current = now;
         searchSessionSuggestCountRef.current += 1;
+        const providerCenter = (explicitSearchScope ?? getScope()) === "county"
+          ? { lng: FREDERICK[0], lat: FREDERICK[1] }
+          : viewCenterRef.current ?? { lng: initialCenter[0], lat: initialCenter[1] };
         const fallbackResponse = await fetch("/api/map/search-fallback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3593,9 +3606,9 @@ export default function AppMap({
             action: "suggest",
             q: term,
             sessionToken,
-            proximity: origin,
+            proximity: { lng: roundCoord(providerCenter.lng), lat: roundCoord(providerCenter.lat) },
             limit: 4,
-            ...(searchRouteRef.current
+            ...(deviceOrigin() && searchRouteRef.current
               ? {
                   route: searchRouteRef.current,
                   routeGeometry: "polyline6",
@@ -3692,7 +3705,7 @@ export default function AppMap({
       searchRetrieveAbortRef.current = null;
       searchRetrieveInFlightRef.current = null;
     };
-  }, [explicitSearchTown, isBrowseMap, mapError, places, q, resetSearchBoxSession, resultScope, searchAttempt, userLoc]);
+  }, [explicitSearchScope, explicitSearchTown, initialCenter, isBrowseMap, mapError, places, q, resetSearchBoxSession, resultScope, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -3721,7 +3734,9 @@ export default function AppMap({
     }
     if (r.temporary && r.provider === "Mapbox") {
       const mapboxId = r.mapbox_id ?? r.id.replace(/^mapbox:/, "");
-      const origin = userLoc ?? viewCenter ?? searchFallbackOriginRef.current;
+      const providerCenter = (explicitSearchScope ?? getScope()) === "county"
+        ? { lng: FREDERICK[0], lat: FREDERICK[1] }
+        : viewCenter ?? { lng: initialCenter[0], lat: initialCenter[1] };
       if (!mapboxId) {
         setSearchMatches((current) =>
           expireTemporaryMapboxSuggestions(current),
@@ -3811,7 +3826,7 @@ export default function AppMap({
             action: "retrieve",
             mapboxId,
             sessionToken,
-            proximity: origin,
+            proximity: { lng: roundCoord(providerCenter.lng), lat: roundCoord(providerCenter.lat) },
           }),
         });
         const body = (response.ok ? await response.json() : null) as {
@@ -4822,15 +4837,23 @@ export default function AppMap({
                   </button>
                 )}
                 <Link
-                  href="/places"
+                  href={amenityGroups.size > 0 && !q.trim() ? "/amenities" : "/places"}
                   className="tap-44 inline-flex min-h-9 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
                   style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
                 >
-                  All places
+                  {amenityGroups.size > 0 && !q.trim() ? "All amenities" : "All places"}
                 </Link>
               </div>
             </div>
-            {taskList ? <div className="map-list" role="region" aria-label="Available results without the map">
+            {amenityGroups.size > 0 && !q.trim() ? <div className="map-list"><AmenityFallbackList
+              key={`${[...amenityGroups].join(",")}:${resultScope}`}
+              groups={[...amenityGroups]}
+              amenities={amenities}
+              osmPlaces={osmPlaces}
+              extraAmenities={extraAmenities}
+              origin={userLoc}
+              town={scopeTownSlug(resultScope)}
+            /></div> : taskList ? <div className="map-list" role="region" aria-label="Available results without the map">
               <MapListPeek
                 list={taskList}
                 expanded

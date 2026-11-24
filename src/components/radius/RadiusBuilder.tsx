@@ -9,6 +9,7 @@ import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
 import MapControlSheet, { SNAP_COLLAPSED, SNAP_HALF } from "./MapControlSheet";
 import { resolveMunicipality } from "@/lib/location";
+import { useGeolocation, readCachedPosition } from "@/hooks/useGeolocation";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 // Read the same slim, pre-decorated set the rest of the app uses on
@@ -132,23 +133,8 @@ const SORT_KEY = "fr:radius:sort:v1";
 const PEEK: Record<ViewMode, number> = { grid: 8, list: 10 };
 const FOOD_GROUP = "food";
 
-// Geolocation cache + dismiss keys, hoisted so they're stable refs
-// across renders (the lint rule wants them out of the effect's
-// dependency array). Cache key matches useGeolocation's so the two
-// share a single sessionStorage entry — they're orthogonal entry
-// points into the same "where am I" state.
-const GEO_CACHE_KEY = "fr_geo_v1";
-const GEO_CACHE_TTL_MS = 1000 * 60 * 30; // 30 min — same as the hook
 const GEO_PROMPT_DISMISS_KEY = "fr:geo-prompt-dismissed:v1";
 const MAX_FINE_TUNE_MINUTES = 30;
-
-type GeoStatus =
-  | "idle"
-  | "loading"
-  | "granted"
-  | "denied"
-  | "unavailable"
-  | "out-of-county";
 
 // Local label + glyph table for the curated amenity kinds, in
 // most-asked-for order. Kept here (not imported from the loader) so
@@ -316,129 +302,31 @@ export default function RadiusBuilder({
   // session-cached position so returning users skip the prompt, and
   // gracefully handle denied + out-of-county states instead of failing
   // silently.
-  const [myLoc, setMyLoc] = useState<{ lng: number; lat: number } | null>(null);
-  const [myLocLabel, setMyLocLabel] = useState<string>("Your location");
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
+  const { state: location, request, requestIfGranted } = useGeolocation();
+  // A manually selected town or pin stays selected when a device fix expires.
+  const [centerSource, setCenterSource] = useState<"device" | "preset" | { lng: number; lat: number }>("device");
+  const deviceLocation = centerSource === "device" && location.status === "granted" ? location.position : null;
+  const myLoc = typeof centerSource === "object" ? centerSource : deviceLocation;
+  const myLocLabel = typeof centerSource === "object" ? "Pinned point" : deviceLocation?.label || "Your location";
+  const outsideCounty = deviceLocation && !isInsideFrederickCounty(deviceLocation.lat, deviceLocation.lng);
+  const geoStatus = centerSource !== "device" || location.status === "error"
+    ? "idle" : outsideCounty ? "out-of-county" : location.status;
   const [promptDismissed, setPromptDismissed] = useState(false);
 
-  // Hydrate cached position + dismiss state on mount. SSR-safe: the
-  // server renders the idle state; the client overlays the cache if
-  // it's still fresh. A returning user inside the 30-min TTL skips
-  // the prompt entirely and lands on their own coordinates.
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(GEO_CACHE_KEY);
-      if (raw) {
-        const cached = JSON.parse(raw) as {
-          lng: number;
-          lat: number;
-          label?: string;
-          timestamp: number;
-        };
-        if (Date.now() - cached.timestamp <= GEO_CACHE_TTL_MS) {
-          const inCounty = isInsideFrederickCounty(cached.lat, cached.lng);
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders idle; the client hydrates sessionStorage which is unavailable during SSR
-          setMyLoc({ lng: cached.lng, lat: cached.lat });
-          setMyLocLabel(cached.label || "Your location");
-          setGeoStatus(inCounty ? "granted" : "out-of-county");
-        } else {
-          sessionStorage.removeItem(GEO_CACHE_KEY);
-        }
-      }
-    } catch {
-      // sessionStorage unavailable — fall through to idle
-    }
     try {
       if (localStorage.getItem(GEO_PROMPT_DISMISS_KEY) === "1") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate the device preference after mount
         setPromptDismissed(true);
       }
-    } catch {
-      // ignore
-    }
-  }, []);
+    } catch { /* storage may be disabled */ }
+    if (!readCachedPosition()) void requestIfGranted();
+  }, [requestIfGranted]);
 
   const requestMyLocation = () => {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      setGeoStatus("unavailable");
-      return;
-    }
-    setGeoStatus("loading");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lng = pos.coords.longitude;
-        const lat = pos.coords.latitude;
-        const inCounty = isInsideFrederickCounty(lat, lng);
-        const hit = resolveMunicipality({ lng, lat });
-        // Inside a town → "Walkers Wood Park, MD"-style local label.
-        // In-county but not in a town → just "Your location" (the dots
-        // tell the story; we don't need to claim a neighborhood).
-        // Out of county → "Near {nearest town}" so the user knows the
-        // app sees them at the right distance.
-        const label = inCounty
-          ? hit.inside
-            ? `${hit.municipality.name}, MD`
-            : "Your location"
-          : `Near ${hit.municipality.name}`;
-        setMyLoc({ lng, lat });
-        setMyLocLabel(label);
-        setGeoStatus(inCounty ? "granted" : "out-of-county");
-        try {
-          sessionStorage.setItem(
-            GEO_CACHE_KEY,
-            JSON.stringify({
-              lng,
-              lat,
-              accuracy: pos.coords.accuracy,
-              label,
-              timestamp: Date.now(),
-            }),
-          );
-        } catch {
-          // sessionStorage unavailable — non-fatal
-        }
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
-          setGeoStatus("denied");
-        } else {
-          // Timeout / position unavailable — return to idle so the
-          // user can try again. We don't surface a hard error; the
-          // preset dropdown is still the working fallback.
-          setGeoStatus("idle");
-        }
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
-    );
+    setCenterSource("device");
+    request();
   };
-
-  // Answer-first start: if browser geolocation permission is ALREADY
-  // granted (zero prompt risk) and no cached position seeded the center,
-  // locate automatically — /map opens on the user's actual surroundings
-  // with no taps to value. A user who never granted is never prompted;
-  // denied and unavailable states are untouched. The cache-hydration
-  // effect above runs first (same mount pass), so a fresh cache wins and
-  // this effect sees its sessionStorage entry and stands down.
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !("permissions" in navigator)) return;
-    try {
-      // Any cache entry means a position this session already handled.
-      if (sessionStorage.getItem(GEO_CACHE_KEY)) return;
-    } catch {
-      // sessionStorage unavailable — the permissions query still works.
-    }
-    let cancelled = false;
-    navigator.permissions
-      .query({ name: "geolocation" })
-      .then((status) => {
-        if (!cancelled && status.state === "granted") requestMyLocation();
-      })
-      .catch(() => {
-        // Permissions API unsupported — keep the tap-to-locate path.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Snap the center to the nearest municipality for an out-of-county
   // user — surfaces the closest sensible jumping-off point.
@@ -447,9 +335,7 @@ export default function RadiusBuilder({
     const hit = resolveMunicipality(myLoc);
     const idx = PRESETS.findIndex((p) => p.slug === `m-${hit.municipality.slug}`);
     if (idx > -1) {
-      setMyLoc(null);
-      setMyLocLabel("Your location");
-      setGeoStatus("idle");
+      setCenterSource("preset");
       setPresetIdx(idx);
     }
   };
@@ -736,7 +622,7 @@ export default function RadiusBuilder({
             onChange={(e) => {
               const v = Number(e.target.value);
               if (v >= 0) {
-                setMyLoc(null);
+                setCenterSource("preset");
                 setPresetIdx(v);
               }
             }}
@@ -968,8 +854,7 @@ export default function RadiusBuilder({
           }))}
           reachable={isochrone}
           onCenterChange={(next) => {
-            setMyLoc(next);
-            setMyLocLabel("Pinned point");
+            setCenterSource(next);
           }}
           onSelectPlace={(slug) => {
             const p = placesBySlug.get(slug);

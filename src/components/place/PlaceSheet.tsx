@@ -15,6 +15,8 @@ import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { isCityGarage } from "@/data/parking-garages";
+import CityGarageStatus from "./CityGarageStatus";
 import LiveOpenStatus from "./LiveOpenStatus";
 import GoogleHours from "./GoogleHours";
 import HoursBlock from "./HoursBlock";
@@ -59,7 +61,7 @@ type Props = {
   place: PlaceCardData | null;
   metadataPending?: boolean;
   metadataUnavailable?: boolean;
-  travelOrigin?: LngLat | null;
+  travelOrigin?: (LngLat & { expiresAt: number }) | null;
   mapReturnTo?: string | null;
   onClose: () => void;
   returnFocusRef?: RefObject<HTMLElement | null>;
@@ -110,7 +112,7 @@ function PlaceSheetContent({
   place: PlaceCardData;
   metadataPending: boolean;
   metadataUnavailable: boolean;
-  travelOrigin?: LngLat | null;
+  travelOrigin?: (LngLat & { expiresAt: number }) | null;
   mapReturnTo?: string | null;
   onClose: () => void;
 }) {
@@ -158,7 +160,7 @@ function PlaceSheetContent({
     { slug: string; title: string; weekday: string; day: string; month: string; time: string }[]
   >([]);
   const requestTravelTime = async () => {
-    if (!travelOrigin || !travelOriginKey || travelStatus === "loading") return;
+    if (!travelOrigin || Date.now() >= travelOrigin.expiresAt || !travelOriginKey || travelStatus === "loading") return;
     setTravelStatus("loading");
     const controller = new AbortController();
     const timeout = globalThis.setTimeout(() => controller.abort(), 7_500);
@@ -414,12 +416,14 @@ function PlaceSheetContent({
            *  The status is the same LiveOpenStatus the full page uses, so the
            *  sheet and the page say the same thing, caveat and date included. */}
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-2)" }}>
-            <LiveOpenStatus
-              hours={place.hours}
-              verified={place.hours_verified ?? false}
-              initial={currentHoursStatus}
-              hoursCheckedAt={placeFreshnessEvidence(place).hours}
-            />
+            {isCityGarage(place.slug) ? <CityGarageStatus /> : (
+              <LiveOpenStatus
+                hours={place.hours}
+                verified={place.hours_verified ?? false}
+                initial={currentHoursStatus}
+                hoursCheckedAt={placeFreshnessEvidence(place).hours}
+              />
+            )}
             {place.google_rating !== undefined && (
               <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
                 <span style={{ color: "var(--app-accent-press)" }}>★</span>

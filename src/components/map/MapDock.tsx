@@ -61,7 +61,10 @@ import type {
   MapLayerSourceHealth,
 } from "./deferredBrowseLayers";
 
+import { COUNTY_TRANSIT_BULLETIN_URL } from "@/lib/transit-service-calendar";
+
 export type TransitAlertSnapshot = {
+  countyBulletin?: string;
   status: "loading" | "ready" | "empty" | "stale" | "error";
   count: number;
 };
@@ -1297,7 +1300,7 @@ export default function MapDock(props: MapDockProps) {
           : props.liveBusSnapshot?.status === "error"
             ? "Live bus positions are unavailable"
             : "Checking live buses";
-  const liveBusLine =
+  const liveBusLine = props.transitAlertSnapshot?.countyBulletin ? `${liveBusPositionLine} · Holiday schedule` :
     props.transitAlertSnapshot?.status === "ready" &&
     props.transitAlertSnapshot.count > 0
       ? `${liveBusPositionLine} · ${props.transitAlertSnapshot.count} service ${props.transitAlertSnapshot.count === 1 ? "bulletin" : "bulletins"}`
@@ -2895,6 +2898,7 @@ export default function MapDock(props: MapDockProps) {
                         <strong>Transit</strong> · {props.transitHealth.status === "unavailable"
                           ? "The county route feed is unavailable."
                           : `${props.transitHealth.count} mapped route segments from ${props.transitHealth.source}. Tap a stop for arrivals or a vehicle for status.`}
+                        {props.transitAlertSnapshot?.countyBulletin && <> {props.transitAlertSnapshot.countyBulletin} <a className="underline" href={COUNTY_TRANSIT_BULLETIN_URL}>County transit bulletin (PDF)</a>.</>}
                         {props.transitAlertSnapshot?.status === "ready"
                           ? ` ${props.transitAlertSnapshot.count} provider service ${props.transitAlertSnapshot.count === 1 ? "bulletin is" : "bulletins are"} active.`
                           : props.transitAlertSnapshot?.status === "stale"

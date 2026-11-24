@@ -24,6 +24,35 @@ describe("MapLoadFailure", () => {
     expect(html).not.toContain("switch back");
   });
 
+  it("keeps a restroom task actionable without a map or a device fix", () => {
+    const html = renderToStaticMarkup(createElement(MapLoadFailure, {
+      height: "100%", places: [], events: [], groups: ["restroom"], town: "myersville",
+      amenities: [
+        { id: "restroom-1", kind: "restroom", name: "Park restroom", municipality: "myersville", lat: 39.5, lng: -77.56 },
+        { id: "restroom-2", kind: "restroom", name: "City restroom", municipality: "frederick", lat: 39.42, lng: -77.41 },
+        { id: "water-1", kind: "water", name: "Water fountain", municipality: "myersville", lat: 39.51, lng: -77.55 },
+      ],
+    }));
+    expect(html).toContain("data-map-amenity-list");
+    expect(html).toContain("Park restroom");
+    expect(html).toContain("All towns");
+    expect(html).toContain("destination=39.5%2C-77.56");
+    expect(html).not.toContain("City restroom");
+    expect(html).not.toContain("Water fountain");
+    expect(html).not.toContain("places and events here");
+  });
+
+  it("retains an empty amenity filter without offering unrelated directory entries", () => {
+    const html = renderToStaticMarkup(createElement(MapLoadFailure, {
+      height: "100%", places: [], events: [], groups: ["restroom"], town: "brunswick", amenities: [
+        { id: "water-1", kind: "water", name: "Water fountain", municipality: "brunswick", lat: 39.31, lng: -77.63 },
+      ],
+    }));
+    expect(html).toContain("No locations are mapped for this selection.");
+    expect(html).toContain("Brunswick");
+    expect(html).not.toContain("places and events here");
+  });
+
   it("covers rejected and never-settling deferred map modules", () => {
     const clientSource = readFileSync(
       "src/components/map/AppMapClient.tsx",

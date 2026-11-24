@@ -49,6 +49,7 @@ import { haptic } from "@/lib/haptics";
 import { prefersReducedMotion } from "@/lib/motion";
 import { getHomeMuni, getInterests } from "@/lib/personalize";
 import {
+  deviceOriginForScope,
   getScope,
   parseScope,
   scopeLabel,
@@ -1336,13 +1337,14 @@ export default function AskFrederick({
   }, [initialScope]);
 
   useEffect(() => {
-    if (approvedLocationCheckRef.current || readCachedPosition()) return;
+    const scope = initialScope ?? storedAskScope();
+    if ((scope && scope !== "nearme") || approvedLocationCheckRef.current || readCachedPosition()) return;
     approvedLocationCheckRef.current = true;
     // This never opens a permission prompt. It only refreshes a position when
     // the browser says the visitor already granted geolocation, matching the
     // map's returning-visitor contract.
     void refreshGrantedLocation();
-  }, [refreshGrantedLocation]);
+  }, [initialScope, refreshGrantedLocation]);
 
   useEffect(() => {
     if (!showAreaChooser) return;
@@ -1434,7 +1436,10 @@ export default function AskFrederick({
   }, [loading, res]);
 
   useEffect(() => {
-    if (geolocation.state.status !== "granted") return;
+    if (geolocation.state.status !== "granted") {
+      setHasCachedPosition(Boolean(readCachedPosition()));
+      return;
+    }
     const pending = pendingNearbyQueryRef.current;
     const wasRequested = locationRequestPendingRef.current;
     if (!pending && !wasRequested) {
@@ -1623,8 +1628,9 @@ export default function AskFrederick({
       .sort()
       .join(",")}|${JSON.stringify(fit)}`;
     const cacheScope = askContextKey(resolvedScope, fallbackHomeScope);
+    const requestOrigin = deviceOriginForScope(resolvedScope, position);
     const cacheKey = `${effectiveQuery.toLowerCase()}|${cacheScope}|${
-      position ? `${position.lat.toFixed(3)},${position.lng.toFixed(3)}` : "no-fix"
+      requestOrigin ? `${requestOrigin.lat},${requestOrigin.lng}` : "no-fix"
     }|${tasteKey}`;
 
     setQ(text);
@@ -1663,8 +1669,8 @@ export default function AskFrederick({
           scope: resolvedScope ?? undefined,
           // Block-level precision is enough to rank local results and keeps
           // the browser request aligned with Radius's privacy disclosure.
-          lat: position ? Number(position.lat.toFixed(3)) : undefined,
-          lng: position ? Number(position.lng.toFixed(3)) : undefined,
+          lat: requestOrigin?.lat,
+          lng: requestOrigin?.lng,
           taste: { savedPlaceSlugs, interests },
           fit,
         }),

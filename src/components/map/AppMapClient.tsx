@@ -10,6 +10,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import AmenityFallbackList from "./AmenityFallbackList";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "./types";
 import { haversineMeters } from "@/lib/geo";
@@ -153,11 +154,19 @@ export function MapLoadFailure({
   places,
   events,
   trailLineOnly = false,
+  groups = [],
+  amenities = [],
+  extraAmenities = [],
+  town,
 }: {
   height: CSSProperties["height"];
   places: MapPinPlace[];
   events: EventPin[];
   trailLineOnly?: boolean;
+  groups?: string[];
+  amenities?: Amenity[];
+  extraAmenities?: OsmPlace[];
+  town?: string | null;
 }) {
   const hasRows = places.length > 0 || events.length > 0;
   const title = trailLineOnly
@@ -165,6 +174,7 @@ export function MapLoadFailure({
     : "The map did not finish loading.";
   const detail = trailLineOnly
     ? "The trail guide on this page still works. Reload to try the interactive lines again."
+    : groups.length ? "Use the list below or choose a town."
     : hasRows
       ? "You can still open the places and events here, or reload the map."
       : "The rest of this page still works. Reload to try the map again.";
@@ -198,7 +208,7 @@ export function MapLoadFailure({
           Reload map
         </button>
       </div>
-      {hasRows && !trailLineOnly && (
+      {groups.length && !trailLineOnly ? <AmenityFallbackList groups={groups} amenities={amenities} extraAmenities={extraAmenities} town={town} /> : hasRows && !trailLineOnly && (
         <MapList
           places={places}
           events={events}
@@ -248,6 +258,7 @@ export default function AppMapClient({
   cameraMaxBounds,
   compactSubjectMap = false,
   initialAmenityGroups,
+  fallbackTown,
   dock,
   activeSlugs = null,
   showSearchControls = true,
@@ -343,6 +354,7 @@ export default function AppMapClient({
   /** Amenity-tray group keys to pre-activate (a /map?amenity=restroom
    *  deep-link from /amenities or /today). Forwarded to AppMap. */
   initialAmenityGroups?: string[];
+  fallbackTown?: string | null;
   /** Browse-view state + counts for the map dock (/map browse only).
    *  Forwarded to AppMap; absent on embeds, which stay dock-less. */
   dock?: BrowseDockInfo;
@@ -415,6 +427,10 @@ export default function AppMapClient({
             height="100%"
             places={places}
             events={events}
+            groups={initialAmenityGroups}
+            amenities={amenities}
+            extraAmenities={extraAmenities}
+            town={fallbackTown}
             trailLineOnly={trailLineOnlyFailure}
           />
         ) : (
@@ -425,6 +441,10 @@ export default function AppMapClient({
               height="100%"
               places={places}
               events={events}
+              groups={initialAmenityGroups}
+              amenities={amenities}
+              extraAmenities={extraAmenities}
+              town={fallbackTown}
               trailLineOnly={trailLineOnlyFailure}
             />
           }
@@ -488,6 +508,10 @@ export default function AppMapClient({
           height={EMBEDDED_MAP_HEIGHT}
           places={places}
           events={events}
+          groups={initialAmenityGroups}
+          amenities={amenities}
+          extraAmenities={extraAmenities}
+          town={fallbackTown}
           trailLineOnly={trailLineOnlyFailure}
         />
       ) : (
@@ -498,6 +522,10 @@ export default function AppMapClient({
             height={EMBEDDED_MAP_HEIGHT}
             places={places}
             events={events}
+            groups={initialAmenityGroups}
+            amenities={amenities}
+            extraAmenities={extraAmenities}
+            town={fallbackTown}
             trailLineOnly={trailLineOnlyFailure}
           />
         }
