@@ -3,7 +3,7 @@
 .segment { flex-basis: 0; }
 .time [data-tone="transfer"] { background: var(--app-ink-3); }
 .time [data-tone="visit"] { background: var(--app-sage); }
-.time [data-tone="gallery"] { background: var(--app-accent); }
+.time [data-tone="gallery"] { background: var(--app-accent-text); }
 .time [data-tone="creek"] { background: var(--app-cool-text); }
 .time[data-compact] .strip { min-height: 0.42rem; }
 .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr)); gap: 0.28rem 0.7rem; margin: 0.56rem 0 0; padding: 0; list-style: none; }

@@ -2,8 +2,8 @@
 .frame { position: relative; container-type: inline-size; aspect-ratio: 3 / 2; isolation: isolate; background: var(--app-bg-sunken); border-radius: var(--app-radius-sm); }
 .background { position: absolute; inset: 0; height: 100%; width: 100%; overflow: hidden; border-radius: inherit; }
 .water, .street, .streetEdge { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.water { stroke: var(--app-cool-2); stroke-opacity: 0.52; stroke-width: 12; }
-.streetEdge { stroke: var(--app-border); stroke-width: 9; }
+.water { stroke: color-mix(in srgb, var(--app-cool-text) 80%, var(--app-bg-sunken)); stroke-width: 12; }
+.streetEdge { stroke: var(--app-control-border); stroke-width: 9; }
 .street { stroke: var(--app-bg); stroke-width: 6; }
 .footprint { fill: var(--app-border); stroke: var(--app-control-border); stroke-width: 1; }
 .leader { stroke: var(--app-link); stroke-width: 1.4; }
@@ -22,4 +22,19 @@
 .caption a:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 2px; }
 @container (min-width: 17rem) {
   .name { display: block; white-space: nowrap; color: var(--app-ink); background: var(--app-bg-sunken); line-height: 1.05; padding: 2px 3px; border-radius: 2px; font-size: 0.75rem; font-weight: 650; }
+}
+
+@media (prefers-contrast: more) {
+  .water { stroke: var(--app-cool-text); }
+  .streetEdge { stroke: var(--app-ink-2); }
+}
+
+@media (forced-colors: active) {
+  .background { forced-color-adjust: none; }
+  .water, .streetEdge, .footprint { stroke: CanvasText; }
+  .street { stroke: Canvas; }
+  .footprint { fill: Canvas; }
+  .streetLabel, .creekLabel { fill: CanvasText; stroke: Canvas; }
+  .leader { stroke: LinkText; }
+  .dot { fill: LinkText; }
 }

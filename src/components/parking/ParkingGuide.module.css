@@ -40,7 +40,13 @@
   font-size: .875rem;
   font-weight: 650;
 }
-.durations button[aria-pressed="true"] { color: var(--app-bg); background: var(--app-ink); border-color: var(--app-ink); }
+.durations button[aria-pressed="true"] {
+  color: var(--app-bg);
+  background: var(--app-ink);
+  border-color: var(--app-ink);
+  text-decoration: underline 2px;
+  text-underline-offset: 0.16em;
+}
 .comparison :is(select,button,summary,a):focus-visible, .directory a:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 2px; }
 .chart { padding-block: .25rem; }
 .range { color: var(--app-ink-2); font-size: .8125rem; font-weight: 600; }
@@ -77,3 +83,17 @@
 .track[data-state="free"]::before { display: block; content: ""; width: .4rem; height: 100%; border-radius: 50%; background: var(--app-cool-text); }
 .track[data-state="unknown"] { background: none; border-bottom: 1px dashed var(--app-control-border); }
 .checkRate { display: inline-flex; align-items: center; min-height: 44px; color: var(--app-cool-text); font-size: .875rem; text-decoration: underline; text-underline-offset: 3px; }
+
+@media (forced-colors: active) {
+  .track { forced-color-adjust: none; background: Canvas; }
+  .track[data-state="paid"] { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .track > span, .bars li:first-child .track span, .track[data-state="free"]::before { background: CanvasText; }
+  .track[data-state="free"], .track[data-state="unknown"] { border-color: CanvasText; }
+  .durations button[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+    border: 3px double HighlightText;
+  }
+  .durations button:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+}
