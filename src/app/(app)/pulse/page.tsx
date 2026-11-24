@@ -75,6 +75,7 @@ import PulseBoard, {
   type PulseHero,
   type PulseHeroChip,
 } from "@/components/pulse/PulseBoard";
+import PulseOfficialLinks from "@/components/pulse/PulseOfficialLinks";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
 import { compareAlertPriority } from "@/lib/alert-priority";
@@ -732,8 +733,8 @@ export default async function PulsePage() {
     heroLine = operationalBriefing.line;
     heroSub = operationalBriefing.sub;
   } else if (!leadCandidate && heroDegraded) {
-    heroLine = "The available feeds show no major disruptions.";
-    heroSub = "Some live checks are unavailable. Radius will retry them automatically.";
+    heroLine = "Some county conditions are unconfirmed.";
+    heroSub = "Check official notices before making weather or travel plans. Radius will check for updates automatically.";
   } else if (leadCandidate?.id === "air" && aqiWorst) {
     heroTone = aqiWorst.category.id >= 4 ? "danger" : "warning";
     heroLeadKey = "air";
@@ -981,9 +982,10 @@ export default async function PulsePage() {
     ? <PoliceBlotter items={advisories} now={nowMs} />
     : civicAvailable
       ? emptyNote("No road work or closures are reported right now.")
-      : emptyNote(
-          "The City and County newsrooms could not be reached, so road work is unknown right now.",
-        );
+      : <>
+          {emptyNote("Radius could not check local road-work notices. Check the road agency before leaving.")}
+          <PulseOfficialLinks topic="roadwork" />
+        </>;
 
   // MARC — the soonest upcoming departure across the county stations powers
   // the tile head (predicted time when the realtime feed has it, else
@@ -1299,7 +1301,10 @@ export default async function PulsePage() {
             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           </a>
         </>
-      ) : emptyNote(outageDisplay.quietDetail),
+      ) : <>
+        {emptyNote(outageDisplay.quietDetail)}
+        {!powerAvailable && <PulseOfficialLinks topic="power" />}
+      </>,
     },
     // ── The rest → compact status tiles ──
     {
@@ -1559,11 +1564,12 @@ export default async function PulsePage() {
               meta={[timeAgo(a.published_at)]}
             />
           ))
-        : emptyNote(
-            schoolsAvailable
+        : <>
+            {emptyNote(schoolsAvailable
               ? "No school closures or delays are reported right now."
-              : "FCPS closure and delay data could not be loaded right now.",
-          ),
+              : "Radius could not verify school closures or delays.")}
+            {!schoolsAvailable && <PulseOfficialLinks topic="schools" />}
+          </>,
     },
     {
       key: "fixit",
@@ -1798,7 +1804,7 @@ export default async function PulsePage() {
             emptyNote(
               officialAlertsCheckComplete
                 ? "No current notice appears in the official feeds Radius checked."
-                : "At least one official alert feed could not be checked. Open weather.gov or the City and County alert pages before relying on this result.",
+                : "Radius could not verify all current alerts. Check the issuing agencies for notices.",
             )}
 
           {officialAlertsDegraded &&
@@ -1816,6 +1822,7 @@ export default async function PulsePage() {
                 notices shown here may not be complete.
               </p>
             )}
+          {officialAlertsDegraded && <PulseOfficialLinks topic="alerts" />}
         </div>
       ),
     },
@@ -1955,7 +1962,10 @@ export default async function PulsePage() {
             </p>
           </div>
         )
-        : emptyNote("River gauge readings are briefly unavailable."),
+        : <>
+            {emptyNote("Radius has no current river reading. Check the official gauge before using a crossing.")}
+            <PulseOfficialLinks topic="rivers" />
+          </>,
     },
     ...(airports.length > 0
       ? [{
@@ -2136,7 +2146,9 @@ export default async function PulsePage() {
           ? `${liveIncidentSnapshot.totalCount} ${
               liveIncidentSnapshot.totalCount === 1 ? "public report" : "public reports"
             }`
-          : "No road reports to map",
+          : liveIncidentSnapshot.scannerAvailable === false
+            ? "Road incident reports could not be checked"
+            : "No incidents with a mapped location",
       accent: "var(--app-cool)",
       active: activeRoadIncidents.length > 0,
       attention: false,
