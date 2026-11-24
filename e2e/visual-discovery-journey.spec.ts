@@ -321,7 +321,7 @@ if (!LIVE) {
       await expect(dialog).toBeVisible();
       expect(evidence.eventReads).toContain(tonight.slug);
       await expect.poll(() => page.evaluate(() => window.history.state?.__frederickRadiusLayer)).toMatch(/^event-sheet:/);
-      await expect(dialog.getByRole("link", { name: "See full page", exact: true })).toBeVisible();
+      await expect(dialog.getByRole("link", { name: "Event details in Radius", exact: true })).toBeVisible();
       await page.goBack();
       await expect(dialog).toHaveCount(0);
       await expect(page).toHaveURL(browseUrl);
@@ -381,7 +381,7 @@ if (!LIVE) {
       await expect(save).toHaveAttribute("aria-pressed", "true");
       const committed = await page.evaluate((key) => localStorage.getItem(key), SAVED_KEY);
       expect(JSON.parse(committed!)).toEqual([{ type: "event", id: events[0].slug, saved_at: expect.any(String) }]);
-      const full = dialog.getByRole("link", { name: "See full page", exact: true });
+      const full = dialog.getByRole("link", { name: "Event details in Radius", exact: true });
       const fullHref = new URL((await full.getAttribute("href"))!, page.url());
       expect(fullHref.pathname).toBe(`/events/${events[0].slug}`);
       expect(fullHref.searchParams.get("returnTo")).toBe(`${origin.pathname}${origin.search}`);
@@ -529,7 +529,7 @@ if (!LIVE) {
     await trigger.tap();
     const dialog = page.getByRole("dialog", { name: record!.title, exact: true });
     await expect(dialog).toBeVisible();
-    const full = dialog.getByRole("link", { name: "See full page", exact: true });
+    const full = dialog.getByRole("link", { name: "Event details in Radius", exact: true });
     // Let real document prefetches settle before leaving in WebKit. Aborting
     // intercepted in-flight RSC reads can surface as engine access-control errors.
     await page.waitForLoadState("networkidle", { timeout: 10_000 });

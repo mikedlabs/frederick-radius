@@ -458,5 +458,5 @@ test("a source-checked event keeps its official page reachable beside transactio
   expect(await source.evaluate((element) => element.closest("details") === null)).toBe(true);
   await expect(source).toHaveAttribute("href", "https://snallyfest.com/");
   await expect(source).toHaveAttribute("target", "_blank");
-  await expect(source).toContainText("Official event page");
+  await expect(source).toContainText("Event listing on snallyfest.com");
 });

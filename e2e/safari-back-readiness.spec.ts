@@ -232,7 +232,7 @@ for (const holdExplorer of [false, true]) {
     }
     const dialog = page.getByRole("dialog", { name: seed.title, exact: true }); await expect(dialog).toBeVisible();
     evidence.measurements.phase = "full-document-open";
-    await dialog.getByRole("link", { name: "See full page", exact: true }).tap();
+    await dialog.getByRole("link", { name: "Event details in Radius", exact: true }).tap();
     await expect(page.getByRole("heading", { level: 1, name: seed.title, exact: true })).toBeVisible();
     await expect(page.getByText("This event has already happened.", { exact: true })).toBeVisible();
     const breadcrumbs = page.getByRole("navigation", { name: "Breadcrumb", exact: true });

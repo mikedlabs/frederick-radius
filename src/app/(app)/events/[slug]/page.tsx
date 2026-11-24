@@ -71,6 +71,7 @@ import {
   eventAttendanceMode,
   eventOnlineActionUrl,
   hasPhysicalAttendance,
+  isLikelyEventActionUrl,
 } from "@/lib/events/attendance";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
 import { loadEventNearbyPlaces } from "@/lib/loaders/eventNearbyPlaces";
@@ -82,6 +83,7 @@ import { nearestEventParking } from "@/lib/events/parking";
 import { eventDecisionLocation, eventTimeCaution } from "@/lib/events/decision-facts";
 import { easternDayKey } from "@/lib/tz";
 import { isDateOnlyEventAnchor } from "@/lib/eventWhenLabel";
+import { eventDetailDestinations, eventPlanLink } from "@/lib/events/detail-destinations";
 import { eventPlanEligibility } from "@/lib/plan/event-plan-eligibility";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import { googleMapsDirections, googleMapsDirectionsToAddress } from "@/lib/integrations/deeplinks";
@@ -282,6 +284,8 @@ export default async function EventPage({
   const attendance = eventAttendanceMode(event);
   const physicalAttendance = hasPhysicalAttendance(event);
   const onlineActionUrl = eventOnlineActionUrl(event);
+  const ticketUrl = isLikelyEventActionUrl(event.ticket_url) ? event.ticket_url : null;
+  const rsvpUrl = isLikelyEventActionUrl(event.rsvp_url) ? event.rsvp_url : null;
   const attendanceLabel = eventDecisionLocation(event);
   const communicationAccess = communicationAccessLabels(event);
 
@@ -296,6 +300,7 @@ export default async function EventPage({
     Boolean(venuePlace),
   );
   const pinGeom = venuePlace?.geom ?? event.geom;
+  const { multipleSites, hasNamedSite, directionsLabel, venueLabel, sourceHref, sourceLabel } = eventDetailDestinations(event, venuePlace?.name);
   // Directions are a promise of a real doorstep. A precise coordinate wins;
   // otherwise the publisher's own street address is the destination (Google
   // geocodes the text). An area centroid is never handed out as a doorstep.
@@ -372,7 +377,7 @@ export default async function EventPage({
     isAccessibleForFree: event.is_free,
     offers: event.is_free
       ? { "@type": "Offer", price: "0", priceCurrency: "USD", availability: "https://schema.org/InStock" }
-      : event.ticket_url ? { "@type": "Offer", url: event.ticket_url, availability: "https://schema.org/InStock" } : undefined,
+      : ticketUrl ? { "@type": "Offer", url: ticketUrl, availability: "https://schema.org/InStock" } : undefined,
   };
 
   const when = formatEventWhen(event);
@@ -398,7 +403,7 @@ export default async function EventPage({
   // Only a scheduled event that has not ended may invite a trip. A cancelled,
   // postponed or past event keeps its address as a record, without a link.
   const canGo = eventStatus === "scheduled" && !hasEnded;
-  const goDirectionsUrl = canGo && physicalAttendance ? directionsUrl : null;
+  const goDirectionsUrl = canGo && physicalAttendance && (!multipleSites || hasNamedSite) ? directionsUrl : null;
   // The address under the venue line. iCal feeds join the venue and the
   // street ("Frederick Fairgrounds, 797 E Patrick St, ..."), so a leading
   // venue name is stripped rather than hiding the whole address. The venue
@@ -425,9 +430,11 @@ export default async function EventPage({
   // details for an event with an online part, then Directions when there is
   // a doorstep to go to, then Add to calendar. The desktop row keeps its own
   // order (Tickets, RSVP, Online details, Venue page, Official page).
-  const barPrimary: "tickets" | "online" | "directions" | "calendar" =
-    event.ticket_url ? "tickets"
+  const barPrimary: "tickets" | "rsvp" | "online" | "sites" | "directions" | "calendar" =
+    ticketUrl ? "tickets"
+    : rsvpUrl ? "rsvp"
     : attendance !== "physical" && onlineActionUrl ? "online"
+    : multipleSites && sourceHref ? "sites"
     : goDirectionsUrl ? "directions"
     : "calendar";
   // When the desktop action row already links the publisher's page, the
@@ -441,12 +448,13 @@ export default async function EventPage({
   const desktopRowLinkHref =
     eventStatus !== "scheduled" ? (notice?.source_url ?? event.source_url)
     : hasEnded ? (event.venue_place_slug ? null : event.source_url)
-    : event.ticket_url ? event.ticket_url
-    : event.rsvp_url ? event.rsvp_url
+    : ticketUrl ? ticketUrl
+    : rsvpUrl ? rsvpUrl
     : attendance !== "physical" && onlineActionUrl ? onlineActionUrl
-    : event.venue_place_slug ? null
-    : event.source_url;
-  const desktopRowHasSourceLink = Boolean(event.source_url) && desktopRowLinkHref === event.source_url;
+    : multipleSites && sourceHref ? sourceHref
+    : goDirectionsUrl || venuePlace ? null
+    : sourceHref;
+  const desktopRowHasSourceLink = Boolean(sourceHref) && desktopRowLinkHref === sourceHref;
   const trust = eventTrust(event);
   const eventVisual = eventCardVisual(event);
   const photoVisual = eventVisual?.presentation === "photo" ? eventVisual : null;
@@ -469,7 +477,7 @@ export default async function EventPage({
   const [saveCount, related, nearby] = await Promise.all([
     eventSaveCount(event.slug).catch(() => null),
     loadRelatedEventSections(event, new Date(nowMs)),
-    physicalAttendance && hasPreciseLocation
+    physicalAttendance && hasPreciseLocation && !multipleSites
       ? loadEventNearbyPlaces(event)
       : Promise.resolve({ food: [], parking: [], source: "catalog-fallback" as const }),
   ]);
@@ -478,7 +486,7 @@ export default async function EventPage({
   const nearbyFood = nearby.food;
   const nearbyParking = nearby.parking;
   const parkingDecision =
-    physicalAttendance && hasPreciseLocation
+    physicalAttendance && hasPreciseLocation && !multipleSites
       ? nearestEventParking(pinGeom)
       : null;
   const firstLineupDates = lineup.slice(0, 4);
@@ -570,7 +578,7 @@ export default async function EventPage({
                 href={notice.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 inline-block pl-6 text-[12px] font-semibold underline"
+                className="tap-44 mt-1 inline-flex min-h-11 items-center pl-6 text-[12px] font-semibold underline"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 Organizer&rsquo;s announcement
@@ -667,10 +675,16 @@ export default async function EventPage({
                             "Directions" says the fact is a link. */}
                         <span className="mt-1 inline-flex items-center gap-1 text-[13px] font-semibold underline-offset-2 group-hover:underline" style={{ color: "var(--app-link)" }}>
                           <Navigation className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                          Directions
+                          {directionsLabel}
                         </span>
                       </a>
                     ) : place}
+                    {physicalAttendance && venuePlace && event.venue_place_slug && (
+                      <Link href={withBrowseReturnTo(`/places/${event.venue_place_slug}`, withBrowseReturnTo(`/events/${event.slug}`, returnTo))}
+                        prefetch={false} className={`tap-44 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-2 ${!canGo || (!goDirectionsUrl && !ticketUrl && !rsvpUrl && !onlineActionUrl && !multipleSites) ? "lg:hidden" : ""}`} style={{ color: "var(--app-link)" }}>
+                        {venueLabel}
+                      </Link>
+                    )}
                   </dd>
                 </div>
               );
@@ -739,15 +753,15 @@ export default async function EventPage({
             </span>
             {/* On desktop the action row may already link this exact page
                 (desktopRowLinkHref); then only phones keep the inline copy. */}
-            {event.source_url && (desktopRowHasSourceLink ? (
+            {sourceHref && sourceLabel && (desktopRowHasSourceLink ? (
               <>
                 <span aria-hidden className="lg:hidden">·</span>
-                <span className="lg:hidden"><EventSourceLink href={event.source_url} /></span>
+                <span className="lg:hidden"><EventSourceLink href={sourceHref} label={sourceLabel} /></span>
               </>
             ) : (
               <>
                 <span aria-hidden>·</span>
-                <EventSourceLink href={event.source_url} />
+                <EventSourceLink href={sourceHref} label={sourceLabel} />
               </>
             ))}
           </p>
@@ -784,9 +798,9 @@ export default async function EventPage({
         (() => {
           const recordAction =
             event.venue_place_slug
-              ? { href: `/places/${event.venue_place_slug}`, external: false, label: "Venue page" }
-              : event.source_url
-                ? { href: event.source_url, external: true, label: "Official page" }
+              ? { href: `/places/${event.venue_place_slug}`, external: false, label: venueLabel }
+              : sourceHref
+                ? { href: sourceHref, external: true, label: sourceLabel }
                 : null;
           return (
             <div className={DESKTOP_ACTION_ROW}>
@@ -814,11 +828,13 @@ export default async function EventPage({
         // Tickets -> RSVP -> Venue -> Official; if the event has none of those,
         // Directions is promoted so there's always exactly one lead action.
         const thirdAction =
-          event.ticket_url ? { href: event.ticket_url, external: true, Icon: Ticket, label: "Tickets" } :
-          event.rsvp_url ? { href: event.rsvp_url, external: true, Icon: ExternalLink, label: "RSVP" } :
+          ticketUrl ? { href: ticketUrl, external: true, Icon: Ticket, label: "Tickets" } :
+          rsvpUrl ? { href: rsvpUrl, external: true, Icon: ExternalLink, label: "RSVP" } :
           attendance !== "physical" && onlineActionUrl ? { href: onlineActionUrl, external: true, Icon: ExternalLink, label: "Online details" } :
-          event.venue_place_slug ? { href: `/places/${event.venue_place_slug}`, external: false, Icon: MapPin, label: "Venue page" } :
-          event.source_url ? { href: event.source_url, external: true, Icon: ExternalLink, label: "Official page" } :
+          multipleSites && sourceHref ? { href: sourceHref, external: true, Icon: ExternalLink, label: sourceLabel } :
+          goDirectionsUrl ? null :
+          venuePlace && event.venue_place_slug ? { href: `/places/${event.venue_place_slug}`, external: false, Icon: MapPin, label: venueLabel } :
+          sourceHref ? { href: sourceHref, external: true, Icon: ExternalLink, label: sourceLabel } :
           null;
         const hasThird = thirdAction !== null;
         // Same destination as WHERE and the phone bar: a precise coordinate,
@@ -835,9 +851,9 @@ export default async function EventPage({
               <a
                 href={thirdAction.href}
                 data-decision-action={
-                  event.ticket_url
+                  ticketUrl
                     ? "ticket"
-                    : event.rsvp_url
+                    : rsvpUrl
                       ? "reservation"
                       : "website"
                 }
@@ -865,7 +881,7 @@ export default async function EventPage({
                 style={dirPrimary ? DESKTOP_PRIMARY_STYLE : DESKTOP_QUIET_STYLE}
               >
                 <Navigation className="h-[18px] w-[18px]" strokeWidth={1.75} style={dirPrimary ? DESKTOP_PRIMARY_ICON : DESKTOP_QUIET_ICON} aria-hidden />
-                Directions
+                {directionsLabel}
               </a>
             )}
             {isLive ? (
@@ -891,7 +907,7 @@ export default async function EventPage({
         );
       })()}
 
-      {eventPlan.eligible && (
+      {eventPlan.eligible && !multipleSites && (
         <section
           aria-label="Plan this visit"
           className="border-y py-4"
@@ -901,10 +917,7 @@ export default async function EventPage({
             This plan reserves {eventPlanDuration} for the event. It can include one nearby stop when the hours fit.
           </p>
           <Link
-            href={withBrowseReturnTo(
-              `/plan?event=${encodeURIComponent(event.slug)}`,
-              withBrowseReturnTo(`/events/${event.slug}`, returnTo),
-            )}
+            href={eventPlanLink(event.slug, returnTo)}
             prefetch={false}
             className="tap-44 mt-1 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"
             style={{ color: "var(--app-link)" }}
@@ -920,7 +933,7 @@ export default async function EventPage({
           weather at the event start, closest parking, and the
           nearest food spot into one card. Self-hides if none of
           the three signals are available. */}
-      {physicalAttendance && hasPreciseLocation && eventStatus === "scheduled" && !hasEnded && !event.is_all_day && !isDateOnlyEventAnchor(event) && (
+      {physicalAttendance && hasPreciseLocation && !multipleSites && eventStatus === "scheduled" && !hasEnded && !event.is_all_day && !isDateOnlyEventAnchor(event) && (
         <EventSmartPairings
           event={event}
           nearbyFood={nearbyFood}
@@ -929,7 +942,7 @@ export default async function EventPage({
       )}
 
       {/* Practical attendance context uses the same precise location as Directions. */}
-      {physicalAttendance && hasPreciseLocation && (
+      {physicalAttendance && hasPreciseLocation && !multipleSites && (
         <div className="space-y-4">
           {eventStatus === "scheduled" && !hasEnded && (
             <GettingThere
@@ -1168,7 +1181,7 @@ export default async function EventPage({
                 href={`/places/${event.venue_place_slug}`}
                 icon={MapPin}
                 label="Venue"
-                ariaLabel={`Venue page for ${eventDisplayTitle(event)}`}
+                ariaLabel={venueLabel}
                 decisionAction="open"
               />
             )}
@@ -1196,9 +1209,9 @@ export default async function EventPage({
               }}
               barVariant={barPrimary === "calendar" ? "primary" : "quiet"}
             />
-            {event.ticket_url && (
+            {ticketUrl && (
               <MobileBarLink
-                href={event.ticket_url}
+                href={ticketUrl}
                 icon={Ticket}
                 label="Tickets"
                 ariaLabel={`Tickets for ${eventDisplayTitle(event)}`}
@@ -1207,7 +1220,10 @@ export default async function EventPage({
                 decisionAction="ticket"
               />
             )}
-            {!event.ticket_url && attendance !== "physical" && onlineActionUrl && (
+            {!ticketUrl && rsvpUrl && (
+              <MobileBarLink href={rsvpUrl} icon={Ticket} label="RSVP" ariaLabel={`RSVP for ${eventDisplayTitle(event)}`} external primary={barPrimary === "rsvp"} decisionAction="reservation" />
+            )}
+            {!ticketUrl && !rsvpUrl && attendance !== "physical" && onlineActionUrl && (
               <MobileBarLink
                 href={onlineActionUrl}
                 icon={ExternalLink}
@@ -1218,12 +1234,15 @@ export default async function EventPage({
                 decisionAction="website"
               />
             )}
-            {goDirectionsUrl && (
+            {multipleSites && sourceHref && barPrimary === "sites" && (
+              <MobileBarLink href={sourceHref} icon={ExternalLink} label="Check locations" ariaLabel={sourceLabel || "Check event locations"} external primary decisionAction="website" />
+            )}
+            {goDirectionsUrl && !multipleSites && (
               <MobileBarLink
                 href={goDirectionsUrl}
                 icon={Navigation}
                 label="Directions"
-                ariaLabel={`Directions to ${event.venue_name || event.title}`}
+                ariaLabel={directionsLabel}
                 external
                 primary={barPrimary === "directions"}
                 decisionAction="directions"
