@@ -319,7 +319,7 @@ export default async function PulsePage() {
   ] = await Promise.all([
     // Today, Map, Ask, the global status, and Pulse all begin with the same
     // normalized conditions. Only Pulse-exclusive feeds are fetched below.
-    getCurrentSituationSnapshot(),
+    getCurrentSituationSnapshot({ waitForSources: true }),
     getRoadIntelligenceSnapshot(),
     getOfficialSignalsSnapshot(),
     withTimeout<FixItIssuesResult>(getFixItIssuesResult(15), FEED_MS, {
