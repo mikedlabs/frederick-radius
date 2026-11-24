@@ -71,7 +71,7 @@ describe("EventPosterCard visual trust", () => {
       createElement(EventPosterCard, {
         event: event({
           slug: "raw-place-photo",
-          source: "ticketmaster",
+          source: "ticketmaster", source_url: "https://www.ticketmaster.com/event/1A234",
           hero_image: "/api/place-photo?name=unattributed",
         }),
       }),
@@ -88,7 +88,7 @@ describe("EventPosterCard visual trust", () => {
     const html = renderToStaticMarkup(
       createElement(EventPosterCard, {
         event: event({
-          source: "ticketmaster",
+          source: "ticketmaster", source_url: "https://www.ticketmaster.com/event/1A234",
           hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg",
         }),
       }),
@@ -114,7 +114,7 @@ describe("EventPosterCard visual trust", () => {
   });
 
   it("does not allow an explicit visual to relabel unclassified art as a photograph", () => {
-    const publisher = event({ source: "ticketmaster", hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg" });
+    const publisher = event({ source: "ticketmaster", source_url: "https://www.ticketmaster.com/event/1A234", hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg" });
     const approved = eventCardVisual(publisher)!;
     expect(posterVisualForEvent(publisher, approved)).toEqual(approved);
     expect(posterVisualForEvent(publisher, { ...approved, presentation: "photo" })).toBeNull();
@@ -243,7 +243,7 @@ describe("EventPosterCard visual trust", () => {
     const html = renderToStaticMarkup(
       createElement(EventCard, {
         event: event({
-          source: "ticketmaster",
+          source: "ticketmaster", source_url: "https://www.ticketmaster.com/event/1A234",
           hero_image: "https://s1.ticketm.net/dam/a/glance-event.jpg",
         }),
         variant: "glance",

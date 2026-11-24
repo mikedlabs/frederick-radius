@@ -327,6 +327,7 @@ describe("parseVibemapEvents", () => {
       FETCHED,
     );
     expect(fromMeta.hero_image).toBe(image);
+    expect(fromMeta.hero_image_record).toBe(fromMeta.url);
 
     const socialImage =
       "https://ik.imagekit.io/vibemap/tr:w-1200,h-675,fo-auto/event.jpeg";
@@ -337,7 +338,8 @@ describe("parseVibemapEvents", () => {
       HORIZON,
       FETCHED,
     );
-    expect(fromYoast.hero_image).toBe(socialImage);
+    expect(fromYoast.hero_image).toBeUndefined();
+    expect(fromYoast.hero_image_record).toBeUndefined();
 
     const [wrongHost] = parseVibemapEvents(
       [vmRow({ meta: { vibemap_event_images: '["https://images.example.com/untrusted.jpg"]' } })],

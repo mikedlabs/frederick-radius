@@ -129,6 +129,8 @@ export type LiveEvent = {
   /** Promo/artist image from ticketed feeds. EventCard already renders
    *  hero images; only sources that vouch for one set it. */
   hero_image?: string;
+  /** Listing URL whose dedicated event-image field supplied these bytes. */
+  hero_image_record?: string;
   /** Lifecycle status — scheduled / cancelled / postponed. Derived
    *  from the iCal STATUS property or a title sniff at parse time. */
   status: EventStatus;
@@ -2108,8 +2110,7 @@ function vibemapEventImage(row: VibemapRow): string | undefined {
   const meta = row.meta ?? {};
   return (
     approvedVibemapImage(meta["vibemap_event_images"]) ??
-    approvedVibemapImage(meta["vibemap_event_original_images"]) ??
-    approvedVibemapImage(row.yoast_head_json?.twitter_image)
+    approvedVibemapImage(meta["vibemap_event_original_images"])
   );
 }
 
@@ -2206,6 +2207,7 @@ export function parseVibemapEvents(
       Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0);
     const metaUrl = str("vibemap_event_url");
     const publisherRecordUrl = samePublisherHttpsUrl(row.link, feed.url);
+    const recordImage = publisherRecordUrl && vibemapEventImage(row);
     const candidate = {
       // Preserve the existing source identity during this rollout. Switching
       // every archived DFP row to WordPress IDs without an alias migration can
@@ -2231,7 +2233,7 @@ export function parseVibemapEvents(
       // useful content, but it is not the evidence identity.
       url: publisherRecordUrl ?? (/^https?:\/\//i.test(metaUrl) ? metaUrl : feed.url),
       is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
-      hero_image: vibemapEventImage(row),
+      ...(recordImage ? { hero_image: recordImage, hero_image_record: publisherRecordUrl } : {}),
       last_verified_at: fetchedAt,
       publisher_updated_at: wordpressGmtIso(row.modified_gmt),
     };
@@ -2854,7 +2856,7 @@ function getCachedEventSourcePage(
       // first-party event changes. Keep old cache tuples out of this shape.
       // v5: bar, brewery and winery need the title, a publisher tag or the
       // feed's own venue category, so cached LiveEvent.category values changed.
-      "live-event-source-page-v5",
+      "live-event-source-page-v6",
       source,
       String(windowDays),
       afterCursor ?? "first",

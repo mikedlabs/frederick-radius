@@ -1,3 +1,4 @@
+import { eventPublisherArtwork } from "@/components/event/eventVisuals";
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { qualifiedSearch, type QualifiedSearchContext, type SearchHit } from "@/lib/search";
@@ -3272,7 +3273,7 @@ export async function askFrederick(
             ? formatDistance(haversineMeters(context.origin, e.geom))
             : undefined,
           confidence: "high",
-          photo_url: e.hero_image,
+          photo_url: eventPublisherArtwork(e)?.src,
         });
       }
     }

@@ -119,7 +119,7 @@ export default function EventPosterCard({ event, visual, venuePhotos, allowVenue
     <figure data-event-poster-photo className={styles.photo}>
       <Image key={identity} src={photoSrc} alt="" fill priority={priorityImage}
         unoptimized={photoSrc.startsWith("/api/place-photo")}
-        sizes="(max-width: 640px) 100vw, 720px"
+        sizes={concise && layout === "shelf" ? "(max-width: 420px) 68px, 106px" : "(max-width: 640px) 100vw, 720px"}
         placeholder="blur" blurDataURL={PAPER_CREAM_BLUR}
         className="object-cover"
         style={{ objectPosition: photo.objectPosition }}
@@ -156,7 +156,7 @@ export default function EventPosterCard({ event, visual, venuePhotos, allowVenue
         {whyItMatters ? <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{whyItMatters}</p> : null}
         {facts.length > 0 ? <p className="mt-1 text-[13px] leading-snug tabular-nums" style={{ color: "var(--app-ink-2)" }}>{facts.join(" · ")}</p> : null}
       </> : null}
-      mediaCredit={visibleVisual ? <EventVisualCredit visual={visibleVisual} className={styles.credit} /> : null}
+      mediaCredit={visibleVisual ? <EventVisualCredit visual={visibleVisual} discloseLicense={concise} className={styles.credit} /> : null}
     />
   );
 }

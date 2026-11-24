@@ -62,7 +62,7 @@ describe("event detail planner entry", () => {
 
 describe("event detail artwork presentation", () => {
   it("keeps publisher artwork after a separate title and published time, without a photo crop", async () => {
-    const published = { ...event, source: "ticketmaster", hero_image: "https://s1.ticketm.net/dam/a/component-event.jpg" } as EventWithMeta;
+    const published = { ...event, source: "ticketmaster", source_url: "https://www.ticketmaster.com/event/12345", hero_image: "https://s1.ticketm.net/dam/a/component-event.jpg" } as EventWithMeta;
     mocks.resolve.mockResolvedValue({ kind: "live", event: published });
     const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
     const nodes = elements(page);

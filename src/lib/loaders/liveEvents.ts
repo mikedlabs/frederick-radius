@@ -226,6 +226,7 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     attendance_mode,
     online_url,
     hero_image: e.hero_image,
+    ...(e.hero_image_record ? { hero_image_record: e.hero_image_record } : {}),
     organizer: e.organizer,
     status: e.status,
     publisher_updated_at: e.publisher_updated_at,

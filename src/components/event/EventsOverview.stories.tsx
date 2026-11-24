@@ -52,7 +52,8 @@ export const TwoWindows390: Story = {
     await expect(upcoming.getByRole("link", { name: repeatVenue.title })).toBeVisible();
     const picturedWeekend = upcoming.getByRole("link", { name: weekend.title }).closest("article")!;
     const bounds = (selector: string) => picturedWeekend.querySelector(selector)!.getBoundingClientRect();
-    await expect(bounds("figure").top - bounds("[data-event-card-heading]").bottom).toBeGreaterThanOrEqual(6);
+    await expect(bounds("figure").left).toBeGreaterThanOrEqual(bounds("[data-event-card-heading]").right);
+    await expect(Math.abs(bounds("figure").top - bounds("[data-event-card-heading]").top)).toBeLessThan(2);
     await expect(bounds("[data-event-photo-credit]").top).toBeGreaterThanOrEqual(bounds("figure").bottom);
     await expect(canvasElement.querySelectorAll('[data-event-row="lead"]')).toHaveLength(1);
     await expect(canvasElement.querySelectorAll('[data-decision-position="lead"]')).toHaveLength(1);

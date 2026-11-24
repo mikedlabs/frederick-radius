@@ -70,24 +70,35 @@ export default function EventsOverview({ tonight, weekend, weekendIncludesTonigh
   for (const event of sharedArtwork) {
     primary.set(event, reserve(reviewedEventVenuePhoto(event.venue_place_slug)));
   }
-  function pick(event: EventWithMeta, lead: boolean) {
+  // Start with a real, illustrated pick when there is one. When photography
+  // is unavailable, the occurrence itself remains the lead; time and place
+  // carry it. Ranking selects the picks, chronology orders the remaining rows.
+  const lead = events.find((event) => primary.get(event)?.presentation === "artwork")
+    ?? events.find((event) => primary.get(event)?.presentation === "photo")
+    ?? events[0];
+  const leadWindow: OverviewWindow = lead && lead !== leadTonight ? "weekend" : "tonight";
+  const windows: OverviewWindow[] = leadWindow === "tonight" ? ["tonight", "weekend"] : ["weekend", "tonight"];
+  const weekendAgenda = [...weekendPicks].sort((a, b) =>
+    Number(b === lead) - Number(a === lead) || Date.parse(a.starts_at) - Date.parse(b.starts_at));
+
+  function pick(event: EventWithMeta) {
+    const isLead = event === lead;
     const visual = primary.get(event) ?? null;
     const allowVenueFallback = visual?.presentation === "artwork" && Boolean(reserve(reviewedEventVenuePhoto(event.venue_place_slug)));
-    return <div key={`${event.slug}:${event.starts_at}`} className={lead ? styles.lead : styles.supporting} data-events-overview-pick={lead ? "lead" : "supporting"}>
-      <EventPosterCard event={event} visual={visual} venuePhotos="free-reviewed" allowVenueFallback={allowVenueFallback} concise headingLevel={3}
-        priorityImage={lead} layout={lead ? "hero" : "shelf"} nowISO={nowISO} live={isEventLiveNow(event, now)} />
+    return <div key={`${event.slug}:${event.starts_at}`} className={isLead ? styles.lead : styles.supporting} data-events-overview-pick={isLead ? "lead" : "supporting"}>
+      <EventPosterCard event={event} visual={visual} venuePhotos="free-reviewed" allowVenueFallback={allowVenueFallback}
+        concise headingLevel={3} priorityImage={isLead} layout={isLead ? "hero" : "shelf"} nowISO={nowISO} live={isEventLiveNow(event, now)} />
     </div>;
   }
-  return <div data-events-overview className={styles.overview}>
-    <section data-events-window="tonight" aria-labelledby="events-overview-tonight" className={styles.window}>
-      <WindowHeading window="tonight" onSelectWindow={onSelectWindow} />
-      {leadTonight ? pick(leadTonight, true) : <p className={styles.empty}>{emptyWindow("tonight", coverage, false)}</p>}
-    </section>
-    <section data-events-window="weekend" aria-labelledby="events-overview-weekend" className={styles.window}>
-      <WindowHeading window="weekend" onSelectWindow={onSelectWindow} />
-      {weekend.length ? <div className={styles.weekendPicks}>
-        {weekendPicks.map((event, index) => pick(event, !leadTonight && index === 0))}
-      </div> : <p className={styles.empty}>{emptyWindow("weekend", coverage, weekendIncludesTonight)}</p>}
-    </section>
+  return <div data-events-overview className={styles.overview} data-has-lead={Boolean(lead)}>
+    {windows.map((window) => {
+      const picks = window === "tonight" ? tonight.slice(0, 1) : weekendAgenda;
+      return <section key={window} data-events-window={window} data-feature-window={window === leadWindow && Boolean(lead) || undefined}
+        aria-labelledby={`events-overview-${window}`} className={styles.window}>
+        <WindowHeading window={window} onSelectWindow={onSelectWindow} />
+        {picks.length ? <div className={styles.agenda}>{picks.map(pick)}</div> :
+          <p className={styles.empty}>{emptyWindow(window, coverage, window === "weekend" && weekendIncludesTonight)}</p>}
+      </section>;
+    })}
   </div>;
 }

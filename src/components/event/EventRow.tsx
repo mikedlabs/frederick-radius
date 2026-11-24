@@ -112,7 +112,7 @@ export default function EventRow({
     banner ? styles.withBanner : "",
     cancelled ? styles.cancelled : "",
   ].filter(Boolean).join(" ");
-  const bannerElement = banner ? <div className={styles.banner}>{banner}</div> : null;
+  const bannerElement = banner ? <div data-event-banner className={styles.banner}>{banner}</div> : null;
   return (
     <article
       data-decision-impression="true"

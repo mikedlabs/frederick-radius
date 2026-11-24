@@ -85,6 +85,7 @@ export const liveEventSchema = z
      *  the runtime schema or Zod strips them after a feed parser maps them. */
     price_text: z.string().max(120).optional(),
     hero_image: z.string().url().optional(),
+    hero_image_record: z.string().url().optional(),
     municipality: z.string().min(2).max(40),
     category: z.string().max(40),
     organizer: z.string().max(120),
