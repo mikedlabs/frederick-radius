@@ -296,6 +296,64 @@ for (const width of [375, 1366]) {
   });
 }
 
+test("short phone at 200% text keeps the last area and More actions above primary navigation", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.route("**/api/pulse/status", route => route.fulfill({ json: {
+    active: false, count: 0, tone: "quiet", level: "Clear", ok: true,
+    lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString(),
+  } }));
+  await page.goto("/today?in=county", { waitUntil: "domcontentloaded" });
+  const header = page.getByRole("banner").first();
+  const navigation = page.getByRole("navigation", { name: "Primary", exact: true });
+  await expect(header.locator("[data-pulse-indicator]")).toHaveAttribute("data-pulse-state", "ready");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe("32px");
+  await expect(navigation).toBeVisible();
+
+  const journeys = [
+    { trigger: todayArea(page), stops: [
+      header.getByRole("combobox", { name: "Choose your area", exact: true }),
+      header.getByRole("button", { name: "Use my location", exact: true }),
+    ] },
+    { trigger: header.getByLabel("More tools", { exact: true }), stops: [
+      header.getByRole("link", { name: "Open tools", exact: true }),
+      header.getByRole("button", { name: "Send feedback", exact: true }),
+      header.getByRole("button", { name: /Switch to (dark|light) appearance/ }),
+    ] },
+  ];
+  for (const { trigger, stops } of journeys) {
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    for (const stop of stops) {
+      await page.keyboard.press("Tab");
+      await expect(stop).toBeFocused();
+    }
+    const last = stops[stops.length - 1];
+    const target = await last.evaluate(control => {
+      const box = control.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const y = box.top + box.height / 2;
+      const hitOffsets = [[0, 0], [-21.5, 0], [21.5, 0], [0, -21.5], [0, 21.5]];
+      return {
+        name: control.getAttribute("aria-label") || control.textContent?.trim(),
+        top: box.top, bottom: box.bottom, width: box.width, height: box.height,
+        visibleHits: hitOffsets.map(([dx, dy]) => control.contains(document.elementFromPoint(x + dx, y + dy))),
+      };
+    });
+    const dock = (await navigation.boundingBox())!;
+    await testInfo.attach(`last-action-${target.name}`, { body: JSON.stringify({ target, dock }), contentType: "application/json" });
+    expect(target.width).toBeGreaterThanOrEqual(44);
+    expect(target.height).toBeGreaterThanOrEqual(44);
+    expect(target.top).toBeGreaterThanOrEqual(0);
+    expect(target.bottom, `${target.name} clears the fixed primary navigation`).toBeLessThanOrEqual(dock.y);
+    expect(target.visibleHits, `${target.name} has an unobstructed 44px target`).toEqual([true, true, true, true, true]);
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+    await expect(last).toBeHidden();
+  }
+});
+
 for (const route of ["/today", "/parking"]) {
   test(`feedback in More tools keeps ${route} clear and restores keyboard focus`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });

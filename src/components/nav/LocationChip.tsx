@@ -213,7 +213,7 @@ export default function LocationChip() {
             </button>
           </div>
 
-          <div className="min-h-0 overflow-y-auto overscroll-contain">
+          <div data-location-options className="min-h-0 overflow-y-auto overscroll-contain">
           {/* Near me — sets scope AND requests the fix (the two go together;
               a nearme scope with no device fix falls back to home server-side
               but the granted position sharpens client surfaces). */}

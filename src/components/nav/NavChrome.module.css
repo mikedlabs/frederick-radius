@@ -108,6 +108,8 @@
   --masthead-stroke: color-mix(in srgb, var(--masthead-type) 55%, transparent);
   --masthead-hover: color-mix(in srgb, var(--masthead-type) 12%, transparent);
   --header-gutter: 16px;
+  --header-bottom-space: calc(14 * var(--spacing) + 1px + env(safe-area-inset-bottom, 0px));
+  --header-panel-room: max(44px, calc(100dvh - env(safe-area-inset-top, 0px) - var(--app-topbar-h) - var(--header-bottom-space) - 8px));
   --header-start: max(var(--header-gutter), env(safe-area-inset-left, 0px));
   --header-end: max(var(--header-gutter), env(safe-area-inset-right, 0px));
   background: var(--masthead-ground);
@@ -209,7 +211,8 @@
   inset-inline-end: max(var(--header-gutter), env(safe-area-inset-right, 0px));
   top: 100%;
   width: min(21rem, calc(100% - 2 * var(--header-gutter)));
-  max-height: min(65dvh, 26rem);
+  max-height: min(65dvh, 26rem, var(--header-panel-room));
+  overscroll-behavior: contain;
   overflow: auto;
   padding: 12px;
   border: 1px solid var(--app-control-border);
@@ -217,6 +220,10 @@
   background: var(--app-bg-elevated-solid);
   box-shadow: var(--app-shadow-3);
   color: var(--app-ink);
+}
+.context :global([data-location-scope-menu]) {
+  /* LocationChip starts 0.375rem below the masthead. */
+  max-height: min(65dvh, 31rem, max(44px, calc(var(--header-panel-room) - 0.375rem)));
 }
 .todayDisclosure:not([open]) > .todayHeaderPanel { display: none; }
 .todayDisclosure[data-today-header-disclosure="tools"] > .todayHeaderPanel {
@@ -264,6 +271,10 @@
 .context .todayDisclosure[open] > summary { background: var(--app-ink-tint-8); }
 
 @media (max-width: 639.98px) {
+  /* One scroll area keeps the last town reachable when large text leaves
+     less than a full tap target beneath the picker heading. */
+  .context :global([data-location-scope-menu]) { overflow-y: auto; overscroll-behavior: contain; }
+  .context :global([data-location-options]) { flex: none; overflow: visible; }
   .context {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.75rem), 1fr));
@@ -330,6 +341,7 @@
   .context :global([data-pulse-indicator]), .context .todayHeaderTrigger { padding-inline: 4px; }
 }
 @media (min-width: 1024px) {
+  .bar { --header-bottom-space: env(safe-area-inset-bottom, 0px); }
   .row { padding-inline-start: max(min(6rem, 96px), env(safe-area-inset-left, 0px)); gap: 1.25rem; }
   .home { gap: 0.6rem; }
   .home svg { width: 36px; height: 36px; }
