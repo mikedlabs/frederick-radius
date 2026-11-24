@@ -128,6 +128,8 @@ export type LiveEvent = {
   online_url?: string;
   /** Promo/artist image from ticketed feeds. EventCard already renders
    *  hero images; only sources that vouch for one set it. */
+  /** Precision supported by the publisher, separate from the internal expiry timestamp. */
+  published_time?: "date" | "start" | "range";
   hero_image?: string;
   /** Listing URL whose dedicated event-image field supplied these bytes. */
   hero_image_record?: string;
@@ -163,6 +165,10 @@ type FeedFormat =
   | "presence"
   | "vibemap"
   | "wix-html";
+
+function publishedTime(hasClock: boolean, hasEnd: boolean): NonNullable<LiveEvent["published_time"]> {
+  return hasClock ? (hasEnd ? "range" : "start") : "date";
+}
 
 export type FeedSpec = Feed & {
   format: FeedFormat;
@@ -1266,6 +1272,7 @@ async function fetchIcalFeed(
         description: cleanedDesc,
         starts_at: startsAtISO,
         ends_at: endsAtISO,
+        published_time: publishedTime(!allDay, Boolean(item.end)),
         is_all_day: allDay,
         venue_name: venue,
         address,
@@ -1382,6 +1389,7 @@ async function fetchRssFeed(
         );
         continue;
       }
+      const publishedWindow = end !== null && Number.isFinite(end.getTime());
       if (!end || isNaN(end.getTime())) end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
       if (!isEventWithinReadWindow(
         { starts_at: start.toISOString(), ends_at: end.toISOString() },
@@ -1408,6 +1416,7 @@ async function fetchRssFeed(
         description: clampDescription(cleanDescription(description), 300),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
+        published_time: publishedTime(publishedWindow, publishedWindow),
         venue_name: venue,
         address,
         geom: feed.default_geom,
@@ -1469,6 +1478,7 @@ const fetchCountyRssCached = unstable_cache(
 /** One event in a WordPress "The Events Calendar" REST v1 payload. Only the
  *  fields we read are typed; the payload carries far more. */
 type TribeEvent = {
+  all_day?: boolean;
   title?: string;
   description?: string;
   start_date?: string; // "2026-07-11 10:30:00" (venue-local ET)
@@ -1551,8 +1561,9 @@ async function fetchTribeFeed(
       const startsAtISO = jsonEventDateToISO(item.utc_start_date, item.start_date);
       if (!startsAtISO) continue;
       const effectiveStart = new Date(startsAtISO);
+      const publisherEnd = jsonEventDateToISO(item.utc_end_date, item.end_date);
       const endsAtISO =
-        jsonEventDateToISO(item.utc_end_date, item.end_date) ??
+        publisherEnd ??
         new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString();
       if (!isEventWithinReadWindow(
         { starts_at: startsAtISO, ends_at: endsAtISO },
@@ -1573,6 +1584,7 @@ async function fetchTribeFeed(
         description: cleanedDesc,
         starts_at: startsAtISO,
         ends_at: endsAtISO,
+        published_time: publishedTime(item.all_day !== true, Boolean(publisherEnd)),
         is_all_day: false,
         venue_name: venue,
         address,
@@ -1835,6 +1847,7 @@ export function parseWixEventsHtml(
       description,
       starts_at: start.toISOString(),
       ends_at: end.toISOString(),
+      published_time: publishedTime(true, Number.isFinite(parsedEndMs)),
       is_all_day: false,
       venue_name: venue,
       address,
@@ -2024,6 +2037,7 @@ async function fetchJsonArrayFeed(
         description: cleanedDesc,
         starts_at: startsAtISO,
         ends_at: endsAtISO,
+        published_time: publishedTime(true, rawEndsAtISO === endsAtISO),
         is_all_day: false,
         venue_name: venue,
         address,
@@ -2218,6 +2232,7 @@ export function parseVibemapEvents(
       description: cleanedDesc,
       starts_at: startsAtISO,
       ends_at: endsAtISO,
+      published_time: publishedTime(!allDay, endISO === endsAtISO),
       is_all_day: allDay,
       venue_name: venue,
       address,
@@ -2856,7 +2871,7 @@ function getCachedEventSourcePage(
       // first-party event changes. Keep old cache tuples out of this shape.
       // v5: bar, brewery and winery need the title, a publisher tag or the
       // feed's own venue category, so cached LiveEvent.category values changed.
-      "live-event-source-page-v6",
+      "live-event-source-page-v7",
       source,
       String(windowDays),
       afterCursor ?? "first",

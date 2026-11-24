@@ -53,7 +53,7 @@ type StatsApiTeam = { team?: { id?: number; name?: string } };
 type StatsApiGame = {
   gamePk?: number;
   gameDate?: string;
-  status?: { detailedState?: string };
+  status?: { detailedState?: string; startTimeTBD?: boolean };
   teams?: { home?: StatsApiTeam; away?: StatsApiTeam };
   venue?: { name?: string };
 };
@@ -99,6 +99,7 @@ export function normalizeStatsApiSchedule(
         description: "",
         starts_at: new Date(start).toISOString(),
         ends_at: new Date(start + GAME_DURATION_MS).toISOString(),
+        published_time: g.status?.startTimeTBD ? "date" : "start",
         venue_name: NYMEO_FIELD.name,
         address: NYMEO_FIELD.address,
         geom: { lng: NYMEO_FIELD.geom.lng, lat: NYMEO_FIELD.geom.lat },

@@ -59,6 +59,7 @@ export function slimEventForBrowse(e: EventWithMeta): EventWithMeta {
     source_url: e.source_url,
     source: e.source,
     hero_image: e.hero_image,
+    ...(e.published_time ? { published_time: e.published_time } : {}),
     ...(e.hero_image_record ? { hero_image_record: e.hero_image_record } : {}),
     hero_image_attribution: e.hero_image_attribution,
     status: e.status,
