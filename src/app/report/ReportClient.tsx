@@ -151,7 +151,10 @@ export default function ReportClient({
 
   const submit = useCallback(async () => {
     const map = mapRef.current?.getMap();
-    if (!map) return;
+    if (!map) {
+      setStatus({ tone: "error", text: "The map isn’t ready. Your report hasn’t been sent. Try again when the map loads." });
+      return;
+    }
     const c = map.getCenter();
     const lng = c.lng;
     const lat = c.lat;
@@ -356,10 +359,10 @@ export default function ReportClient({
             placeholder={category === "tip" || category === "note" ? "What is it? (required)" : "Add a detail (optional)"}
             className="min-h-11 min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#B5462B)]"
           />
-          <label className={`tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[var(--app-radius-md,12px)] border px-3 py-2.5 text-sm font-medium ${def?.photoRequired && !photo ? "border-[var(--app-brand,#B5462B)] text-[var(--app-brand,#B5462B)]" : "border-[var(--app-ink)]/15"}`}>
+          <label className={`relative inline-flex min-h-11 min-w-11 shrink-0 cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--app-ink)] items-center gap-1 rounded-[var(--app-radius-md,12px)] border px-3 py-2.5 text-sm font-medium ${def?.photoRequired && !photo ? "border-[var(--app-brand,#B5462B)] text-[var(--app-brand,#B5462B)]" : "border-[var(--app-ink)]/15"}`}>
             <Camera className="h-4 w-4" strokeWidth={2} aria-hidden />
-            {def?.photoRequired ? "Photo*" : ""}
-            <input type="file" accept="image/*" capture="environment" aria-label={def?.photoRequired ? "Add photo (required)" : "Add photo (optional)"} className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0])} />
+            {def?.photoRequired ? "Photo*" : "Photo"}
+            <input type="file" accept="image/*" capture="environment" aria-label={def?.photoRequired ? "Add photo (required)" : "Add photo (optional)"} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" onChange={(e) => onPickPhoto(e.target.files?.[0])} />
           </label>
           {photo && (
             // eslint-disable-next-line @next/next/no-img-element -- local capture preview (data URL)

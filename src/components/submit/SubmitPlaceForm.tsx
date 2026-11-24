@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import SubmissionReceiptHeading from "@/components/submit/SubmissionReceiptHeading";
 import { ArrowRight, Check, ChevronDown } from "lucide-react";
 import { submitPlaceAction, type SubmitPlaceInput } from "./actions";
 import BotTrapFields from "./BotTrapFields";
@@ -95,9 +96,9 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
         >
           <Check className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden />
         </div>
-        <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>
+        <SubmissionReceiptHeading className="font-serif text-xl font-semibold">
           {isFoodTruck ? "Your truck is in for review" : "Thanks, submitted"}
-        </h2>
+        </SubmissionReceiptHeading>
         <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>
           {isFoodTruck
             ? "We’ll verify the details and contact you before the listing goes live."
