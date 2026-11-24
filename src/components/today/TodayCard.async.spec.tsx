@@ -133,7 +133,7 @@ describe("TodayCard provider composition", () => {
     const html = renderToStaticMarkup(await TodayCard({ density: "masthead" }));
     expect(html).toContain('data-weather-density="masthead"');
     expect(html).toContain('data-weather-state="unavailable"');
-    expect(html).toContain("The NWS forecast is briefly unavailable.");
+    expect(html).toContain("Forecast unavailable");
     expect(html).toContain('href="/pulse?open=weather"');
     expect(html).not.toContain("<details");
     expect(html).not.toContain("70°");

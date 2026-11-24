@@ -186,53 +186,103 @@
   letter-spacing: -0.035em;
 }
 
-.outingPhoto {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  aspect-ratio: 1.53;
-  overflow: hidden;
-  place-items: center;
-  border-radius: var(--app-radius-sm);
-  background: var(--app-bg-sunken);
-  color: var(--app-ink-3);
-}
-
-.outingPhoto img {
-  object-fit: cover;
-  object-position: center 70%;
-}
-
-/* One walking route leads with the place, the reason to visit and its first
-   step. The weekend calendar remains a separate, compact choice. */
+/* The real creek and the route form one editorial link. A solid paper panel
+   keeps the title readable across photographs and in either appearance. */
 .discoveryOutings[data-featured-route] {
   border: 0;
   align-content: start;
 }
 
-.discoveryOuting[data-featured] .outingPhoto {
-  aspect-ratio: 2.45;
-  border-radius: var(--app-radius-md);
+.featuredWalk {
+  --outing-paper: color-mix(in srgb, var(--app-bg) 94%, var(--app-warning) 6%);
+  display: grid;
+  min-width: 0;
+  isolation: isolate;
+  color: var(--app-ink);
+  background: var(--outing-paper);
+  text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
-.discoveryOuting[data-featured] .outingCaption {
+.featuredWalk:focus-visible {
+  outline: 3px solid var(--app-focus);
+  outline-offset: -3px;
+}
+
+.featuredWalk:hover .outingAction { text-decoration: underline; text-underline-offset: 0.15em; }
+.featuredWalk + .discoveryOuting { border-block: 1px solid var(--app-border); }
+
+.outingPhoto {
+  position: relative;
   display: block;
-  padding-block: var(--app-space-3);
+  min-width: 0;
+  aspect-ratio: 1.34;
+  background: var(--app-bg-sunken);
+  overflow: hidden;
 }
 
-.discoveryOuting[data-featured] strong {
-  font-size: clamp(1.55rem, 4.5cqi, 2.4rem);
-  font-weight: 750;
-  letter-spacing: -0.035em;
-  line-height: 1.04;
+.outingPhoto img {
+  object-fit: cover;
+  object-position: 50% 64%;
+}
+
+.outingCredit {
+  position: absolute;
+  inset-block-start: 0.75rem;
+  inset-inline-end: 0;
+  max-inline-size: min(90%, 30rem);
+  padding: 0.25rem 0.65rem;
+  background: rgb(18 18 16 / 78%);
+  color: #fff;
+  font-size: 0.6875rem;
+  line-height: 1.3;
+}
+
+.featuredCopy {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  padding: 0.15rem clamp(1rem, 4.8cqi, 2.2rem) clamp(0.8rem, 3.3cqi, 1.7rem);
+}
+
+.outingPhoto + .featuredCopy::before {
+  position: absolute;
+  inset: auto 0 calc(100% - 1px);
+  height: clamp(1.4rem, 7cqi, 3rem);
+  pointer-events: none;
+  background: var(--outing-paper);
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+  content: "";
+}
+
+.featuredCopy:only-child { padding-top: 1.25rem; }
+
+.featuredScope {
+  color: var(--app-ink-2);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.featuredTitle {
+  display: block;
+  max-inline-size: 12ch;
+  margin: 0.38rem 0 0;
+  font-family: var(--font-libre-caslon), Georgia, serif;
+  font-size: clamp(3rem, 13.4cqi, 4.6rem);
+  font-weight: 400;
+  line-height: 0.93;
+  letter-spacing: -0.047em;
+  text-wrap: balance;
 }
 
 .outingReason {
-  display: block;
-  max-width: 44ch;
-  margin-top: var(--app-space-2);
+  max-width: 35ch;
+  margin-top: 0.65rem;
   color: var(--app-ink-2);
-  line-height: 1.4;
+  font-size: clamp(0.96rem, 2.5cqi, 1.12rem);
+  line-height: 1.45;
 }
 
 .outingFallback {
@@ -247,9 +297,11 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  margin-top: var(--app-space-2);
+  min-height: 44px;
+  margin-top: 0.15rem;
   color: var(--app-link);
-  font-weight: 650;
+  font-size: 1rem;
+  font-weight: 750;
 }
 
 .discoveryOuting strong {
@@ -667,19 +719,54 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .discoveryLayout[data-featured-route] > .discoveryPlaceGrid > .discoveryOutings {
-    grid-column: 1;
-    grid-row: 1 / -1;
+  .discoveryLayout[data-featured-route] {
+    grid-template-rows: auto auto auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
   }
 
-  .discoveryLayout[data-featured-route] > .discoveryPlaceGrid > [data-today-discovery-role="lead"] {
-    grid-column: 2;
+  .discoveryLayout[data-featured-route] > .discoveryPlaceGrid {
+    grid-row: 1 / 3;
+    row-gap: var(--app-space-4);
+  }
+
+  .discoveryLayout[data-featured-route] > .discoveryPlaceGrid > .discoveryOutings {
+    grid-column: 1 / -1;
     grid-row: 1;
   }
 
-  .discoveryLayout[data-featured-route] .outingPhoto {
-    aspect-ratio: 1.85;
+  .discoveryLayout[data-featured-route] > .discoveryPlaceGrid > .discoveryPlace {
+    grid-column: auto;
+    grid-row: 2;
   }
+
+  .discoveryLayout[data-featured-route] > .discoveryTasks {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .featuredWalk:has(.outingPhoto) {
+    grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr);
+  }
+
+  .featuredWalk .outingPhoto {
+    min-height: clamp(18rem, 45cqi, 27rem);
+    aspect-ratio: auto;
+  }
+
+  .featuredCopy {
+    padding: clamp(1.5rem, 4cqi, 2.8rem);
+  }
+
+  .outingPhoto + .featuredCopy::before {
+    inset: 0 calc(100% - 1px) 0 auto;
+    width: clamp(1rem, 2.4cqi, 1.7rem);
+    height: auto;
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  }
+
+  .featuredTitle { font-size: clamp(3.1rem, 8cqi, 5rem); }
 
   /* With no place grid (a town without accepted imagery) the links keep the
      full width. */
@@ -782,4 +869,16 @@
   font-size: 18px;
   font-weight: 650;
   line-height: 1.3;
+}
+
+@media (max-width: 639px) {
+  .featuredWalk {
+    margin-inline: calc(-1 * var(--today-photo-bleed, 0px));
+  }
+}
+
+.masthead[data-today-masthead] .heading .title {
+  font-size: clamp(1.375rem, 2.8vw, 1.9rem);
+  line-height: 1.06;
+  letter-spacing: -0.04em;
 }

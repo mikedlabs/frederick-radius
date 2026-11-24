@@ -56,6 +56,27 @@ describe("Today local discovery", () => {
     }
   });
 
+  it("keeps one dated, credited walking feature above two independently savable local rows", async () => {
+    const guidePhotos = {
+      downtown: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+      downtownTitle: "Thanksgiving Creek Walk",
+      downtownWhen: "Tomorrow",
+      downtownTeaser: "Park free at East All Saints garage for an hour outdoors along Carroll Creek.",
+      downtownHref: "/today/two-hours-downtown?day=2026-11-26",
+    };
+    await act(async () => root.render(<TodayGeographicDoorwayView scope="county" guidePhotos={guidePhotos} />));
+    const hero = container.querySelector<HTMLAnchorElement>("a[data-featured]")!;
+    expect(hero.getAttribute("aria-label")).toContain("Thanksgiving Creek Walk, Frederick City · Tomorrow");
+    expect(hero.search).toContain("day=2026-11-26");
+    expect(hero.querySelector("img")?.getAttribute("src")).toBe(guidePhotos.downtown);
+    expect(hero.textContent).toContain("Frederick Radius summer archive");
+    expect(container.querySelectorAll('[data-today-discovery-role="secondary"]')).toHaveLength(2);
+    await act(async () => hero.querySelector("img")!.dispatchEvent(new Event("error")));
+    expect(hero.querySelector("img")).toBeNull();
+    expect(hero.textContent).not.toContain("summer archive");
+    expect(hero.textContent).toContain("See the walk");
+  });
+
   it("replaces pizza advertising with two exact owned local views and two broad tasks", async () => {
     const fetch = vi.spyOn(globalThis, "fetch");
     await render();

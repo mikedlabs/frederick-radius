@@ -84,7 +84,7 @@ for (const width of [320, 375, 390, 430]) {
       return route.continue();
     });
     await page.goto(originPath, { waitUntil: "domcontentloaded" });
-    const photoCard = page.locator("article[data-today-discovery-role=lead]");
+    const photoCard = page.locator("article[data-today-discovery-role]").filter({ has: page.locator(`[data-today-geographic-place="${scenic}"]`) });
     const photoSave = photoCard.locator(`button[data-save-ref="place:${scenic}"]`);
     await expect(photoSave).toBeEnabled({ timeout: 30_000 });
     await expect(page.locator("[data-today-saved-place]")).toHaveCount(2);

@@ -23,34 +23,44 @@ export type TodayGuidePhotos = {
   weekendLabel?: string;
 };
 
-function OutingLink({ href, title, scope, image, reason, Icon }: {
+function OutingLink({ href, title, scope, Icon }: {
   href: string;
   title: string;
   scope: string;
-  image?: string;
-  reason?: string;
   Icon: typeof CalendarDays;
 }) {
-  const [failedImage, setFailedImage] = useState<string | null>(null);
   return (
-    <Link href={href} prefetch={false} className={styles.discoveryOuting} data-featured={reason ? "" : undefined}>
-      {image && (
-        <span className={styles.outingPhoto} aria-hidden="true">
-          <Icon />
-          {failedImage !== image && <Image src={image} alt="" fill
-            sizes="(max-width: 640px) calc(100vw - 32px), 560px" loading="eager"
-            onError={() => setFailedImage(image)} />}
+    <Link href={href} prefetch={false} className={styles.discoveryOuting}>
+      <span className={styles.outingCaption}>
+        <Icon aria-hidden />
+        <span><strong>{title}</strong><small>{scope}</small></span>
+        <ArrowRight aria-hidden className={styles.outingArrow} />
+      </span>
+    </Link>
+  );
+}
+
+function FeaturedWalk({ guide, href, scope }: { guide: TodayGuidePhotos; href: string; scope: string }) {
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const showPhoto = failedImage !== guide.downtown;
+  return (
+    <Link href={href} prefetch={false} className={styles.featuredWalk} data-featured=""
+      aria-label={`${guide.downtownTitle}, ${scope}. See the walk`}>
+      {showPhoto && (
+        <span className={styles.outingPhoto} data-today-feature-photo data-today-photo-lead>
+          <Image src={guide.downtown}
+            alt="Summer light reflects off Carroll Creek between the bridges and brick buildings in downtown Frederick."
+            fill sizes="(max-width: 640px) 140vw, (max-width: 980px) 80vw, 760px"
+            loading="eager" fetchPriority="high" onError={() => setFailedImage(guide.downtown)} />
+          <span className={styles.outingCredit}>Carroll Creek · Frederick Radius summer archive</span>
         </span>
       )}
-      <span className={styles.outingCaption}>
-        {!image && <Icon aria-hidden />}
-        <span>
-          <strong>{title}</strong><small>{scope}</small>
-          {reason && <span className={styles.outingReason}>{reason}</span>}
-          {reason && <span className={styles.outingAction}>View walking route <ArrowRight aria-hidden size={16} /></span>}
-        </span>
-        {!image && <ArrowRight aria-hidden className={styles.outingArrow} />}
-      </span>
+      <div className={styles.featuredCopy}>
+        <small className={styles.featuredScope}>{scope}</small>
+        <h3 className={styles.featuredTitle}>{guide.downtownTitle}</h3>
+        <span className={styles.outingReason}>{guide.downtownTeaser}</span>
+        <span className={styles.outingAction}>See the walk <ArrowRight aria-hidden size={20} /></span>
+      </div>
     </Link>
   );
 }
@@ -120,13 +130,14 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo, guidePhotos
   const localRoute = active === "county" || active === "town:frederick";
   const featured = localRoute && Boolean(guidePhotos);
   const outingOrigin = `${origin.split("#", 1)[0]}#local-outings`;
+  const downtownHref = withBrowseReturnTo(guidePhotos?.downtownHref ?? "/today/two-hours-downtown", outingOrigin);
+  const downtownScope = guidePhotos ? `Frederick City · ${guidePhotos.downtownWhen}` : "Frederick City";
   const outings = (
     <nav id="local-outings" aria-label="Local outings" data-featured-route={featured || undefined} className={styles.discoveryOutings}>
       {!featured && <h3 className={styles.guidesHeading}>Local guides</h3>}
-      <OutingLink href={withBrowseReturnTo(guidePhotos?.downtownHref ?? "/today/two-hours-downtown", outingOrigin)}
-        title={guidePhotos?.downtownTitle ?? "Two Hours Downtown"} scope={guidePhotos ? `Frederick City · ${guidePhotos.downtownWhen}` : "Frederick City"}
-        image={featured ? guidePhotos?.downtown : undefined}
-        reason={featured ? guidePhotos?.downtownTeaser : undefined} Icon={Footprints} />
+      {featured && guidePhotos
+        ? <FeaturedWalk guide={guidePhotos} href={downtownHref} scope={downtownScope} />
+        : <OutingLink href={downtownHref} title={guidePhotos?.downtownTitle ?? "Two Hours Downtown"} scope={downtownScope} Icon={Footprints} />}
       <OutingLink href={withBrowseReturnTo("/today/weekend", outingOrigin)}
         title="This Weekend" scope={guidePhotos?.weekendLabel ? `Frederick County · ${guidePhotos.weekendLabel}` : "Frederick County"} Icon={CalendarDays} />
     </nav>
@@ -137,7 +148,7 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo, guidePhotos
       <div className={styles.discoveryLayout} data-featured-route={featured || undefined}>
       {lead ? <div data-today-discovery-grid className={styles.discoveryPlaceGrid}>
         {featured && outings}
-        <DiscoveryPlace key={`${active}:${lead.photoPlan.key}`} place={lead} scope={active} returnTo={origin} lead />
+        <DiscoveryPlace key={`${active}:${lead.photoPlan.key}`} place={lead} scope={active} returnTo={origin} lead={!featured} />
         {!featured && outings}
         {secondary.map(place => <DiscoveryPlace key={`${active}:${place.photoPlan.key}`} place={place} scope={active} returnTo={origin} lead={false} />)}
       </div> : outings}

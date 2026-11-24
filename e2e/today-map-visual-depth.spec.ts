@@ -20,6 +20,7 @@ const creekPhoto = getOwnedPlacePhoto(creekSlug)!;
 const lockPhoto = CREDITED_LOCAL_PLACE_PHOTOS[lockSlug].image;
 const primarySlug = "joseph-dill-baker-memorial-carillon-bell-tower";
 const primaryPhoto = getOwnedPlacePhoto(primarySlug)!;
+const walkingPhoto = "/images/seasons/summer/SUMMER CARROL CREEK.jpg";
 const secondDiscoveryPhoto = getOwnedPlacePhoto("sophie-madigans-playground-frederick")!;
 const failureSignal = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 const returnTo = "/search?q=Creek&in=frederick&kind=place";
@@ -179,7 +180,7 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
         evidence.failedImages.push(imagePath);
         return route.fulfill({ headers: { "Cache-Control": "no-store" }, contentType: "image/gif", body: failureSignal });
       }
-      if ([creekPhoto.src, lockPhoto.src, primaryPhoto.src, secondDiscoveryPhoto.src].includes(imagePath)) {
+      if ([creekPhoto.src, lockPhoto.src, primaryPhoto.src, secondDiscoveryPhoto.src, walkingPhoto].includes(imagePath)) {
         return route.fulfill({ headers: { "Cache-Control": "no-store" }, contentType: "image/jpeg", body: await readFile(`public${imagePath}`) });
       }
       return route.continue();
@@ -291,7 +292,7 @@ test("Today shows a real photograph on arrival while the local guides fit above 
   expect(geometry.quick.top).toBeGreaterThanOrEqual(geometry.explore.top);
   const quick = page.getByRole("group", { name: "Quick needs", exact: true });
   await expect(quick).toHaveCount(1);
-  await expect(page.getByRole("region", { name: "More ways to explore", exact: true }).getByRole("group", { name: "Quick needs", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "Practical information", exact: true }).getByRole("group", { name: "Quick needs", exact: true })).toHaveCount(1);
   await expect(quick.getByRole("link")).toHaveCount(4);
   const targets = [];
   for (const control of [page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }), todayArea(page), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
@@ -310,7 +311,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   const { evidence } = await prepare(context, page, baseURL);
   await todayReady(page);
   const image = page.locator("[data-today-photo-lead] img");
-  await decoded(image, primaryPhoto.src);
+  await decoded(image, walkingPhoto);
   const textProbes = [
     { name: "Daypart heading", control: page.getByRole("heading", { level: 1 }) },
     { name: "Area picker", control: todayArea(page) },
@@ -342,7 +343,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
     previousBaseline = key;
     return root.px === 16 && stableBaseline >= 1;
   }, { message: "The actual16px root and control text settle before recording a100% baseline" }).toBe(true);
-  expect(normal.map(({ px }) => px), "normal fixed release labels are measured at100%, never an already-enlarged baseline").toEqual([32, 13, 14]);
+  expect(normal.map(({ px }) => px), "normal fixed release labels are measured at100%, never an already-enlarged baseline").toEqual([22, 13, 14]);
   await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
   await page.evaluate(() => document.fonts.ready);
   let enlarged = await text();
