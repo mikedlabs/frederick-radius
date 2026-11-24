@@ -1736,7 +1736,7 @@ export default function MapDock(props: MapDockProps) {
           {compactRecoveryDock && searchReturnTo && !pane && !searchPanelOpen && (
             <a
               href={searchReturnTo}
-              className="relative z-10 grid min-h-11 place-items-center rounded-l-[var(--app-radius-md)] border-r"
+              className="relative z-10 grid min-h-[44px] place-items-center rounded-l-[var(--app-radius-md)] border-r"
               style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
               title="Back to search results"
             >

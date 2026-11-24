@@ -375,11 +375,16 @@ test("a visual outing keeps choices through a pre-trip check and map fallback", 
   await expect(page.getByRole("img", { name: "Carroll Creek in Frederick." })).toHaveCount(0);
   await expectFirstStopClearOfNavigation(page);
   const before = new URL(page.url()).searchParams.get("p");
-  await page.getByRole("button", { name: "Check this plan", exact: true }).click();
-  await expect(page.getByText("These records do not confirm live venue availability.", { exact: false })).toBeVisible();
+  const check = page.getByRole("region", { name: "Check before you go", exact: true });
+  await check.getByRole("button", { name: "Check this plan", exact: true }).click();
+  // The server allows one second for the event archive and five for NWS.
+  // Wait for the real briefing, then verify its disclosure and source link.
+  const briefing = check.locator('[aria-live="polite"]');
+  await expect(briefing).toBeVisible({ timeout: 10_000 });
+  await expect(briefing.getByText("These records do not confirm live venue availability.", { exact: false })).toBeVisible();
   await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.get("p")).toBe(before);
-  await expect(page.getByRole("link", { name: "National Weather Service", exact: true })).toBeVisible();
+  await expect(briefing.getByRole("link", { name: "National Weather Service", exact: true })).toBeVisible();
   await page.screenshot({ path: "output/playwright/plan-itinerary-mobile.png", fullPage: true });
   await page.getByRole("button", { name: "Show stops on map", exact: true }).click();
   await expect(page.getByRole("region", { name: "Stops on the map", exact: true })).toBeVisible();
