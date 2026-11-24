@@ -239,12 +239,12 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
           const area = header.querySelector<HTMLElement>("[data-location-chip]")!;
           await expect(area, context).toHaveAccessibleName(new RegExp(`Current scope: ${areaName.source}`));
           if (pathname === "/map") {
-            const label = area.querySelector<HTMLElement>(width < 360 ? '[data-location-scope-label="compact"]' : '[data-location-scope-label="full"]')!;
+            const label = area.querySelector<HTMLElement>(width < 640 ? '[data-location-scope-label="compact"]' : '[data-location-scope-label="full"]')!;
             await expect(label, context).toBeVisible();
-            // "Whole county" needs about 70px and the 320px map header leaves
-            // 50px, so the short form there is "County", printed unclipped.
-            await expect(label.textContent, context).toMatch(wholeCounty && width < 360 ? /^County$/ : areaName);
-            if (wholeCounty && width < 360) await expect(label.scrollWidth, `${context}: area name clipped`).toBeLessThanOrEqual(label.clientWidth);
+            // Phone headers share this row with county status. The short
+            // county label must fit for every tested phone and status.
+            await expect(label.textContent, context).toMatch(wholeCounty && width < 640 ? /^County$/ : areaName);
+            if (wholeCounty && width < 640) await expect(label.scrollWidth, `${context}: area name clipped`).toBeLessThanOrEqual(label.clientWidth);
           }
         }
         if (globalFind) {

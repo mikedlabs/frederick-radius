@@ -8735,6 +8735,14 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] > span 
 header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-location-scope-label="compact"] {
   display: none;
 }
+@media (max-width: 639.98px) {
+  header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-location-scope-label="compact"] {
+    display: block;
+  }
+  header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-location-scope-label="full"] {
+    display: none;
+  }
+}
 @media (max-width: 359px) {
   header[data-map-header="true"] [data-location-chip][data-compact="true"] {
     max-width: 92px;
@@ -8745,9 +8753,6 @@ header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-l
     display: block;
     max-width: 58px;
     font-size: 10.5px;
-  }
-  header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-location-scope-label="full"] {
-    display: none;
   }
 }
 header[data-map-header="true"] [data-location-chip][data-compact="true"]:hover,

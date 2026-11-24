@@ -882,7 +882,7 @@ export default function SavedList({
   ) {
     return (
       <div className="space-y-4">
-        <Masthead stand="Outings, places, events, and transit you want to keep" />
+        <Masthead stand="Nothing saved yet" />
         <EmptyState />
         <KeepRadiusCard variant="row" />
       </div>
@@ -1516,7 +1516,7 @@ export function EmptyState() {
         className="font-sans text-[18px] font-semibold leading-snug"
         style={{ color: "var(--app-ink)" }}
       >
-        Save an outing, place, event, bus trip, or stop to keep it here for later.
+        Use Save on a place, event or outing to return to it here.
       </p>
       {/* Plain tool: one action, then the other two routes as plain text
           links rather than a row of competing buttons. */}
@@ -1526,7 +1526,7 @@ export function EmptyState() {
         style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
       >
         <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
-        Find something to save
+        Find a place or event
         <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
       </Link>
       <div className="flex flex-wrap gap-x-6">

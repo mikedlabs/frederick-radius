@@ -184,8 +184,8 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         {compact ? (
           <>
             {/* A complete short scope beats a clipped full name at the 320px
-                support floor. The map header swaps to the full label as soon
-                as 360px is available. */}
+                support floor. The map header reserves the longer county
+                label for tablet and desktop. */}
             <span data-location-scope-label="compact" className="min-w-0 truncate">
               {compactLabel}
             </span>

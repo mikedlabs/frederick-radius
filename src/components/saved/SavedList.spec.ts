@@ -57,11 +57,11 @@ describe("SavedList empty state", () => {
     const html = renderToStaticMarkup(createElement(EmptyState));
 
     expect(html).toContain(
-      "Save an outing, place, event, bus trip, or stop to keep it here for later.",
+      "Use Save on a place, event or outing to return to it here.",
     );
     expect(html).toContain('data-saved-empty-state="true"');
     expect(html).toContain("font-sans");
-    expect(html).toContain("Find something to save");
+    expect(html).toContain("Find a place or event");
     expect(html).toContain('href="/search"');
     expect(html).toContain("Find a bus or stop");
     expect(html).toContain('href="/transit"');
