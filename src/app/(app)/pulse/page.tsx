@@ -36,7 +36,7 @@ import LocalNewsBriefView from "@/components/news/LocalNewsBriefView";
 import { pulseNewsTile } from "@/components/news/pulse-news-tile";
 import { getCivicPressReleasesResult, officialCivicNews, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
-import { airQualityObservedAt, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
+import { airQualityObservedAt, getFrederickAirReport, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
 import { getCampDavidTfr } from "@/lib/integrations/faaTfr";
 import NextTrainBoard from "@/components/transit/NextTrainBoard";
@@ -315,6 +315,7 @@ export default async function PulsePage() {
     marcAlerts,
     troutStockings,
     campDavidTfr,
+    regionalAirReport,
   ] = await Promise.all([
     // Today, Map, Ask, the global status, and Pulse all begin with the same
     // normalized conditions. Only Pulse-exclusive feeds are fetched below.
@@ -385,8 +386,10 @@ export default async function PulsePage() {
     // Camp David airspace (FAA TFR list). Renders ONLY when the P-40 ring is
     // expanded — the quiet explanation for Thurmont's helicopter days.
     withTimeout(getCampDavidTfr(), FEED_MS, null),
+    withTimeout(getFrederickAirReport(), FEED_MS, null),
   ]);
 
+  const regionalAirForecast = regionalAirReport?.forecast;
   const fixit = fixitResult.data;
   const fixitOpenCount = fixitResult.openCount;
   const fixitAcknowledgedCount = fixitResult.acknowledgedCount;
@@ -1207,18 +1210,29 @@ export default async function PulsePage() {
           key: "air",
           label: "Air quality",
           iconName: "Wind",
-          countLabel: "No fresh reading",
+          countLabel: regionalAirForecast ? "Regional forecast" : "No fresh reading",
           accent: "var(--app-warning)",
           active: false,
           attention: false,
-          degraded: true,
-          reading: true,
+          degraded: !regionalAirForecast,
+          availability: regionalAirForecast ? "partial" : "unavailable",
           kind: "status",
           sourceLabel: "AirNow · EPA",
-          peek: "No fresh Frederick reading",
+          peek: regionalAirForecast ? `${regionalAirForecast.reportingArea} · ${regionalAirForecast.parameter} AQI ${regionalAirForecast.aqi} forecast` : "No fresh Frederick reading",
           body: (
             <>
-              {emptyNote("AirNow did not return a fresh Frederick observation. Radius will check again automatically.")}
+              {emptyNote("No fresh Frederick air-quality observation is available.")}
+              {regionalAirForecast && (
+                <p className="mt-2 text-sm leading-relaxed">
+                  {regionalAirForecast.reportingArea} regional forecast for{" "}
+                  <time dateTime={regionalAirForecast.validDate}>
+                    {new Date(`${regionalAirForecast.validDate}T12:00:00Z`).toLocaleDateString("en-US", {
+                      timeZone: "America/New_York", month: "short", day: "numeric",
+                    })}
+                  </time>
+                  {` is ${regionalAirForecast.parameter} AQI ${regionalAirForecast.aqi} (${regionalAirForecast.category.name}).`}
+                </p>
+              )}
               <a
                 href="https://www.airnow.gov/?city=Frederick&state=MD&country=USA"
                 target="_blank"

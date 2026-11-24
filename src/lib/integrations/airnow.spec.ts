@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AqiObservation } from "./airnow";
-import { airQualityObservedAt, getAirQuality, isFreshAqiObservation } from "./airnow";
+import { airQualityObservedAt, getAirQuality, isFreshAqiObservation, parseAirNowObservations, parseFrederickAirReport } from "./airnow";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
 const originalAirNowKey = process.env.AIRNOW_API_KEY;
@@ -54,7 +54,8 @@ describe("AirNow request deadline", () => {
     vi.useFakeTimers();
     process.env.AIRNOW_API_KEY = "test-key";
     let signal: AbortSignal | undefined;
-    vi.stubGlobal("fetch", vi.fn((_url: string | URL | Request, init?: RequestInit) => {
+    vi.stubGlobal("fetch", vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).startsWith("https://files.airnowtech.org/")) return Promise.resolve(new Response(""));
       signal = init?.signal ?? undefined;
       return new Promise<Response>((_resolve, reject) => {
         signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
@@ -66,5 +67,102 @@ describe("AirNow request deadline", () => {
 
     await expect(pending).resolves.toBeNull();
     expect(signal?.aborted).toBe(true);
+  });
+});
+
+const noon = new Date("2026-11-24T17:00:00Z");
+const liveObservation = {
+  parameterName: "OZONE", nowcastAQI: "36", aqiCategoryName: "Good",
+  reportingAreaName: "Maryland Piedmont", stateCode: "MD", latitude: 39.47, longitude: -77.31,
+  dateObserved: "2026-11-24", hourObserved: "11:00", localTimeZone: "EST",
+};
+const forecastRow = "11/23/26|11/24/26||EST|1|F|Y|Maryland Piedmont|MD|39.4732|-77.3139|PM2.5|17|Good|No||Maryland";
+const observedRow = "11/24/26|11/24/26|11:00|EST|0|O|Y|Maryland Piedmont|MD|39.4732|-77.3139|PM2.5|51|Moderate|No||Maryland";
+
+describe("EPA current ZIP/coordinate service", () => {
+  it("uses the replacement endpoint, query shape, and the actual pollutant and time", async () => {
+    vi.useFakeTimers().setSystemTime(noon);
+    process.env.AIRNOW_API_KEY = "test-key";
+    const fetcher = vi.fn(async () => Response.json([liveObservation]));
+    vi.stubGlobal("fetch", fetcher);
+    const result = await getAirQuality(FREDERICK_CENTER);
+    const call = vi.mocked(fetch).mock.calls.find(([target]) => String(target).startsWith("https://www.airnowapi.org/"))!;
+    const url = new URL(String(call[0]));
+    expect(url.origin + url.pathname).toBe("https://www.airnowapi.org/aq/observation/current/ziplatlong");
+    expect([...url.searchParams.keys()].sort()).toEqual(["API_KEY", "format", "latitude", "longitude"]);
+    expect(result?.[0]).toMatchObject({ parameter: "O3", aqi: 36, reportingArea: "Maryland Piedmont", hourObserved: 11 });
+    expect(parseAirNowObservations([{ ...liveObservation, nowcastAQI: null, aqi: 38 }], noon)?.[0].aqi).toBe(38);
+  });
+
+  it("rejects impossible dates, absent fields, invalid categories, stale readings and provider errors", () => {
+    const invalid = [
+      { nowcastAQI: "" }, { nowcastAQI: -1 }, { nowcastAQI: 501 }, { nowcastAQI: 49.5 }, { aqiCategoryName: "Unknown" },
+      { aqiCategoryName: "Hazardous" }, { dateObserved: "2026-11-31" }, { hourObserved: "" },
+      { hourObserved: "24:00" }, { dateObserved: "2026-11-23" }, { reportingAreaName: "" },
+    ];
+    expect(parseAirNowObservations(invalid.map((fields) => ({ ...liveObservation, ...fields })), noon)).toEqual([]);
+    expect(parseAirNowObservations({ WebServiceError: [] }, noon)).toBeNull();
+  });
+});
+
+describe("Frederick regional reporting-area file", () => {
+  it("uses only the exact regional reporting area and a forecast valid today in Eastern time", () => {
+    const others = [
+      forecastRow.replace("Maryland Piedmont", "Baltimore"), forecastRow.replace("|MD|", "|VA|"),
+      forecastRow.replace("11/24/26", "11/25/26"), forecastRow.replace("11/23/26", "11/25/26"),
+      forecastRow.replace("|17|", "||"), forecastRow.replace("|F|", "|Y|"),
+      forecastRow.replace("11/24/26", "11/23/26"),
+    ];
+    expect(parseFrederickAirReport(others.join("\r\n"), noon)).toEqual({ forecast: null, observations: [] });
+    expect(parseFrederickAirReport(forecastRow.replace("Maryland Piedmont", "Baltimore"), noon)).toBeNull();
+    const report = parseFrederickAirReport([forecastRow, observedRow.replace("|O|", "|Y|")].join("\n"), noon);
+    expect(report?.observations).toEqual([]);
+    expect(report?.forecast).toMatchObject({ aqi: 17, parameter: "PM2.5", issueDate: "2026-11-23", validDate: "2026-11-24" });
+    expect(parseFrederickAirReport(forecastRow, new Date("2026-11-25T04:00:00Z"))?.forecast?.aqi).toBe(17);
+    expect(parseFrederickAirReport(forecastRow, new Date("2026-11-25T05:00:00Z"))?.forecast).toBeNull();
+  });
+
+  it("keeps the newest fresh O observation for a pollutant separate from the forecast", () => {
+    const oldHour = observedRow.replace("|11:00|", "|10:00|").replace("|51|", "|65|");
+    const stale = observedRow.replace("|11:00|", "|05:00|");
+    const report = parseFrederickAirReport([forecastRow, observedRow, oldHour, stale].join("\n"), noon);
+    expect(report?.observations).toHaveLength(1);
+    expect(report?.observations[0]).toMatchObject({ aqi: 51, dateObserved: "2026-11-24", hourObserved: 11 });
+    expect(report?.forecast?.aqi).toBe(17);
+  });
+
+  it("recovers a missing keyed observation from a confirmed public O record", async () => {
+    vi.useFakeTimers().setSystemTime(noon);
+    process.env.AIRNOW_API_KEY = "test-key";
+    vi.stubGlobal("fetch", vi.fn(async (url: URL | string) =>
+      String(url).startsWith("https://www.airnowapi.org/")
+        ? Response.json({ WebServiceError: [] }, { status: 503 })
+        : new Response([forecastRow, observedRow].join("\n")),
+    ));
+    const observations = await getAirQuality(FREDERICK_CENTER);
+    expect(observations?.map((item) => item.aqi)).toEqual([51]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses a fresh O record before the deadline when the keyed provider stalls", async () => {
+    vi.useFakeTimers().setSystemTime(noon);
+    process.env.AIRNOW_API_KEY = "test-key";
+    vi.stubGlobal("fetch", vi.fn((url: URL | string, init?: RequestInit) =>
+      String(url).startsWith("https://www.airnowapi.org/")
+        ? new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(new Error("aborted"))))
+        : Promise.resolve(new Response(observedRow)),
+    ));
+    expect((await getAirQuality(FREDERICK_CENTER, { deadlineMs: 50 }))?.[0].aqi).toBe(51);
+  });
+
+  it("serves current regional observations at the documented city point only and never substitutes forecasts", async () => {
+    vi.useFakeTimers().setSystemTime(noon);
+    delete process.env.AIRNOW_API_KEY;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(forecastRow)));
+    expect(await getAirQuality(FREDERICK_CENTER)).toEqual([]);
+    expect(await getAirQuality({ lat: 39.311, lng: -77.626 })).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(observedRow)));
+    expect((await getAirQuality(FREDERICK_CENTER))?.[0].aqi).toBe(51);
   });
 });

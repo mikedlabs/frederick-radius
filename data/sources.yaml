@@ -650,7 +650,7 @@ sources:
   - id: airnow
     name: AirNow Air Quality
     owner: US EPA AirNow
-    url: https://www.airnowapi.org/aq/observation/latLong/current
+    url: https://www.airnowapi.org/aq/observation/current/ziplatlong
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
@@ -658,14 +658,16 @@ sources:
     contact: https://www.airnow.gov
     status: active
     collection: runtime
-    last_validated: 2026-07-23
+    last_validated: 2026-11-24
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/airnow.ts
     notes: |
-      Active runtime integration used by Today and Pulse when
-      AIRNOW_API_KEY is configured. The adapter distinguishes a successful
-      empty observation from an unavailable response and rejects stale data.
+      Current observations use EPA's keyed 2026 ZIP/coordinate API. For the
+      Frederick city center, fresh Maryland Piedmont observations can also come
+      from https://files.airnowtech.org/airnow/today/reportingarea.dat. A dated
+      regional forecast is shown separately on Pulse when no current reading is
+      available. ZIP 21701 maps to Maryland Piedmont in AirNow's cityzipcodes.csv.
 
   - id: nps
     name: National Park Service
