@@ -22,6 +22,11 @@ for (const width of [320, 390]) {
     await expect(page.locator("[data-events-interaction-ready]")).toHaveAttribute("data-events-interaction-ready", "true");
     const trigger = page.getByRole("button", { name: /^Filters/ });
     const dialog = page.getByRole("dialog", { name: "Event filters" });
+    // Hydration restores the legacy lens before the next effect mirrors all
+    // shareable filters into this same history entry. Capture the settled URL.
+    await expect(page).toHaveURL(url => url.pathname === "/events" &&
+      url.searchParams.get("when") === "weekend" && url.searchParams.get("lens") === "weekend" &&
+      url.searchParams.get("in") === "thurmont");
     const appliedUrl = page.url();
     const free = dialog.getByRole("button", { name: "Free", exact: true });
     const search = dialog.getByRole("textbox", { name: "Filter the events shown" });
