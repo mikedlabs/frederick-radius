@@ -7,6 +7,7 @@ import AppMapClient, {
   type MapLineFC,
 } from "@/components/map/AppMapClient";
 import AmenityFallbackList from "./AmenityFallbackList";
+import CountyLocator from "./CountyLocator";
 import type { MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
 import {
   EMPTY_DEFERRED_BROWSE_LAYERS,
@@ -542,12 +543,12 @@ export default function BrowseMapClient({
     }
     return (
       <div
-        role="alert"
-        className="grid h-full place-items-center px-6 text-center"
+        className="h-full overflow-y-auto px-4 py-4"
         style={{ background: "var(--app-bg-sunken)" }}
       >
-        <div className="max-w-sm">
-          <p
+        <div className="mx-auto max-w-lg">
+          <CountyLocator town={scopeTownSlug(explicitScope ?? activeScope)} />
+          <p role="alert"
             className="font-serif text-lg font-semibold"
             style={{ color: "var(--app-ink)" }}
           >

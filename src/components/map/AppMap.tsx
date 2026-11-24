@@ -62,6 +62,7 @@ import {
 } from "@/lib/scope";
 import { normalizeMapReturnTo } from "@/lib/map-return";
 import AmenityFallbackList from "./AmenityFallbackList";
+import { CountyLocatorWorkspace, type LocatorArea } from "./CountyLocator";
 import recoveryLayout from "./AmenityRecovery.module.css";
 import { mapFallbackResults } from "./mapFallbackResults";
 import { getIntentByKey } from "@/data/intents";
@@ -4714,6 +4715,17 @@ export default function AppMap({
                   ? "guidance"
                   : "rest";
 
+  const recoveryPlace = peekPlace?.slug === selectedSlug ? peekPlace : selectedPlace;
+  const recoveryVenue = selectedEvent?.venue_place_slug ? placesBySlug.get(selectedEvent.venue_place_slug) : null;
+  const recoveryArea: LocatorArea = {
+    town: scopeTownSlug(resultScope),
+    point: recoveryPlace?.geom
+      ? { ...recoveryPlace.geom, label: recoveryPlace.name, kind: "Selected place" }
+      : recoveryVenue?.geom
+        ? { ...recoveryVenue.geom, label: recoveryVenue.name, kind: "Selected event" }
+        : null,
+  };
+
   return (
     <div
       className={
@@ -4817,28 +4829,20 @@ export default function AppMap({
             className="map-error-fallback"
             aria-labelledby="map-error-title"
           >
-            <div className="map-error-fallback-head" role="alert">
+            <div className={`map-error-fallback-head ${recoveryLayout.heading}`}>
               <div>
                 <h2
                   id="map-error-title"
                   className="font-sans text-base font-semibold"
                   style={{ color: "var(--app-ink)" }}
                 >
-                  {!MAP_RENDERER_CONFIGURED
-                    ? "Map view unavailable"
-                    : mapUnsupported
-                    ? "This browser cannot draw the map"
-                    : "The map is temporarily unavailable"}
+                  Frederick County map
                 </h2>
                 <p
                   className="mt-1 max-w-xl text-xs leading-relaxed"
                   style={{ color: "var(--app-ink-3)" }}
                 >
-                  {!MAP_RENDERER_CONFIGURED
-                    ? "Search the available results below."
-                    : mapUnsupported
-                    ? "Find the same results in the list below."
-                    : "Use the list below, or reload the map."}
+                  Street map unavailable. Browse the county locator and results.
                 </p>
                 {(osmLoading || osmError) && (
                   <p className="mt-1 text-xs" style={{ color: "var(--app-ink-2)" }} data-map-recovery-source-status>
@@ -4870,6 +4874,7 @@ export default function AppMap({
               </div>
             </div>
             {taskList ? <div className="map-list" role="region" aria-label="Available results without the map">
+              <CountyLocatorWorkspace area={recoveryArea}>
               <MapListPeek
                 list={taskList}
                 expanded
@@ -4886,7 +4891,9 @@ export default function AppMap({
                 onPickPlace={(place) => void pickSearch({ id: `place:${place.slug}`, type: "place", title: place.name, href: `/places/${place.slug}` } as SearchResult)}
                 onPickEvent={(event) => void pickSearch({ id: `event:${event.slug}`, type: "event", title: event.title, href: `/events/${event.slug}` } as SearchResult)}
               />
+              </CountyLocatorWorkspace>
             </div> : <MapList
+              locatorArea={recoveryArea}
               places={rankedPlaces ?? mapFallbackResults(inViewPlaces, searchMatchesForSurface, q, explicitSearchTown, "place")}
               events={rankedEvents ?? mapFallbackResults(visibleEvents, searchMatchesForSurface, q, explicitSearchTown, "event")}
               userLoc={userLoc}

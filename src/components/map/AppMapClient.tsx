@@ -11,6 +11,8 @@ import {
   type ReactNode,
 } from "react";
 import AmenityFallbackList from "./AmenityFallbackList";
+import CountyLocator from "./CountyLocator";
+import locatorStyles from "./CountyLocator.module.css";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "./types";
 import { haversineMeters } from "@/lib/geo";
@@ -193,7 +195,7 @@ export function MapLoadFailure({
 
   return (
     <div
-      className="w-full overflow-y-auto"
+      className={`w-full overflow-y-auto ${locatorStyles.chunkRecovery}`}
       style={{ height, background: "var(--app-bg-sunken)" }}
       data-map-chunk-failure
     >
@@ -220,8 +222,10 @@ export function MapLoadFailure({
           Reload map
         </button>
       </div>
+      {(!hasRows || trailLineOnly) && <div className="mx-auto max-w-xl px-4 pb-3"><CountyLocator town={town} /></div>}
       {hasRows && !trailLineOnly && (
         <MapList
+          locatorArea={{ town }}
           places={places}
           events={events}
           userLoc={null}

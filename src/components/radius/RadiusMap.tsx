@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Crosshair, Map as MapIcon, ArrowUpRight, X, Layers as LayersIcon } from "lucide-react";
+import CountyLocator from "@/components/map/CountyLocator";
+import locatorStyles from "@/components/map/CountyLocator.module.css";
 import MapOverlays from "@/components/map/MapOverlays";
 import LiveBuses from "@/components/map/LiveBuses";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
@@ -516,26 +518,11 @@ export default function RadiusMap({
   // false claim that the missing canvas also removed those non-map tools.)
   if (mapFailed) {
     return (
-      <div
-        className="relative grid place-items-center overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)] px-6 text-center"
-        style={{ borderColor: "var(--app-border)", height }}
-      >
-        <div>
-          <MapIcon className="mx-auto h-7 w-7" style={{ color: "var(--app-cool)" }} strokeWidth={1.5} aria-hidden />
-          <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            Map didn&rsquo;t load
-          </p>
-          <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Nearby places still work. The controls and list below are all here.
-          </p>
-          <button
-            type="button"
-            onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
-            className="tactile tactile-interactive mt-3 inline-flex items-center rounded-full px-4 py-1.5 text-[12px] font-semibold"
-            style={{ background: "var(--app-bg-elevated)", color: "var(--app-cool)" }}
-          >
-            Try again
-          </button>
+      <div className={locatorStyles.radiusRecovery} style={{ height }}>
+        <CountyLocator point={{ ...center, label: centerLabel, kind: "Starting point" }} />
+        <div className={locatorStyles.radiusActions}>
+          <p>The interactive street map is unavailable.</p>
+          {MAPBOX_TOKEN && <button type="button" onClick={() => window.location.reload()}>Reload map</button>}
         </div>
       </div>
     );

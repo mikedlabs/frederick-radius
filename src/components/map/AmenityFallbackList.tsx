@@ -6,6 +6,7 @@ import { formatDistance, haversineMeters, type LngLat } from "@/lib/geo";
 import { essentialDirectionsHref, ESSENTIAL_NEEDS } from "@/lib/nearby-essentials";
 import type { Amenity } from "@/lib/loaders/amenities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
+import { CountyLocatorWorkspace } from "./CountyLocator";
 import { AMENITY_GROUPS } from "./constants";
 import { municipalityDisplayName } from "./mapCameraHelpers";
 import { activeAmenityCategorySlugs, buildAmenityGeoJson } from "./mapGeoJsonSources";
@@ -68,7 +69,7 @@ export default function AmenityFallbackList({ groups, amenities, osmPlaces = EMP
   const emptyMessage = points ? "No locations are mapped for this selection." :
     catalogFailed ? "The amenity list is unavailable." : "Loading mapped locations…";
   return (
-    <section aria-labelledby={headingId} className="mx-auto w-full max-w-2xl space-y-3 px-4 py-3" data-map-amenity-list>
+    <section aria-labelledby={headingId} className="mx-auto w-full max-w-6xl space-y-3 px-2 py-3" data-map-amenity-list>
       <h2 id={headingId} className="text-xl font-bold">{labels.join(" · ")}</h2>
       <label className="flex flex-wrap items-center gap-2 text-sm">Town
         <select className="min-h-11 rounded border bg-[var(--app-bg-elevated)] px-2" value={selectedTown} onChange={event => {
@@ -83,6 +84,7 @@ export default function AmenityFallbackList({ groups, amenities, osmPlaces = EMP
       <p className="text-sm text-[var(--app-ink-2)]">
         Map view unavailable. {sourceStatus && <span role="status" data-map-recovery-source-status>{sourceStatus}</span>}
       </p>
+      <CountyLocatorWorkspace area={{ town: selectedTown }}>
       {!visible.length && catalogFailed && !points && <Link className="inline-flex min-h-11 items-center underline" href={directoryHref}>Open amenity directory</Link>}
       {visible.length > 0 && <ul className="divide-y divide-[var(--app-border)]">
         {visible.slice(0, limit).map(row => {
@@ -98,6 +100,7 @@ export default function AmenityFallbackList({ groups, amenities, osmPlaces = EMP
         <Link href="/amenities" className="inline-flex min-h-11 items-center text-sm underline">All amenities</Link>
         {onRetry && <button type="button" className="min-h-11 text-sm underline" onClick={onRetry}>Reload map</button>}
       </div>
+      </CountyLocatorWorkspace>
     </section>
   );
 }

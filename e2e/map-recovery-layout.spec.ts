@@ -367,6 +367,9 @@ test.describe("focused amenity recovery across orientation changes", () => {
     const list = page.locator("[data-map-amenity-list]");
     const town = list.getByRole("combobox", { name: "Town" });
     await town.selectOption({ label: "Myersville" });
+    const atlas = list.locator("[data-county-locator]");
+    await expect(atlas.getByText("Town center: Myersville")).toBeVisible();
+    await expect(atlas.locator('[data-locator-selection="Town center"]')).toHaveCount(1);
     for (const viewport of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
       await page.setViewportSize(viewport);
       await expect(town).toHaveValue("Myersville");

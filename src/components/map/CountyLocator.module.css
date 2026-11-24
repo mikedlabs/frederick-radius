@@ -1,0 +1,89 @@
+.figure {
+  --locator-field: color-mix(in srgb, var(--app-sage) 10%, var(--app-bg));
+  --locator-land: color-mix(in srgb, var(--app-forest-text) 21%, var(--app-bg));
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--locator-field);
+  color: var(--app-ink);
+  border-block: 1px solid var(--app-border);
+}
+
+.caption {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .15rem .65rem;
+  padding: .65rem .85rem 0;
+}
+
+.label, .key, .coordinate, .source {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.label {
+  color: var(--app-forest-text);
+  font-size: .66rem;
+  letter-spacing: .065em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.name {
+  font-size: .875rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.map {
+  display: block;
+  width: 100%;
+  height: clamp(10.75rem, 25vh, 14rem);
+}
+.grid { stroke: var(--app-forest-text); stroke-width: .6; opacity: .19; stroke-dasharray: 2 4; }
+.boundary { fill: var(--locator-land); stroke: var(--app-forest-text); stroke-width: 1.65; stroke-linejoin: round; }
+.town { fill: var(--app-forest-text); stroke: var(--locator-field); stroke-width: .85; }
+.townName {
+  fill: var(--app-ink);
+  stroke: var(--locator-field);
+  stroke-width: 2.75;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  font-size: 14.5px;
+}
+.mark { fill: var(--app-brand-press); stroke: var(--app-bg); stroke-width: 1.75; }
+.markCore { fill: var(--app-on-brand); }
+.coordinate { fill: var(--app-ink-2); font-size: 9.5px; }
+.key { fill: currentColor; color: var(--app-ink-2); font-size: 12px; font-weight: 650; }
+.source {
+  display: block;
+  padding: 0 .85rem .45rem;
+  color: var(--app-ink-2);
+  font-size: .625rem;
+  line-height: 1.4;
+}
+.workspace { display: grid; gap: .75rem; min-width: 0; max-width: 74rem; margin-inline: auto; }
+.atlas, .results { min-width: 0; }
+@media (min-width: 48rem) {
+  .workspace { grid-template-columns: minmax(15rem, .9fr) minmax(0, 1.25fr); align-items: start; gap: clamp(1rem, 3vw, 2rem); }
+  .atlas { position: sticky; top: 0; }
+  .map { height: auto; max-height: 23rem; }
+}
+
+.radiusRecovery {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: auto;
+  background: var(--app-bg);
+  padding: 2.5rem max(.75rem, 3%) 9rem;
+}
+.radiusRecovery .figure { width: 100%; max-width: 46rem; }
+.radiusRecovery .map { height: clamp(12rem, 33dvh, 22rem); }
+.radiusActions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; max-width: 46rem; width: 100%; padding-inline: .25rem; color: var(--app-ink-2); font-size: .8rem; }
+.radiusActions button { min-height: 44px; color: var(--app-link); text-decoration: underline; font-weight: 600; }
+
+.selectedKey { display: inline-block; width: .55rem; height: .55rem; margin-inline-end: .35rem; border-radius: 50%; background: var(--app-brand-press); }
+.chunkRecovery :global(.map-list) { position: static; inset: auto; overflow: visible; padding: 0 .85rem 1rem; }
