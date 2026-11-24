@@ -74,9 +74,8 @@ export default function AppLayout({ children, modal }: {
               event log (via track(), so opt-out + NFC attribution apply).
               Renders nothing. */}
           <PageViewTracker />
-          {/* Beta-only "Send feedback" affordance. Self-gates on the fr_beta
-              cookie (renders nothing for the public post-beta) and offsets
-              clear of the BottomNav bar and the map's bottom-right controls. */}
+          {/* "Send feedback" for every visitor. It offsets clear of the
+              BottomNav bar and the map's bottom-right controls. */}
           <FeedbackWidget />
           {/* The global Cmd/Ctrl+K search is the TopBar's SearchOverlay
               (full /api/search). A second cmdk palette used to mount here
