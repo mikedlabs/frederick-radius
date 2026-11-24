@@ -50,3 +50,24 @@ for (const device of [
     });
   });
 }
+
+test.describe("rotating a touch tablet while Find is open", () => {
+  test.use({ viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true });
+
+  test("returns focus to the visible Find launcher after either orientation change", async ({ page }) => {
+    await page.goto("/events?in=county", { waitUntil: "domcontentloaded" });
+    const launcher = page.locator("header").getByRole("button", {
+      name: "Ask or find across Frederick County", exact: true,
+    }).filter({ visible: true });
+    const dialog = page.getByRole("dialog", { name: "What do you need?", exact: true });
+    for (const next of [{ width: 1180, height: 820 }, { width: 820, height: 1180 }]) {
+      await expect(launcher).toHaveAttribute("data-find-interaction-ready", "true");
+      await launcher.tap();
+      await expect(dialog.getByRole("searchbox")).toBeFocused();
+      await page.setViewportSize(next);
+      await dialog.getByRole("button", { name: "Close Find", exact: true }).tap();
+      await expect(dialog).toBeHidden();
+      await expect(launcher).toBeFocused();
+    }
+  });
+});

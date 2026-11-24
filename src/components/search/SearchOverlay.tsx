@@ -594,7 +594,16 @@ export default function SearchOverlay({
         // Find surface to a new scroll position. That jump is especially
         // noticeable on a phone after someone opens Find halfway down Today.
         if (!leavingFindRef.current) {
-          returnFocusRef.current?.focus?.({ preventScroll: true });
+          const opener = returnFocusRef.current;
+          opener?.focus({ preventScroll: true });
+          // Rotation can hide the compact Find launcher and reveal its wide
+          // counterpart (or vice versa) while this dialog owns keyboard focus.
+          if (opener?.hasAttribute("data-find-interaction-ready") && document.activeElement !== opener) {
+            const visibleLauncher = Array.from(
+              document.querySelectorAll<HTMLElement>('[data-find-interaction-ready="true"]'),
+            ).find((candidate) => candidate.getClientRects().length && !candidate.closest("[hidden], [inert]"));
+            visibleLauncher?.focus({ preventScroll: true });
+          }
         }
         returnFocusRef.current = null;
       };
@@ -1118,7 +1127,7 @@ export default function SearchOverlay({
                       style={{ borderColor: "var(--app-border)" }}
                     >
                       <SearchPlaceLead fallback={<Icon className="h-6 w-6" strokeWidth={1.8} aria-hidden />} actions={<>
-                        <Link href={r.href} onClick={pick} aria-label={`Open ${r.title}`}
+                        <Link href={r.href} onClick={pick} aria-describedby="find-best-place-title"
                           onMouseEnter={() => setHoverIdx(0)} onMouseLeave={() => setHoverIdx(null)}>
                           View place <ArrowRight aria-hidden />
                         </Link>
@@ -1131,7 +1140,7 @@ export default function SearchOverlay({
                         }}><MapPin aria-hidden />Map</Link>}
                       </>}>
                         <p className="text-[0.6875rem] font-semibold leading-normal" style={{ color: "var(--app-ink-2)" }}>Best match · Place</p>
-                        <h3>{highlight(r.title, query)}</h3>
+                        <h3 id="find-best-place-title">{highlight(r.title, query)}</h3>
                         <p className="mt-2 text-[0.875rem] leading-normal" style={{ color: "var(--app-ink-2)" }}>
                           {r.subtitle}{distance ? ` · ${distance}` : ""}
                         </p>

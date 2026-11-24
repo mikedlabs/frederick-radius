@@ -1,5 +1,8 @@
 .overview {
   display: grid;
+  /* Two weekend picks each need room for their titles and venue credits.
+     Use the width available to these sections, including beside the nav rail. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 25.5rem), 1fr));
   gap: 1rem 2rem;
   width: 100%;
   max-width: 65rem;
@@ -172,7 +175,6 @@
 
 @media (min-width: 50rem) {
   .overview {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
     align-items: start;
   }
 

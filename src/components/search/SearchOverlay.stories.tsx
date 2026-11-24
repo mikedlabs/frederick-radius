@@ -407,6 +407,7 @@ const exactMuseumFirst: NonNullable<Story["play"]> = async ({ canvasElement }) =
   await expect(license).toHaveAttribute("href", source.photo.licenseUrl);
   const viewPlace = dialog.getByRole("link", { name: "View place" });
   const map = dialog.getByRole("link", { name: /^Map$/ });
+  await expect(viewPlace).toHaveAccessibleDescription(MUSEUM_NAME);
   await expect(viewPlace).toHaveAttribute("href", `/places/${MUSEUM_SLUG}`);
   await expect(map).toHaveAttribute("href", expect.stringContaining(`place=${MUSEUM_SLUG}`));
   for (const control of [viewPlace, map, attribution, license]) {
