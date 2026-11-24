@@ -102,28 +102,29 @@ function FactBadge({ children }: { children: ReactNode }) {
 
 export default function ParkingPage() {
   const now = new Date();
+  const holidaySeason = showHolidayParking(now);
   return (
     <div className="relative mx-auto w-full max-w-screen-md space-y-8 py-6">
 
-      <header className="space-y-3">
-        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+      <header className={`grid gap-y-3 ${holidaySeason ? "md:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] md:items-start md:gap-x-6" : ""}`}>
+        <p className="eyebrow md:col-start-1" style={{ color: "var(--app-ink-3)" }}>
           Frederick, Maryland
         </p>
         <h1
-          className="font-serif text-[34px] font-semibold leading-[1.02] tracking-tight"
+          className="md:col-start-1 font-serif text-[34px] font-semibold leading-[1.02] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
           Downtown parking
         </h1>
         <p
-          className="max-w-2xl text-[15px] leading-relaxed"
+          className="md:col-start-1 max-w-prose text-[15px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
           Five City garages, open 24/7. Pay at a garage station.
           ParkMobile is for on-street spaces.
         </p>
-        {showHolidayParking(now) && (
-          <aside aria-labelledby="holiday-parking-heading" className="rounded-[var(--app-radius-lg)] border-l-4 px-4 py-3" style={{ borderColor: "var(--app-cool-text)", background: "var(--app-bg-sunken)" }}>
+        {holidaySeason && (
+          <aside aria-labelledby="holiday-parking-heading" className="md:col-start-2 md:row-start-1 md:row-span-4 rounded-[var(--app-radius-lg)] border-l-4 px-4 py-3" style={{ borderColor: "var(--app-cool-text)", background: "var(--app-bg-sunken)" }}>
             <p className="text-xs font-semibold" style={{ color: "var(--app-cool-text)" }}>
               {thanksgivingParkingWeek(now) ? "Thanksgiving · Nov 26–29, 2026" : "Holiday weekends · through New Year’s Day"}
             </p>
@@ -141,7 +142,7 @@ export default function ParkingPage() {
             )}
           </aside>
         )}
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-1 md:col-start-1">
           <Link
             href="/map?mode=browse&intent=parking"
             className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[13px] font-semibold"
@@ -172,7 +173,7 @@ export default function ParkingPage() {
             </h2>
           </div>
         </div>
-        <ul className="grid gap-2 sm:grid-cols-2">
+        <ul className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
           {INTENTS.map((intent) => {
             const Icon = intent.icon;
             const content = (
@@ -305,7 +306,7 @@ export default function ParkingPage() {
           </div>
         </div>
         <p
-          className="mt-4 text-[13px] leading-relaxed"
+          className="mt-4 max-w-prose text-[13px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
           Take your ticket with you. Use a first-level pay station, or pay by card
@@ -494,7 +495,7 @@ export default function ParkingPage() {
             {PARKING_OFFICE.address}<br />
             <a
               href={`tel:${PARKING_OFFICE.phone.replace(/[^0-9]/g, "")}`}
-              className="font-semibold underline-offset-2 hover:underline"
+              className="inline-flex min-h-11 items-center font-semibold underline-offset-2 hover:underline"
               style={{ color: "var(--app-cool)" }}
             >
               {PARKING_OFFICE.phone}

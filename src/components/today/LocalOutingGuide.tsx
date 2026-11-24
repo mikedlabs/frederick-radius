@@ -146,7 +146,7 @@ export default function LocalOutingGuide({
         </figure>
       </header>
 
-      <ol role="list" className={styles.stops}>
+      <ol role="list" className={styles.stops} data-layout={guide.stopLayout}>
         {guide.stops.map((stop, index) => (
           <OutingStop key={`${stop.title}:${stop.action.href}`} stop={stop} primary={index === 0} />
         ))}

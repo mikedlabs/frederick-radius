@@ -48,6 +48,7 @@ export type LocalOutingGuide = {
   photo: GuidePhoto;
   photoCaption: string;
   stops: GuideStop[];
+  stopLayout?: "choices";
   note?: string;
   secondaryAction?: GuideAction;
   notice?: { heading: string; text: string; action: GuideAction };
@@ -360,6 +361,7 @@ export function weekendGuide(now: Date, verifiedEvents: readonly EventWithMeta[]
 
   return {
     title: "This Weekend",
+    stopLayout: "choices",
     summary: stops.length ? undefined : "We don’t have any confirmed guide picks for these dates. Browse Events for more listings.",
     scopeLabel: `Whole county · ${weekendGuideDateLabel(now)}`,
     ...weekendGuideCover(now),
