@@ -1,5 +1,5 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { CITY_HOLIDAY_PARKING_URL } from "@/data/parking-garages";
+import { CITY_HOLIDAY_PARKING_URL, PARKING_RATE_SCHEDULE } from "@/data/parking-garages";
 import { FROSTY_FRIDAY, TENTH_WARD_CONCERT, isTenthWardConcert, type HolidayGuideStatus } from "@/data/thanksgiving-events";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import { HISTORY_BY_SLUG, type HistoryImage } from "@/data/history";
@@ -14,7 +14,7 @@ import { eventSourceLabel } from "@/lib/events/source-label";
 import { EVENT_TZ, formatEventDate } from "@/lib/format/eventTime";
 import { directionsHref } from "@/lib/map/directionsHref";
 import { getOwnedPlacePhoto, OWNED_PLACE_PHOTOS, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
-import { easternDayKey, easternWallToUtcISO } from "@/lib/tz";
+import { easternDayKey, easternParts, easternWallToUtcISO } from "@/lib/tz";
 
 export type GuidePhoto = Omit<OwnedPlacePhoto, "kind" | "referenceContext">;
 export type GuideAction = { label: string; href: string };
@@ -28,6 +28,7 @@ export type GuideStop = {
   title: string;
   anchor?: string;
   when: string;
+  suggestedMinutes?: number;
   where: string;
   description: string;
   action: GuideAction;
@@ -49,38 +50,48 @@ export type LocalOutingGuide = {
   photoCaption: string;
   stops: GuideStop[];
   stopLayout?: "choices";
+  route?: { firstAction: GuideAction; allowance: string; teaser: string };
   note?: string;
   secondaryAction?: GuideAction;
-  notice?: { heading: string; text: string; action: GuideAction };
+  notice?: { heading: string; text: string; sources: GuideAction[] };
 };
 
 const delaplainePhoto = CREDITED_LOCAL_PLACE_PHOTOS["delaplaine-arts-center-frederick"].image;
 const weinbergPhoto = CREDITED_LOCAL_PLACE_PHOTOS["weinberg-center-for-the-arts-frederick"].image;
 const bridgePhoto = HISTORY_BY_SLUG["carroll-creek-park"].image;
 
-export const downtownGuide: LocalOutingGuide = {
+type DowntownGuide = LocalOutingGuide & { route: NonNullable<LocalOutingGuide["route"]> };
+
+const garageDirections = { label: "Directions to East All Saints garage", href: directionsHref(39.4118117, -77.4072907, "driving") };
+
+export const downtownGuide: DowntownGuide = {
   title: "Two Hours Downtown",
-  summary: "Try Sunday, 11 AM–1 PM, for free galleries and a creek walk. City garages are free during that window.",
+  summary: "Visit the downtown exhibits and free galleries, then follow Carroll Creek back to the garage.",
+  route: {
+    firstAction: garageDirections,
+    allowance: "About 2 hours, including 15 minutes for parking and walking between stops.",
+    teaser: "See free galleries and walk Carroll Creek. Start at East All Saints garage.",
+  },
   scopeLabel: "Downtown Frederick",
   photo: OWNED_PLACE_PHOTOS["carroll-creek-linear-park-frederick"],
   photoCaption: "Carroll Creek in downtown Frederick.",
-  note: "Start between 9 AM and 3 PM Monday through Saturday, or between 11 AM and 3 PM on Sunday. If it rains, spend the creek portion at the galleries or the Visitor Center exhibits instead. Allow 15 minutes in total for parking and walking between stops. Details checked with the listed sources on Nov 16, 2026.",
+  note: "Start between 9 AM and 3 PM Monday through Saturday, or between 11 AM and 3 PM on Sunday. If it rains, spend the creek portion at the galleries or the Visitor Center exhibits instead. On Sunday, 11 AM–1 PM fits both the gallery hours and the free garage window. Hours and parking checked Nov 24, 2026.",
   stops: [
     {
       title: "Park at East All Saints",
       when: "Open 24 hours",
       where: "125 E All Saints St, Frederick",
       icon: "parking",
-      price: "Free Sundays, 8 AM–2 PM",
+      price: `${PARKING_RATE_SCHEDULE.hourly} · Free Sundays, 8 AM–2 PM`,
       description: "The garage is beside the Delaplaine. Start here and return after the creek walk.",
       detail: "The city lists accessible spaces on every level. If the garage is full, try Carroll Creek Garage at 44 E Patrick St.",
-      action: { label: "Directions to parking", href: directionsHref(39.4118117, -77.4072907, "driving") },
+      action: { label: "Garage rates and payment", href: "https://cityoffrederickmd.gov/1342/Garage-Parking" },
       source: { label: "City parking information", href: "https://www.cityoffrederickmd.gov/1873/Parking-FAQs" },
-      tipSource: { label: "City garage rates", href: "https://cityoffrederickmd.gov/1342/Garage-Parking" },
     },
     {
       title: "Frederick Visitor Center",
-      when: "20 minutes · Daily, 9 AM–5 PM",
+      suggestedMinutes: 20,
+      when: "Daily, 9 AM–5 PM",
       where: "151 S East St, Frederick",
       icon: "info",
       description: "Pick up a downtown map and visit the exhibits in a former industrial warehouse.",
@@ -90,7 +101,8 @@ export const downtownGuide: LocalOutingGuide = {
     },
     {
       title: "The Delaplaine Arts Center",
-      when: "40 minutes · Mon–Sat, 9 AM–5 PM · Sun, 11 AM–5 PM",
+      suggestedMinutes: 40,
+      when: "Mon–Sat, 9 AM–5 PM · Sun, 11 AM–5 PM",
       where: "40 S Carroll St, Frederick",
       price: "Free admission",
       photo: { ...delaplainePhoto, width: 1280, height: 833, caption: "The Delaplaine exterior", credit: delaplainePhoto },
@@ -101,7 +113,8 @@ export const downtownGuide: LocalOutingGuide = {
     },
     {
       title: "Carroll Creek and Community Bridge",
-      when: "45 minutes · Park open dawn–10 PM",
+      suggestedMinutes: 45,
+      when: "Dawn–10 PM",
       where: "From S Carroll St toward S Market St and back",
       photo: bridgePhoto && {
         ...bridgePhoto,
@@ -120,34 +133,71 @@ export const downtownGuide: LocalOutingGuide = {
   ],
 };
 
-export function downtownGuideForDate(now: Date): LocalOutingGuide {
+export function downtownGuideForDate(now: Date): DowntownGuide {
   const day = easternDayKey(now);
   if (day < "2026-11-23" || day > "2026-11-29") return downtownGuide;
   const [garage, visitorCenter, galleries, creek] = downtownGuide.stops;
+  const holidayParking = { label: "City holiday parking schedule", href: CITY_HOLIDAY_PARKING_URL };
   const holidayGarage: GuideStop = {
     ...garage,
     price: "Free Thu, Nov 26 through Sun, Nov 29",
-    tipSource: { label: "City holiday parking schedule", href: CITY_HOLIDAY_PARKING_URL },
+    tipSource: holidayParking,
   };
-  if (day > "2026-11-26") {
-    return { ...downtownGuide, stops: [holidayGarage, visitorCenter, galleries, creek] };
-  }
-  return {
-    ...downtownGuide,
-    summary: undefined,
-    notice: {
-      heading: "Thanksgiving · Thu, Nov 26",
-      text: "The Visitor Center and Delaplaine galleries are closed. Park free at East All Saints for a self-guided creek walk.",
-      action: { label: "See the outdoor route", href: "#thanksgiving-creek-walk" },
-    },
-    note: "For the outdoor route, allow about an hour including parking. In poor weather, save the full indoor itinerary for another day. Check each venue’s hours before leaving.",
-    stops: [
-      holidayGarage,
-      { ...creek, anchor: "thanksgiving-creek-walk", detail: "Follow the paved creek path toward South Market Street and return to the garage the same way. The City lists benches along the path." },
-      { ...visitorCenter, action: { label: "Visitor Center holiday hours", href: visitorCenter.source.href }, when: "Closed Thanksgiving, Thu, Nov 26", detail: "The exhibits and visitor restrooms are closed for the holiday. On other days, check Visit Frederick for hours." },
-      { ...galleries, action: { label: "Delaplaine holiday hours", href: galleries.source.href }, when: "Closed Thanksgiving, Thu, Nov 26", detail: "Plan your gallery visit for another day. See the Delaplaine’s visitor information for regular hours and accessibility." },
+  const notice = {
+    heading: "Thanksgiving · Thu, Nov 26",
+    text: "The Visitor Center and Delaplaine galleries close for Thanksgiving. The creek walk is outdoors. City garage parking is free Nov 26–29.",
+    sources: [
+      { label: "Visitor Center hours", href: visitorCenter.source.href },
+      { label: "Gallery hours", href: galleries.source.href },
+      holidayParking,
     ],
   };
+  if (day < "2026-11-26") return { ...downtownGuide, notice };
+  if (day > "2026-11-26") return { ...downtownGuide, stops: [holidayGarage, visitorCenter, galleries, creek] };
+  return {
+    ...downtownGuide,
+    title: "Thanksgiving Creek Walk",
+    summary: "Walk from East All Saints garage to Community Bridge and along Carroll Creek, then return the same way.",
+    route: {
+      firstAction: garageDirections,
+      allowance: "About 1 hour, including 15 minutes for parking and walking to the creek.",
+      teaser: "Park free at East All Saints garage for an hour outdoors along Carroll Creek.",
+    },
+    notice,
+    note: "Save the indoor exhibits for another day. The Visitor Center restrooms are closed on Thanksgiving.",
+    stops: [
+      holidayGarage,
+      { ...creek, detail: "Follow the paved creek path toward South Market Street and return to the garage the same way. The City lists benches along the path." },
+    ],
+  };
+}
+
+/** A daytime walk is a useful plan for the following day once its recommended
+ * start window ends. Use noon UTC to advance the local calendar day across DST. */
+function nextFrederickDay(now: Date): Date {
+  const noon = new Date(`${easternDayKey(now)}T12:00:00Z`);
+  noon.setUTCDate(noon.getUTCDate() + 1);
+  return noon;
+}
+
+export function downtownFeatureForToday(now: Date) {
+  const tomorrow = easternParts(now).hour >= 15;
+  const visit = tomorrow ? nextFrederickDay(now) : now;
+  const guide = downtownGuideForDate(visit);
+  return {
+    downtown: guide.photo.src,
+    downtownTitle: guide.title,
+    downtownTeaser: guide.route.teaser,
+    downtownWhen: tomorrow ? "Tomorrow" : "Daytime walk",
+    downtownHref: tomorrow ? `/today/two-hours-downtown?day=${easternDayKey(visit)}` : "/today/two-hours-downtown",
+  };
+}
+
+export function downtownGuideForVisit(now: Date, requestedDay?: string | string[]): DowntownGuide {
+  const tomorrow = nextFrederickDay(now);
+  const visit = requestedDay === easternDayKey(tomorrow) ? tomorrow : now;
+  const guide = downtownGuideForDate(visit);
+  return { ...guide, scopeLabel: `Downtown Frederick · ${formatEventDate(visit.toISOString())}` };
 }
 
 type EditionPick = Omit<GuideStop, "when"> & {

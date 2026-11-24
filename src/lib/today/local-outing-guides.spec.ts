@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { FROSTY_FRIDAY, TENTH_WARD_CONCERT } from "@/data/thanksgiving-events";
-import { downtownGuide, downtownGuideForDate, weekendGuide } from "./local-outing-guides";
+import { downtownFeatureForToday, downtownGuide, downtownGuideForDate, downtownGuideForVisit, weekendGuide } from "./local-outing-guides";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
@@ -44,25 +44,55 @@ describe("local outing guides", () => {
       "Carroll Creek and Community Bridge",
     ]);
     expect(downtownGuide.stops[1].detail).toContain("accessible restroom");
-    expect(downtownGuide.summary).toContain("Sunday, 11 AM–1 PM");
-    expect(downtownGuide.stops[0].price).toBe("Free Sundays, 8 AM–2 PM");
-    expect(downtownGuide.stops[0].tipSource?.href).toContain("/Garage-Parking");
+    expect(downtownGuide.note).toContain("Sunday, 11 AM–1 PM");
+    expect(downtownGuide.stops.map(stop => stop.suggestedMinutes)).toEqual([undefined, 20, 40, 45]);
+    expect(downtownGuide.route.allowance).toMatch(/2 hours.*15 minutes/);
+    expect(downtownGuide.route.firstAction.label).toContain("East All Saints");
+    expect(downtownGuide.route.firstAction.href).toContain("destination=39.4118117,-77.4072907");
+    expect(downtownGuide.stops[0].price).toContain("Free Sundays, 8 AM–2 PM");
+    expect(downtownGuide.stops[0].action.href).toContain("/Garage-Parking");
     expect(downtownGuide.stops[2].when).toContain("Sun, 11 AM–5 PM");
-    expect(downtownGuide.note).toContain("Nov 16, 2026");
+    expect(downtownGuide.note).toContain("Nov 24, 2026");
     expect(downtownGuide.stops.every((stop) => new URL(stop.source.href).protocol === "https:")).toBe(true);
   });
 
-  it("shows both indoor closures and a usable outdoor route until Thanksgiving ends in Frederick", () => {
-    const holiday = downtownGuideForDate(new Date("2026-11-27T04:59:59Z"));
-    expect(holiday.notice?.text).toContain("Visitor Center and Delaplaine galleries are closed");
-    expect(holiday.stops.filter(stop => stop.when.includes("Closed Thanksgiving")).map(stop => stop.title))
-      .toEqual(["Frederick Visitor Center", "The Delaplaine Arts Center"]);
-    expect(holiday.stops.find(stop => `#${stop.anchor}` === holiday.notice?.action.href)?.where).toContain("S Market St");
-    expect(holiday.stops[0].action.href).toContain("travelmode=driving");
+  it("keeps the complete route and ordinary parking before the holiday starts in Frederick", () => {
+    const wednesday = downtownGuideForDate(new Date("2026-11-26T04:59:59Z"));
+    expect(wednesday.stops).toEqual(downtownGuide.stops);
+    expect(wednesday.route).toEqual(downtownGuide.route);
+    expect(wednesday.notice?.heading).toContain("Thu, Nov 26");
+    expect(wednesday.notice?.sources.map(source => source.href)).toContain(downtownGuide.stops[1].source.href);
+  });
+
+  it("keeps closed venues outside the walking route for the holiday and restores them at Eastern midnight", () => {
+    for (const iso of ["2026-11-26T05:00:00Z", "2026-11-27T04:59:59Z"]) {
+      const holiday = downtownGuideForDate(new Date(iso));
+      expect(holiday.title).toBe("Thanksgiving Creek Walk");
+      expect(holiday.notice?.text).toContain("Visitor Center and Delaplaine galleries close");
+      expect(holiday.notice?.sources).toHaveLength(3);
+      expect(holiday.stops.map(stop => stop.title)).toEqual([downtownGuide.stops[0].title, downtownGuide.stops[3].title]);
+      expect(holiday.route.allowance).toMatch(/1 hour.*15 minutes/);
+      expect(holiday.stops[1].suggestedMinutes).toBe(45);
+      expect(holiday.route.firstAction.href).toContain("travelmode=driving");
+      expect(holiday.stops[1].detail).not.toContain("Visitor Center");
+    }
     const nextDay = downtownGuideForDate(new Date("2026-11-27T05:00:00Z"));
     expect(nextDay.notice).toBeUndefined();
+    expect(nextDay.stops).toHaveLength(4);
     expect(nextDay.stops[0].price).toContain("Free Thu, Nov 26 through Sun, Nov 29");
     expect(downtownGuideForDate(new Date("2026-11-30T05:00:00Z"))).toBe(downtownGuide);
+  });
+
+  it("offers the correct day after the last daytime start and opens the same dated holiday route", () => {
+    const afternoon = new Date("2026-11-25T20:05:00Z");
+    expect(downtownFeatureForToday(new Date("2026-11-25T19:59:59Z")).downtownWhen).toBe("Daytime walk");
+    const feature = downtownFeatureForToday(afternoon);
+    expect(feature).toMatchObject({ downtownWhen: "Tomorrow", downtownTitle: "Thanksgiving Creek Walk" });
+    const selected = new URL(feature.downtownHref, "https://frederickradius.app").searchParams.get("day")!;
+    expect(downtownGuideForVisit(afternoon, selected)).toMatchObject({ title: feature.downtownTitle, scopeLabel: "Downtown Frederick · Thu, Nov 26" });
+    for (const invalid of ["yesterday", "2026-11-24", "2027-01-01", ["2026-11-26", "2026-11-25"]]) {
+      expect(downtownGuideForVisit(afternoon, invalid).title).toBe("Two Hours Downtown");
+    }
   });
 
   it("publishes the three Sunday and Saturday picks with their source and checked date", () => {

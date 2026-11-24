@@ -283,7 +283,7 @@
 }
 
 .notice {
-  margin-top: 1rem;
+  margin: 0 0 1.25rem;
   padding: 0.75rem 1rem 0.25rem;
   border-inline-start: 4px solid var(--app-cool-text);
   border-radius: var(--app-radius-md);
@@ -309,4 +309,53 @@
   min-height: 44px;
   text-decoration: underline;
   text-underline-offset: 0.18em;
+}
+
+.routeStart {
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.routeStart p, .visitLength {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.noticeLink:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 2px; }
+
+.stops[data-layout="route"] .stop {
+  position: relative;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  column-gap: 0.75rem;
+}
+
+.stopNumber {
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--app-bg-sunken);
+  color: var(--app-ink);
+  font-size: 0.9375rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.stops[data-layout="route"] .stopBody { grid-area: 1 / 2; }
+.stops[data-layout="route"] .stopPicture { grid-area: 2 / 2; }
+.visitLength { margin-top: 0.45rem; }
+
+@container (min-width: 40rem) {
+  .stops[data-layout="route"] .stop[data-photo] {
+    grid-template-columns: 2rem minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: 0.75rem 1.1rem;
+  }
+  .stops[data-layout="route"] .stopPicture { grid-area: 1 / 3; }
 }

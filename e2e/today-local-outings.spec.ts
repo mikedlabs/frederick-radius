@@ -20,7 +20,7 @@ test("opens either Today guide and returns to the same town and section", async 
   const outings = page.getByRole("navigation", { name: "Local outings" });
   for (const [title, path] of [
     [/This Weekend/i, "weekend"],
-    [/Two Hours Downtown/i, "two-hours-downtown"],
+    [/Two Hours Downtown|Thanksgiving Creek Walk/i, "two-hours-downtown"],
   ] as const) {
     const door = outings.getByRole("link", { name: title });
     await expect(door).toBeVisible();
@@ -49,7 +49,7 @@ for (const { width, height, enlarged } of [
     await page.goto("/today/two-hours-downtown");
     if (enlarged) await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
     const main = page.getByRole("main");
-    await expect(main.getByRole("heading", { name: "Two Hours Downtown", level: 1 })).toBeVisible();
+    await expect(main.getByRole("heading", { name: /Two Hours Downtown|Thanksgiving Creek Walk/, level: 1 })).toBeVisible();
     const photo = main.getByRole("img", { name: /Carroll Creek/i }).first();
     await expect.poll(() => photo.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
     const primary = main.getByRole("link", { name: /Directions|Get directions/i }).first();

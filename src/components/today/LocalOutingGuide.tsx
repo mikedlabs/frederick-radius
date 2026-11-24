@@ -52,18 +52,20 @@ function StopPicture({ photo }: { photo: NonNullable<GuideStop["photo"]> }) {
   );
 }
 
-function OutingStop({ stop, primary }: { stop: GuideStop; primary: boolean }) {
+function OutingStop({ stop, primary, order }: { stop: GuideStop; primary: boolean; order?: number }) {
   const Marker = stop.icon ? STOP_ICONS[stop.icon] : CalendarDays;
   return (
     <li id={stop.anchor} className={styles.stop} data-photo={stop.photo ? "" : undefined}>
+      {order && <span className={styles.stopNumber} aria-label={`Stop ${order}`}>{order}</span>}
       {stop.photo && <StopPicture photo={stop.photo} />}
       <div className={styles.stopBody}>
         <div className={styles.stopHeading}>
-          {!stop.photo && <Marker size={24} aria-hidden="true" className={styles.stopMarker} />}
+          {!stop.photo && !order && <Marker size={24} aria-hidden="true" className={styles.stopMarker} />}
           <h2 className={styles.stopTitle}>{stop.title}</h2>
         </div>
+        {stop.suggestedMinutes && <p className={styles.visitLength}>Suggested visit · {stop.suggestedMinutes} minutes</p>}
         <div className={styles.facts}>
-          <p><Clock size={16} aria-hidden="true" /><span>{stop.when}</span></p>
+          <p><Clock size={16} aria-hidden="true" /><span>{order ? `Hours · ${stop.when}` : stop.when}</span></p>
           <p><MapPin size={16} aria-hidden="true" /><span>{stop.where}</span></p>
           {stop.price && <p><Ticket size={16} aria-hidden="true" /><span>{stop.price}</span></p>}
         </div>
@@ -122,12 +124,11 @@ export default function LocalOutingGuide({
           <p className={styles.scope}>{guide.scopeLabel}</p>
           <h1 className={styles.title}>{guide.title}</h1>
           {guide.summary && <p className={styles.summary}>{guide.summary}</p>}
-          {guide.notice && (
-            <aside aria-label={guide.notice.heading} className={styles.notice}>
-              <p className={styles.noticeHeading}><CalendarDays size={16} aria-hidden="true" />{guide.notice.heading}</p>
-              <p>{guide.notice.text}</p>
-              <a className={styles.noticeLink} href={guide.notice.action.href}>{guide.notice.action.label} <ArrowRight aria-hidden="true" size={16} /></a>
-            </aside>
+          {guide.route && (
+            <div className={styles.routeStart}>
+              <p>{guide.route.allowance}</p>
+              <GuideLink action={guide.route.firstAction} primary />
+            </div>
           )}
         </div>
         <figure className={styles.figure}>
@@ -146,9 +147,18 @@ export default function LocalOutingGuide({
         </figure>
       </header>
 
-      <ol role="list" className={styles.stops} data-layout={guide.stopLayout}>
+      {guide.notice && (
+        <aside aria-label={guide.notice.heading} className={styles.notice}>
+          <p className={styles.noticeHeading}><CalendarDays size={16} aria-hidden="true" />{guide.notice.heading}</p>
+          <p>{guide.notice.text}</p>
+          <div className={styles.creditLinks}>
+            {guide.notice.sources.map(source => <a key={source.href} href={source.href} className={styles.noticeLink}>{source.label}</a>)}
+          </div>
+        </aside>
+      )}
+      <ol role="list" aria-label={guide.route ? "Walking itinerary" : undefined} className={styles.stops} data-layout={guide.route ? "route" : guide.stopLayout}>
         {guide.stops.map((stop, index) => (
-          <OutingStop key={`${stop.title}:${stop.action.href}`} stop={stop} primary={index === 0} />
+          <OutingStop key={`${stop.title}:${stop.action.href}`} stop={stop} primary={!guide.route && index === 0} order={guide.route ? index + 1 : undefined} />
         ))}
       </ol>
 

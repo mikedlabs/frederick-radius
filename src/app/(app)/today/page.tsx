@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import TodayCard from "@/components/today/TodayCard";
@@ -46,7 +47,7 @@ import {
 import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/eventVisuals";
 import TodayMasthead from "@/components/today/TodayMasthead";
 import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
-import { downtownGuide, weekendGuideCover, weekendGuideDateLabel } from "@/lib/today/local-outing-guides";
+import { downtownFeatureForToday, weekendGuideDateLabel } from "@/lib/today/local-outing-guides";
 import styles from "@/components/today/TodayLayout.module.css";
 
 /**
@@ -135,6 +136,7 @@ export const revalidate = 300;
 
 export default async function HomePage() {
   const now = new Date();
+  const downtown = downtownFeatureForToday(now);
   const frame = todayFrame(easternStartHour(now.toISOString()));
   const civicMoment = activeMoment(now);
   const civicMomentLeadsToday =
@@ -269,9 +271,15 @@ export default async function HomePage() {
           retain the selected area; imagery never promises current conditions.
           Until the URL lens is known, its fallback is deliberately neutral. */}
       <Suspense fallback={<TodayGeographicDoorwayPending />}>
-        <TodayGeographicDoorway guidePhotos={{ weekend: weekendGuideCover(now).photo.src, weekendLabel: weekendGuideDateLabel(now), downtown: downtownGuide.photo.src }} />
+        <TodayGeographicDoorway guidePhotos={{
+          ...downtown,
+          weekendLabel: weekendGuideDateLabel(now),
+        }} />
       </Suspense>
 
+      <noscript>
+        <Link href={downtown.downtownHref} className={styles.outingFallback}>{downtown.downtownTitle} · {downtown.downtownWhen} in Downtown Frederick</Link>
+      </noscript>
       <div data-today-current-content className={styles.currentContent}>
         <div aria-label="Places for your area" className={styles.places}>
           {/* The selected-area recommendation and personal saves are one
@@ -292,7 +300,7 @@ export default async function HomePage() {
       </Suspense>
 
       <section aria-labelledby="today-explore-heading" className={styles.quickNeeds}>
-        <h2 id="today-explore-heading" className={styles.utilityHeading}>More ways to explore</h2>
+        <h2 id="today-explore-heading" className={styles.utilityHeading}>Practical information</h2>
         {/* Keep all four utility doors together once, after the current local
             answers, with the existing category disclosure below them. */}
         <TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>

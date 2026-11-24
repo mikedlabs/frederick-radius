@@ -13,7 +13,10 @@ const meta = {
     scope: "county",
     returnTo: origin,
     guidePhotos: {
-      weekend: "/images/seasons/winter/WINTER BOATS.jpg",
+      downtownTitle: "Two Hours Downtown",
+      downtownWhen: "Daytime walk",
+      downtownHref: "/today/two-hours-downtown",
+      downtownTeaser: "See free galleries and walk Carroll Creek. Start at East All Saints garage.",
       downtown: "/images/places/carroll-creek-aerial.jpg",
     },
   },
@@ -164,19 +167,19 @@ async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["p
   const outings = within(canvas.getByRole("navigation", { name: "Local outings" }));
   const weekend = outings.getByRole("link", { name: /This Weekend/ });
   const downtown = outings.getByRole("link", { name: /Two Hours Downtown/ });
-  await expect(weekend.querySelector("img")).toHaveAttribute("alt", "");
+  await expect(weekend.querySelector("img")).toBeNull();
   await expect(downtown.querySelector("img")).toHaveAttribute("alt", "");
   await physicalLink(weekend, true);
   await physicalLink(downtown, true);
-  links[0].focus(); await expect(links[0]).toHaveFocus();
-  await userEvent.tab(); await expect(saves[0]).toHaveFocus();
+  downtown.focus(); await expect(downtown).toHaveFocus();
   await userEvent.tab(); await expect(weekend).toHaveFocus();
-  await userEvent.tab(); await expect(downtown).toHaveFocus();
+  await userEvent.tab(); await expect(links[0]).toHaveFocus();
+  await userEvent.tab(); await expect(saves[0]).toHaveFocus();
   await userEvent.tab(); await expect(links[1]).toHaveFocus();
-  await userEvent.tab({ shift: true }); await expect(downtown).toHaveFocus();
-  await userEvent.tab({ shift: true }); await expect(weekend).toHaveFocus();
   await userEvent.tab({ shift: true }); await expect(saves[0]).toHaveFocus();
   await userEvent.tab({ shift: true }); await expect(links[0]).toHaveFocus();
+  await userEvent.tab({ shift: true }); await expect(weekend).toHaveFocus();
+  await userEvent.tab({ shift: true }); await expect(downtown).toHaveFocus();
 }
 
 export const Local320: Story = { globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, play: checkDiscovery };

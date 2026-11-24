@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
-import { downtownGuide, weekendGuide } from "@/lib/today/local-outing-guides";
+import { downtownGuide, downtownGuideForDate, weekendGuide } from "@/lib/today/local-outing-guides";
 import LocalOutingGuide from "./LocalOutingGuide";
 
 const todayOrigin = "/today?in=frederick#local-outings";
@@ -66,6 +66,12 @@ const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement, us
 };
 
 export const DowntownOnPhone: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  play: usableGuide,
+};
+
+export const ThanksgivingOnPhone: Story = {
+  args: { guide: downtownGuideForDate(new Date("2026-11-26T17:00:00Z")) },
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
   play: usableGuide,
 };

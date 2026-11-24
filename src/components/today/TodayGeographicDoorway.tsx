@@ -14,29 +14,41 @@ import { localDiscoveryPlaces, type LocalDiscoveryPlace } from "@/lib/today/disc
 import styles from "./TodayLayout.module.css";
 
 export type TodayDiscoveryTask = "food" | "outside";
-export type TodayGuidePhotos = { weekend: string; weekendLabel?: string; downtown: string };
+export type TodayGuidePhotos = {
+  downtown: string;
+  downtownTitle: string;
+  downtownTeaser: string;
+  downtownWhen: string;
+  downtownHref: string;
+  weekendLabel?: string;
+};
 
-function OutingLink({ href, title, scope, image, Icon }: {
+function OutingLink({ href, title, scope, image, reason, Icon }: {
   href: string;
   title: string;
   scope: string;
   image?: string;
+  reason?: string;
   Icon: typeof CalendarDays;
 }) {
   const [failedImage, setFailedImage] = useState<string | null>(null);
   return (
-    <Link href={href} prefetch={false} className={styles.discoveryOuting}>
+    <Link href={href} prefetch={false} className={styles.discoveryOuting} data-featured={reason ? "" : undefined}>
       {image && (
         <span className={styles.outingPhoto} aria-hidden="true">
           <Icon />
           {failedImage !== image && <Image src={image} alt="" fill
-            sizes="(max-width: 303px) calc(100vw - 32px), (max-width: 620px) 46vw, 240px"
+            sizes="(max-width: 640px) calc(100vw - 32px), 560px" loading="eager"
             onError={() => setFailedImage(image)} />}
         </span>
       )}
       <span className={styles.outingCaption}>
         {!image && <Icon aria-hidden />}
-        <span><strong>{title}</strong><small>{scope}</small></span>
+        <span>
+          <strong>{title}</strong><small>{scope}</small>
+          {reason && <span className={styles.outingReason}>{reason}</span>}
+          {reason && <span className={styles.outingAction}>View walking route <ArrowRight aria-hidden size={16} /></span>}
+        </span>
         {!image && <ArrowRight aria-hidden className={styles.outingArrow} />}
       </span>
     </Link>
@@ -105,26 +117,28 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo, guidePhotos
   const origin = returnTo ?? `/today?in=${scopeToParam(active)}`;
   const places = localDiscoveryPlaces(active);
   const [lead, ...secondary] = places;
-  const photos = active === "county" || active === "town:frederick" ? guidePhotos : undefined;
+  const localRoute = active === "county" || active === "town:frederick";
+  const featured = localRoute && Boolean(guidePhotos);
   const outingOrigin = `${origin.split("#", 1)[0]}#local-outings`;
   const outings = (
-    <nav id="local-outings" aria-label="Local outings" data-outing-photos={Boolean(photos)} className={styles.discoveryOutings}>
-      <h3 className={styles.guidesHeading}>Local guides</h3>
+    <nav id="local-outings" aria-label="Local outings" data-featured-route={featured || undefined} className={styles.discoveryOutings}>
+      {!featured && <h3 className={styles.guidesHeading}>Local guides</h3>}
+      <OutingLink href={withBrowseReturnTo(guidePhotos?.downtownHref ?? "/today/two-hours-downtown", outingOrigin)}
+        title={guidePhotos?.downtownTitle ?? "Two Hours Downtown"} scope={guidePhotos ? `Frederick City · ${guidePhotos.downtownWhen}` : "Frederick City"}
+        image={featured ? guidePhotos?.downtown : undefined}
+        reason={featured ? guidePhotos?.downtownTeaser : undefined} Icon={Footprints} />
       <OutingLink href={withBrowseReturnTo("/today/weekend", outingOrigin)}
-        title="This Weekend" scope={photos?.weekendLabel ?? "Frederick County"} image={photos?.weekend} Icon={CalendarDays} />
-      <OutingLink href={withBrowseReturnTo("/today/two-hours-downtown", outingOrigin)}
-        title="Two Hours Downtown" scope="Frederick City" image={photos?.downtown} Icon={Footprints} />
+        title="This Weekend" scope={guidePhotos?.weekendLabel ? `Frederick County · ${guidePhotos.weekendLabel}` : "Frederick County"} Icon={CalendarDays} />
     </nav>
   );
   return (
     <section id="today-discovery" data-today-local-discovery data-today-geographic-mosaic aria-labelledby="today-discovery-heading" className={styles.geographicMosaic}>
       <h2 id="today-discovery-heading" className="sr-only">Explore local</h2>
-      {/* On a wide screen the browse links fill the column beside the lead
-          photograph instead of leaving a blank band there. */}
-      <div className={styles.discoveryLayout}>
+      <div className={styles.discoveryLayout} data-featured-route={featured || undefined}>
       {lead ? <div data-today-discovery-grid className={styles.discoveryPlaceGrid}>
+        {featured && outings}
         <DiscoveryPlace key={`${active}:${lead.photoPlan.key}`} place={lead} scope={active} returnTo={origin} lead />
-        {outings}
+        {!featured && outings}
         {secondary.map(place => <DiscoveryPlace key={`${active}:${place.photoPlan.key}`} place={place} scope={active} returnTo={origin} lead={false} />)}
       </div> : outings}
       <nav data-today-discovery-tasks aria-label="Browse by need" className={styles.discoveryTasks}>
