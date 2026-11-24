@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 
 test.describe("travel reach on a touch screen", () => {
   test.use({
@@ -7,6 +8,8 @@ test.describe("travel reach on a touch screen", () => {
     permissions: ["geolocation"],
     geolocation: { latitude: 39.4143, longitude: -77.4108 },
   });
+
+  registerWebkitLoopbackDocumentSeam();
 
   test("changing a town and walking budget preserves focus through rotation and labels straight-line results", async ({ page, baseURL }, info) => {
     test.setTimeout(120_000);
@@ -20,7 +23,7 @@ test.describe("travel reach on a touch screen", () => {
         return route.fulfill({ status: 503, json: { ok: false } });
       }
       if (url.pathname.startsWith("/api/")) return route.fulfill({ status: 503, json: {} });
-      return route.continue();
+      return route.fallback();
     });
     await page.goto("/map?mode=radius&in=thurmont&minutes=2", { waitUntil: "domcontentloaded" });
     const adjust = page.getByRole("button", { name: "Adjust the radius" });
