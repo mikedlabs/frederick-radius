@@ -200,6 +200,7 @@ export default function TopBar() {
       searchLayerIdRef.current = result.id;
       searchReturnScrollYRef.current = result.scrollY;
       returnPlaceRef.current = result.href;
+      rememberSearchDraft(result.query);
       setSearchInitialQuery(result.query);
       setSearchOpen(true);
     };
@@ -210,7 +211,7 @@ export default function TopBar() {
       window.removeEventListener("pageshow", restore);
       window.removeEventListener("popstate", restore);
     };
-  }, [pathname]);
+  }, [pathname, rememberSearchDraft]);
 
   // The app bar is server-rendered before this client component hydrates. An
   // enabled button in that brief window looks actionable but has no click

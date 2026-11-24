@@ -21,9 +21,11 @@ for (const device of [
           subtitle: `Search response ${lookups}`, href: detail,
         }] } });
       });
-      await page.goto("/events", { waitUntil: "domcontentloaded" });
-      const launcher = page.locator("header").getByRole("button", { name: "Ask or find across Frederick County", exact: true }).filter({ visible: true });
-      await expect(launcher).toBeEnabled({ timeout: 45_000 });
+      await page.goto(device.isMobile ? "/today" : "/events", { waitUntil: "domcontentloaded" });
+      const launcher = device.isMobile
+        ? page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }).filter({ visible: true }).first()
+        : page.locator("header").getByRole("button", { name: "Ask or find across Frederick County", exact: true }).filter({ visible: true });
+      await expect(launcher).toHaveAttribute("data-find-interaction-ready", "true", { timeout: 45_000 });
       await launcher.click();
       const find = page.getByRole("dialog", { name: "What do you need?", exact: true });
       const field = find.getByRole("searchbox");

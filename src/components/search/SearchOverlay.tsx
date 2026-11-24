@@ -1118,7 +1118,7 @@ export default function SearchOverlay({
                       style={{ borderColor: "var(--app-border)" }}
                     >
                       <SearchPlaceLead fallback={<Icon className="h-6 w-6" strokeWidth={1.8} aria-hidden />} actions={<>
-                        <Link href={r.href} onClick={pick}
+                        <Link href={r.href} onClick={pick} aria-label={`Open ${r.title}`}
                           onMouseEnter={() => setHoverIdx(0)} onMouseLeave={() => setHoverIdx(null)}>
                           View place <ArrowRight aria-hidden />
                         </Link>
@@ -1165,6 +1165,7 @@ export default function SearchOverlay({
                       <div className={`grid border-t ${mapHref ? "grid-cols-2" : "grid-cols-1"}`} style={{ borderColor: "var(--app-border)" }}>
                         <Link
                           href={r.href}
+                          aria-label={`Open ${r.title}`}
                           onClick={pick}
                           onMouseEnter={() => setHoverIdx(0)}
                           onMouseLeave={() => setHoverIdx(null)}
