@@ -188,7 +188,6 @@
   line-height: 1;
   letter-spacing: -0.045em;
 }
-.home [data-product-status] { display: none; }
 
 .todayDisclosure {
   flex: none;
@@ -388,7 +387,6 @@
   }
   .home > svg { width: 32px; height: 32px; }
   .home [data-header-wordmark] { font-size: 1.6875rem; }
-  .home [data-product-status] { display: inline-flex; }
   .bar .search { background: var(--app-bg-sunken); }
   .todayHeaderTrigger { gap: 6px; }
 }

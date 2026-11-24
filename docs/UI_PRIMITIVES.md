@@ -129,8 +129,10 @@ a 44px minimum height at every size, and no gloss, lip, glow or lift. Pass
 an opaque `--app-bg-elevated-solid` popover with a hairline edge, the 6px
 corner and `--app-shadow-3`, because it really sits above the page. The
 current choice is ink on the sunken ground with a check, not a coral tint.
-Escape, an outside press and tabbing away close it. State belongs to the
-caller.
+The trigger and choices have 44px touch targets. Arrow Up or Down opens the
+choices and moves focus through them. Home and End reach either end. Enter
+commits and returns focus to the trigger. Escape, an outside press and tabbing
+away dismiss the choices. State belongs to the caller.
 
 - Use it in a list page toolbar beside a count or a layout toggle.
 - For one choice from a long list inside a form, a native `<select>` is

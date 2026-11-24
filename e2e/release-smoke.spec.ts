@@ -482,7 +482,7 @@ test("map search keeps its exact state through place details and Back", async ({
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Details", exact: true }).click();
-  const fullPage = page.getByRole("link", { name: /See full page/ });
+  const fullPage = page.getByRole("link", { name: /Place details in Radius/ });
   // The map warms this lazy sheet after first paint. Keep a bounded cold-start
   // allowance for a saturated CI runner while still failing a genuinely stuck
   // loader well inside the journey's release timeout.

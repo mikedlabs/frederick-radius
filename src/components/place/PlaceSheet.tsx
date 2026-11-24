@@ -692,7 +692,7 @@ function PlaceSheetContent({
             className="inline-flex min-h-11 items-center gap-1 font-medium"
             style={{ color: "var(--app-link)" }}
           >
-            See full page <ExternalLink className="h-3 w-3" aria-hidden />
+            Place details in Radius <ChevronRight className="h-3 w-3" aria-hidden />
           </Link>
           <ShareButton
             className="inline-flex min-h-11 min-w-11 items-center justify-end gap-1 text-xs font-medium transition active:scale-95"

@@ -146,3 +146,22 @@ export const ClosesWhenFocusLeaves: Story = {
     await expect(trigger).not.toHaveFocus();
   },
 };
+
+export const ChooseWithArrowKeys: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("button", { name: /^Sort:/ });
+    trigger.focus();
+    await userEvent.keyboard("{ArrowUp}");
+    await expect(canvas.getByRole("button", { name: /^A→Z/ })).toHaveFocus();
+    await userEvent.keyboard("{Home}{ArrowDown}");
+    await expect(canvas.getByRole("button", { name: /^Open now/ })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect(trigger).toHaveAccessibleName("Sort: Open now");
+    await expect(trigger).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}{End}{Escape}");
+    await expect(trigger).toHaveFocus();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(trigger).toHaveAccessibleName("Sort: Open now");
+  },
+};

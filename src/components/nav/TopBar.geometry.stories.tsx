@@ -132,9 +132,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
         if (wordmark) {
           const home = wordmark.closest("a")!;
           await expect(home, context).toHaveAttribute("href", "/");
-          const hasBeta = pathname !== "/today" && pathname !== "/map";
-          await expect(home, context).toHaveAccessibleName(hasBeta ? "Frederick Radius beta, home" : "Frederick Radius, home");
-          if (hasBeta && width >= 1024) await expect(within(home).getByText("Beta"), context).toBeVisible();
+          await expect(home, context).toHaveAccessibleName("Frederick Radius, home");
           await expect(home.querySelector("svg"), context).toBeVisible();
           if (!enlarged && !(pathname === "/map" && width === 320)) {
             await expect(wordmark, context).toBeVisible();

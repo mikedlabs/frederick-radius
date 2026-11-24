@@ -4,6 +4,20 @@ Frederick Radius has many capabilities, but people should not have to choose a
 tool before they can get an answer. Product surfaces organize those
 capabilities around the task a person is trying to complete.
 
+## Actions, scope and return paths
+
+Give the action that advances the current visit the strongest emphasis. Name the
+provider on an outbound event listing and the mapped destination for directions.
+A fixed section link names the section. Browser Back and the shell’s Back control
+restore the actual origin. A link to more details within Radius uses an internal
+navigation arrow. The home link has one accessible name across all destinations.
+
+Live information includes its observation time and source. A missing value keeps
+its recovery action available. Filters with several independent choices keep a
+draft until the visitor shows the results. Cancel discards the draft. Shortcuts
+outside that panel apply immediately. Removing an individual choice retains the
+other filters and location scope.
+
 ## Permanent destinations
 
 The mobile navigation keeps four stable destinations:

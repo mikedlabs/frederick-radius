@@ -422,7 +422,7 @@ export default function TopBar() {
               prefetch={false}
               onMouseEnter={() => router.prefetch("/")}
               onFocus={() => router.prefetch("/")}
-              aria-label={pathname === "/map" || pathname === "/today" ? "Frederick Radius, home" : "Frederick Radius beta, home"}
+              aria-label="Frederick Radius, home"
               className={`${styles.home} tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]`}
               style={{ color: "var(--app-brand-text)" }}
             >
@@ -430,16 +430,6 @@ export default function TopBar() {
               <span data-header-wordmark className="whitespace-nowrap leading-none" style={{ color: "var(--app-ink)" }}>
                 Frederick Radius
               </span>
-              {pathname !== "/map" && pathname !== "/today" ? (
-                <span
-                  data-product-status="beta"
-                  aria-hidden="true"
-                  className="inline-flex shrink-0 items-center font-sans text-[10px] font-semibold uppercase leading-none tracking-[0.14em]"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  Beta
-                </span>
-              ) : null}
             </AppTransitionLink>
           )}
 

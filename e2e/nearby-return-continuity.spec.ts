@@ -77,7 +77,7 @@ async function openFullSheet(page: Page, open: Locator) {
   await expect(dialog).toHaveCount(1);
   // The lazy handoff is not the completed sheet whose Back behavior we test.
   await expect(dialog.getByRole("heading", { name: placeName, exact: true })).toBeVisible();
-  const fullPage = dialog.getByRole("link", { name: "See full page", exact: true });
+  const fullPage = dialog.getByRole("link", { name: "Place details in Radius", exact: true });
   await expect(fullPage).toBeVisible();
   return { dialog, fullPage };
 }

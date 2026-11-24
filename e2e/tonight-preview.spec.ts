@@ -81,7 +81,7 @@ test("opens the current place sheet, preserves origin, and restores focus on Esc
   await expect(dialog).toHaveCount(1);
   await expect(dialog.getByRole("heading", { name, exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(dialog.getByRole("link", { name: "Directions", exact: true })).toHaveAttribute("href", /^https:\/\/maps.apple.com/);
-  await expect(dialog.getByRole("link", { name: /See full page/ })).toHaveAttribute("href", /returnTo=%2Ftoday%2Ftonight/);
+  await expect(dialog.getByRole("link", { name: /Place details in Radius/ })).toHaveAttribute("href", /returnTo=%2Ftoday%2Ftonight/);
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(page).toHaveURL(origin + route);
