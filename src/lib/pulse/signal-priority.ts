@@ -232,9 +232,9 @@ export function pulseOperationalBriefing(
     return {
       active: true,
       line: signals.airportIssues.length === 1
-        ? `${signals.airportIssues[0]} is reporting a travel delay.`
-        : "Regional airports are reporting travel delays.",
-      sub: "Open Airports below to see which terminals are affected.",
+        ? `The FAA lists an airport notice for ${signals.airportIssues[0]}.`
+        : "The FAA lists notices for regional airports.",
+      sub: "Open Airports for the affected airports and FAA notices.",
     };
   }
   if (signals.campDavidRestricted && activeCount === 1) {
@@ -250,7 +250,7 @@ export function pulseOperationalBriefing(
       ? `${signals.marcAlerts} MARC service ${signals.marcAlerts === 1 ? "alert" : "alerts"}`
       : null,
     airportsActive
-      ? `${signals.airportIssues.length} regional ${signals.airportIssues.length === 1 ? "airport has" : "airports have"} delays`
+      ? `FAA notices for ${signals.airportIssues.length} regional ${signals.airportIssues.length === 1 ? "airport" : "airports"}`
       : null,
     signals.campDavidRestricted ? "Camp David airspace is expanded" : null,
   ].filter((detail): detail is string => Boolean(detail));

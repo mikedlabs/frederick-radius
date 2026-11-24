@@ -54,7 +54,7 @@ import {
 } from "@/lib/integrations/floodStage";
 import MetricCard from "@/components/live-data/MetricCard";
 import FloodGauge from "@/components/live-data/FloodGauge";
-import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
+import { AIRPORT_STATE_LABEL, getAreaAirportStatus } from "@/lib/integrations/faa-airports";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
@@ -309,7 +309,7 @@ export default async function PulsePage() {
     newsResult,
     pressResult,
     riversResult,
-    airports,
+    airportReport,
     forecast,
     marcBoardResult,
     marcAlerts,
@@ -364,8 +364,7 @@ export default async function PulsePage() {
       FEED_MS,
       { data: [], available: false },
     ),
-    // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
-    withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
+    withTimeout(getAreaAirportStatus(), FEED_MS, null),
     // Current conditions for the leading Weather tile (the full panel is its
     // tap-to-open body). Same cached NWS call PulseWeatherPanel makes.
     withTimeout(getNwsForecast(FREDERICK_CENTER), FEED_MS, null),
@@ -605,7 +604,8 @@ export default async function PulsePage() {
   // These are meaningful changes, but they are not county emergencies. Keep a
   // distinct operational state so Pulse cannot say "All quiet" above a MARC
   // alert, airport delay, or expanded Camp David restriction.
-  const airportIssues = airports.filter((airport) => airport.state !== "clear");
+  const airports = airportReport?.airports ?? [];
+  const airportIssues = airports.filter((airport) => airport.state !== "not_listed");
   const operationalBriefing = pulseOperationalBriefing({
     marcAlerts: marcAlerts.length,
     airportIssues: airportIssues.map((airport) => airport.name),
@@ -890,19 +890,10 @@ export default async function PulsePage() {
     ? `${riverPeekName} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft${riverPeekDir ? ` · ${riverPeekDir}` : ""}`
     : undefined;
 
-  // Airports — BWI / Dulles / Reagan. An empty `airports` means the FAA feed
-  // was unreachable, so the tile self-hides rather than claim a status we
-  // couldn't read; otherwise each airport is "on time" unless the feed lists a
-  // delay / ground stop / closure. The peek carries the first delayed airport.
-  const airportPeek = airportIssues[0]
-    ? `${airportIssues[0].name} ${
-        airportIssues[0].state === "closure"
-          ? "closed"
-          : airportIssues[0].state === "ground_stop"
-            ? "ground stop"
-            : "delays"
-      }`
-    : undefined;
+  const firstAirportNotice = airportIssues[0];
+  const airportPeek = firstAirportNotice
+    ? `${firstAirportNotice.code} · ${AIRPORT_STATE_LABEL[firstAirportNotice.state]}`
+    : "BWI · IAD · DCA";
 
   // The dashboard tiles. Each carries an at-a-glance datum + its feed's full
   // detail (`body`), rendered server-side here so the client shell only owns
@@ -1969,42 +1960,49 @@ export default async function PulsePage() {
             <PulseOfficialLinks topic="rivers" />
           </>,
     },
-    ...(airports.length > 0
-      ? [{
-          // BWI / Dulles / Reagan. The accent goes amber + the tile tints only
-          // when there's an actual delay; an "on time" day stays a calm cool
-          // tile. Not part of the hero situation roll-up (a flight delay isn't
-          // a county emergency) — the peek names the delayed airport.
-          key: "airports",
-          label: "Airports",
-          iconName: "Plane",
-          countLabel: airportIssues.length > 0 ? `${airportIssues.length} delayed` : "On time",
-          accent: airportIssues.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
-          active: airportIssues.length > 0,
-          attention: false,
-          kind: "status",
-          sourceLabel: "FAA",
-          peek: airportPeek ?? "BWI · IAD · DCA",
-          body: (
-            <div className="space-y-1.5">
-              {airports.map((a) => (
-                <Row
-                  key={a.code}
-                  tone={
-                    a.state === "closure" || a.state === "ground_stop"
-                      ? "danger"
-                      : a.state === "delay"
-                        ? "warning"
-                        : "muted"
-                  }
-                  title={a.name}
-                  meta={[a.code, a.state === "clear" ? "On time" : a.detail ?? a.state.replace("_", " ")]}
-                />
+    {
+      key: "airports",
+      label: "Airports",
+      iconName: "Plane",
+      countLabel: !airportReport
+        ? "Status unavailable"
+        : airportIssues.length > 0
+          ? `${airportIssues.length} ${airportIssues.length === 1 ? "airport" : "airports"} with notices`
+          : "No FAA notices listed",
+      accent: airportIssues.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
+      active: airportIssues.length > 0,
+      attention: false,
+      degraded: !airportReport,
+      kind: "status",
+      sourceLabel: "FAA",
+      peek: airportPeek,
+      body: (
+        <div className="space-y-1.5">
+          {airportReport ? (
+            <>
+              <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+                FAA update · <time dateTime={airportReport.updatedAt}>{new Intl.DateTimeFormat("en-US", {
+                  timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+                }).format(new Date(airportReport.updatedAt))}</time>
+              </p>
+              {airports.map((airport) => (
+                <Row key={airport.code} tone={airport.state === "not_listed" ? "muted" : "warning"}
+                  title={airport.name} meta={[airport.code, AIRPORT_STATE_LABEL[airport.state], ...(airport.detail ? [airport.detail] : [])]} />
               ))}
-            </div>
-          ),
-        } as PulseTile]
-      : []),
+              {airports.some(airport => airport.state === "closure") && (
+                <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+                  A closure notice may cover only certain hours or aircraft. Check the FAA notice for its scope.
+                </p>
+              )}
+            </>
+          ) : emptyNote("A current FAA airport report could not be verified.")}
+          <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+            Check your airline for your flight’s departure or arrival time.
+          </p>
+        </div>
+      ),
+      action: { href: "https://nasstatus.faa.gov/", label: "View FAA airport status" },
+    },
     // MARC Brunswick Line — the county's commuter rail, beside the live bus map.
     // Calm cool tile (informational transit, not a hero "situation"); a service
     // alert tints it amber. The head shows the soonest departure, the body the
@@ -2336,7 +2334,7 @@ const SOURCE_HOMES: Record<string, string | undefined> = {
   "Google News · Frederick County": "https://news.google.com/search?q=Frederick%20County%20Maryland",
   "Frederick PD · City + County": "https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map",
   "USGS Water Data": "https://api.waterdata.usgs.gov/ogcapi/v1/collections/monitoring-locations/items?state_code=24&county_code=021&site_type_code=ST&f=html&limit=200",
-  FAA: "https://www.fly.faa.gov/",
+  FAA: "https://nasstatus.faa.gov/",
   "FAA TFR": "https://tfr.faa.gov/",
   "Maryland DNR": "https://dnr.maryland.gov/fisheries/pages/stocking/index.aspx",
   PulsePoint: "https://web.pulsepoint.org/",
