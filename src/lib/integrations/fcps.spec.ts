@@ -44,7 +44,9 @@ describe("FCPS RSS availability", () => {
 
   it("distinguishes a successful feed with no closure from a failed feed", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () =>
-      new Response(rss(item("Board approves budget", "The board met Tuesday.")), { status: 200 }),
+      new Response(rss(item("Board approves budget", "The board met Tuesday.")), {
+        headers: { date: "Tue, 21 Jul 2026 19:22:00 GMT" },
+      }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -52,10 +54,49 @@ describe("FCPS RSS availability", () => {
       data: [],
       available: true,
       asOf: "2026-07-21T18:00:00.000Z",
+      checkedAt: "2026-07-21T19:22:00.000Z",
     });
     expect(String(fetchMock.mock.calls[0][0])).toContain("/syndication/rss.aspx");
     expect(String(fetchMock.mock.calls[0][0])).not.toContain("/news.rss");
     expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("preserves the upstream check time while a cached school notice expires", async () => {
+    const xml = rss(item("All schools closed", "Schools closed today.", "Mon, 20 Jul 2026 13:31:00 GMT"))
+      .replace(/<lastBuildDate>.*?<\/lastBuildDate>/, "");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(xml, {
+      headers: { date: "Tue, 21 Jul 2026 19:25:00 GMT" },
+    })));
+
+    const first = await getFcpsAlertsResult();
+    expect(first.data).toHaveLength(1);
+    expect(first.asOf).toBeUndefined();
+    expect(first.checkedAt).toBe("2026-07-21T19:25:00.000Z");
+
+    vi.setSystemTime(new Date("2026-07-21T19:35:00Z"));
+    const later = await getFcpsAlertsResult();
+    expect(later).toEqual({ ...first, data: [] });
+  });
+
+  it.each([null, "unknown"])("keeps unknown HTTP response time distinct from the feed date (%s)", async (date) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(rss(""), { headers: date ? { date } : {} })));
+    const result = await getFcpsAlertsResult();
+    expect(result.available).toBe(true);
+    expect(result.checkedAt).toBeUndefined();
+    expect(result.asOf).toBe("2026-07-21T18:00:00.000Z");
+  });
+
+  it.each([
+    "<rss><channel>",
+    "<rss></rss>",
+    "<feed><entry><title>Schools closed</title></entry></feed>",
+    rss("<item/>"),
+    rss(item("All schools closed", "Schools closed today.", "undated")),
+  ])("does not turn an unreadable feed or notice into a successful empty check", async (xml) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(xml, {
+      headers: { date: "Tue, 21 Jul 2026 19:29:00 GMT" },
+    })));
+    expect(await getFcpsAlertsResult()).toEqual({ data: [], available: false });
   });
 
   it("parses closure, delay, and early-dismissal notices", async () => {
