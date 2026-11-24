@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Droplets, ExternalLink, Clock, MapPin } from "lucide-react";
-import { getFrederickWaterSitesWithHistory, readingTrend, type WaterSite } from "@/lib/integrations/usgsWater";
+import { getFrederickWaterSitesWithHistory, readingTrend, usgsGaugeReadingsUrl, type WaterSite } from "@/lib/integrations/usgsWater";
 import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
 import MetricCard from "@/components/live-data/MetricCard";
 import FloodGauge from "@/components/live-data/FloodGauge";
@@ -294,7 +294,7 @@ export default async function RiversPage() {
                       href={
                         site.floodStages
                           ? nwsGaugeUrl(site.floodStages.nws)
-                          : `https://api.waterdata.usgs.gov/ogcapi/v1/collections/latest-continuous/items?f=html&monitoring_location_id=USGS-${site.id}&parameter_code=00065,00060`
+                          : usgsGaugeReadingsUrl(site.id)
                       }
                     />
                   </li>

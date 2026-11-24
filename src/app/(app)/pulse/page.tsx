@@ -43,6 +43,7 @@ import NextTrainBoard from "@/components/transit/NextTrainBoard";
 import {
   getFrederickWaterSitesWithHistoryResult,
   readingTrend,
+  usgsGaugeReadingsUrl,
   type WaterSite,
   type WaterSitesResult,
 } from "@/lib/integrations/usgsWater";
@@ -1867,7 +1868,7 @@ export default async function PulsePage() {
             },
           }
         : { peek: riverPeek }),
-      sourceLabel: "USGS Water Services",
+      sourceLabel: "USGS Water Data",
       body: rivers.length > 0
         ? (
           <div className="space-y-4">
@@ -1932,7 +1933,7 @@ export default async function PulsePage() {
                           href={
                             s.floodStages
                               ? nwsGaugeUrl(s.floodStages.nws)
-                              : `https://waterdata.usgs.gov/monitoring-location/${s.id}/`
+                              : usgsGaugeReadingsUrl(s.id)
                           }
                         />
                       </li>
@@ -2334,7 +2335,7 @@ const SOURCE_HOMES: Record<string, string | undefined> = {
   "FCG FixIT · SeeClickFix": "https://www.frederickcountymd.gov/8235/FCG-FixIT",
   "Google News · Frederick County": "https://news.google.com/search?q=Frederick%20County%20Maryland",
   "Frederick PD · City + County": "https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map",
-  "USGS Water Services": "https://waterdata.usgs.gov/md/nwis/rt",
+  "USGS Water Data": "https://api.waterdata.usgs.gov/ogcapi/v1/collections/monitoring-locations/items?state_code=24&county_code=021&site_type_code=ST&f=html&limit=200",
   FAA: "https://www.fly.faa.gov/",
   "FAA TFR": "https://tfr.faa.gov/",
   "Maryland DNR": "https://dnr.maryland.gov/fisheries/pages/stocking/index.aspx",

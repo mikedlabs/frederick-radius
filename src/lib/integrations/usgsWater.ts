@@ -10,6 +10,13 @@ const MAX_READING_AGE = 2 * HOUR;
 const PERIODS = { PT6H: 6 * HOUR, P1D: 24 * HOUR, P7D: 168 * HOUR };
 type Period = keyof typeof PERIODS;
 
+/** Link directly to the agency's readable measurements for this station. */
+export function usgsGaugeReadingsUrl(siteId: string): string {
+  const url = new URL("https://api.waterdata.usgs.gov/ogcapi/v1/collections/latest-continuous/items");
+  url.search = new URLSearchParams({ f: "html", monitoring_location_id: `USGS-${siteId}`, parameter_code: "00065,00060" }).toString();
+  return url.toString();
+}
+
 export type Reading = { value: number; at: string };
 
 export type WaterSite = {
