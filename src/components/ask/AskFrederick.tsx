@@ -484,9 +484,26 @@ export function sourceHasDistinctDetail(
   );
 }
 
-function sourceOpenLabel(source: AskSource): string {
-  if (/google\.com\/maps|\/maps\/dir/i.test(source.href)) return "Directions";
-  return source.href.startsWith("http") ? "Open source" : "Open details";
+export function askSourceDestination(
+  source: Pick<AskSource, "href" | "name">,
+): { label: string; directions?: boolean } {
+  const target = sourceSaveTarget(source);
+  if (target) {
+    return { label: target.type === "place" ? "Place details in Radius" : "Event details in Radius" };
+  }
+  if (source.href.startsWith("/")) return { label: `View ${source.name} in Radius` };
+  try {
+    const url = new URL(source.href);
+    const host = url.hostname.replace(/^www\./, "");
+    if (
+      (host === "google.com" && /^\/maps\/dir(?:\/|$)/.test(url.pathname)) ||
+      (host === "maps.apple.com" && url.searchParams.get("daddr"))
+    ) {
+      return { label: `Directions to ${source.name}`, directions: true };
+    }
+    if (host) return { label: `View on ${host}` };
+  } catch { /* Preserve existing links whose provider did not supply a hostname. */ }
+  return { label: `View ${source.name}` };
 }
 
 export function canDisplayAskSourcePhoto(
@@ -518,8 +535,9 @@ function AskSourceCard({
   const decisionEntity = saveTarget?.type ?? "source";
   const decisionId = saveTarget?.id ?? source.slug;
   const decisionPosition = source.isPrimaryRankedResult ? "lead" : "result";
+  const destination = askSourceDestination(source);
   const decisionOpenAction =
-    sourceOpenLabel(source) === "Directions"
+    destination.directions
       ? "directions"
       : external
         ? "website"
@@ -657,10 +675,10 @@ function AskSourceCard({
             haptic("light");
             if (!external) onInternalOpen?.(index);
           }}
-          className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold hover:underline hover:underline-offset-[3px] active:opacity-70"
+          className="tap-44 inline-flex min-h-11 max-w-full items-center gap-1.5 text-[14px] font-semibold [overflow-wrap:anywhere] hover:underline hover:underline-offset-[3px] active:opacity-70"
           style={{ color: "var(--app-link)" }}
         >
-          {sourceOpenLabel(source)}
+          {destination.label}
           {external ? (
             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           ) : (
@@ -673,7 +691,7 @@ function AskSourceCard({
             data-decision-action="email"
             onClick={() => haptic("light")}
             aria-label={`Email ${source.name}`}
-            className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold hover:underline hover:underline-offset-[3px] active:opacity-70"
+            className="tap-44 inline-flex min-h-11 max-w-full items-center gap-1.5 text-[14px] font-semibold [overflow-wrap:anywhere] hover:underline hover:underline-offset-[3px] active:opacity-70"
             style={{ color: "var(--app-ink-2)" }}
           >
             <Mail className="h-3.5 w-3.5" aria-hidden />
@@ -686,7 +704,7 @@ function AskSourceCard({
             data-decision-action="call"
             onClick={() => haptic("light")}
             aria-label={`Call ${source.name} at ${source.phone}`}
-            className="tap-44 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold hover:underline hover:underline-offset-[3px] active:opacity-70"
+            className="tap-44 inline-flex min-h-11 max-w-full items-center gap-1.5 text-[14px] font-semibold [overflow-wrap:anywhere] hover:underline hover:underline-offset-[3px] active:opacity-70"
             style={{ color: "var(--app-ink-2)" }}
           >
             <Phone className="h-3.5 w-3.5" aria-hidden />
@@ -2607,6 +2625,7 @@ export default function AskFrederick({
                       {supportingSources.length > collapsedSupportingCount ? (
                         <button
                           type="button"
+                          aria-expanded={showAllSources}
                           onClick={() => setShowAllSources((value) => !value)}
                           className="tap-44 mt-3 flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-md)] border text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:opacity-75"
                           style={{

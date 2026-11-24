@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { getTownEventPreview } from "@/lib/loaders/townEventPreview";
@@ -34,7 +34,7 @@ import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
  *   2. A town-scoped ask/search pill — the first action.
  *   3. A field-guide locator line (mono caps centroid coordinates).
  *   4. Start here: the lead pick and the next handful as one ruled list of
- *      place rows, then a demoted "All places" link.
+ *      place rows, then a town-scoped place search.
  *   5. Sibling-town nav (TownStrip) as a slim row.
  *   6. Upcoming events (honest empty-state preserved).
  *   7. Living here — civic + town links merged into ONE demoted block.
@@ -227,14 +227,13 @@ export default async function MunicipalityPage(
       <TownStrip activeSlug={m.slug} />
 
       {/* 2 — Town-scoped search bar removed (owner call): it stacked a second
-          search field directly under the global header search. The "All places
-          in {town}" link in Worth-your-time below already pre-fills a
-          town-scoped browse, so the redundant slab came out. */}
+          search field directly under the global header search. The link after the
+          place list opens Find with this town and place type selected. */}
 
       {/* 4. Worth your time: the PLACES lead the page (owner call: open with
           what's actionable, not the town's history). The picks are one ruled
           list of place rows, a photo only where a real one exists, then a
-          demoted "all places" link. */}
+          link to search places in this town. */}
       {lead ? (
         <section className="space-y-3">
           <div className="flex items-baseline gap-2.5">
@@ -261,15 +260,13 @@ export default async function MunicipalityPage(
             ))}
           </ul>
 
-          {/* Demoted directory door, NOT the inline browse chrome. Search
-              is the canonical "see everything" surface; pre-fill the town. */}
           <Link
-            href={`/search?q=${encodeURIComponent(m.name)}`}
+            href={`/search?in=${encodeURIComponent(m.slug)}&kind=place`}
             className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold"
             style={{ color: "var(--app-link)" }}
           >
-            All places in {m.name}
-            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            Search places in {m.name}
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           </Link>
         </section>
       ) : (
@@ -302,11 +299,11 @@ export default async function MunicipalityPage(
               Upcoming in {m.name}
             </h2>
             <Link
-              href={BY_TOWN_ENABLED ? `/events?in=${m.slug}` : "/events"}
+              href={BY_TOWN_ENABLED ? `/events?in=${m.slug}` : "/events?in=county"}
               className="tap-44 inline-flex items-center text-[13px] font-semibold"
               style={{ color: "var(--app-link)" }}
             >
-              All events <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+              {BY_TOWN_ENABLED ? `All events in ${m.name}` : "Countywide events"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
           {degraded && upcomingEvents.length > 0 && (
