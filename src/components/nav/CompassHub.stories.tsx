@@ -120,9 +120,8 @@ function indexSheetAt(width: number, height: number, viewport: string): Story {
         await waitFor(() => {
           const settling = closeButton.getBoundingClientRect();
           expect(Math.min(settling.width, settling.height)).toBeGreaterThanOrEqual(44);
+          expect(settling.right).toBeLessThanOrEqual(window.innerWidth);
         });
-        const close = closeButton.getBoundingClientRect();
-        await expect(close.right).toBeLessThanOrEqual(window.innerWidth);
         const filter = index.getByRole("searchbox", { name: "Search tools in this section" });
         await expect(filter).toHaveAttribute("enterkeyhint", "go");
         await expect(filter.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
