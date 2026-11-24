@@ -3,20 +3,13 @@
 import { resolveMunicipality } from "@/lib/connect";
 import { FLOOD_STAGES, type FloodStages } from "@/lib/integrations/floodStage";
 
+import { GAUGE_HOURS, type GaugeHistory, type GaugePeriod } from "@/lib/rivers/gaugeHistory";
+export { usgsGaugeReadingsUrl } from "@/lib/rivers/gaugeHistory";
+
 const COLLECTIONS = "https://api.waterdata.usgs.gov/ogcapi/v1/collections";
 const CACHE_SECONDS = 900;
 const HOUR = 60 * 60 * 1000;
 const MAX_READING_AGE = 2 * HOUR;
-const PERIODS = { PT6H: 6 * HOUR, P1D: 24 * HOUR, P7D: 168 * HOUR };
-type Period = keyof typeof PERIODS;
-
-/** Link directly to the agency's readable measurements for this station. */
-export function usgsGaugeReadingsUrl(siteId: string): string {
-  const url = new URL("https://api.waterdata.usgs.gov/ogcapi/v1/collections/latest-continuous/items");
-  url.search = new URLSearchParams({ f: "html", monitoring_location_id: `USGS-${siteId}`, parameter_code: "00065,00060" }).toString();
-  return url.toString();
-}
-
 export type Reading = { value: number; at: string };
 
 export type WaterSite = {
@@ -131,10 +124,14 @@ function groupReadings(observations: Feature[], since: number, now: number): Map
 /** Only publish a parameter whose own latest observation is current. The
  * series still contains every valid measurement in the requested window. */
 function currentSeries(series: Map<number, number>, now: number): Reading[] {
-  const sorted = [...series].sort(([a], [b]) => a - b);
+  const sorted = sortedReadings(series);
   const last = sorted.at(-1);
-  if (!last || last[0] < now - MAX_READING_AGE) return [];
-  return sorted.map(([at, value]) => ({ at: new Date(at).toISOString(), value }));
+  return last && Date.parse(last.at) >= now - MAX_READING_AGE ? sorted : [];
+}
+
+function sortedReadings(series?: Map<number, number>): Reading[] {
+  if (!series) return [];
+  return [...series].sort(([a], [b]) => a - b).map(([at, value]) => ({ at: new Date(at).toISOString(), value }));
 }
 
 function joinStations(
@@ -181,14 +178,15 @@ function joinStations(
   return sites.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function readWaterSites(period?: Period): Promise<WaterSitesResult> {
+async function readObservations(period: GaugePeriod | undefined, siteId: string | undefined, signal: AbortSignal) {
   const now = Date.now();
-  const duration = period ? PERIODS[period] : MAX_READING_AGE;
+  const duration = period ? GAUGE_HOURS[period] * HOUR : MAX_READING_AGE;
   const bucket = Math.floor(now / (CACHE_SECONDS * 1000)) * CACHE_SECONDS * 1000;
   // A shared 15-minute URL makes server-side caching effective across visitors.
   // Filter the extra minutes at each end against the exact window after fetching.
   const datetime = `${new Date(bucket - duration).toISOString()}/${new Date(bucket + CACHE_SECONDS * 1000).toISOString()}`;
   const url = collectionUrl(period ? "continuous" : "latest-continuous", {
+    ...(siteId ? { monitoring_location_id: `USGS-${siteId}` } : {}),
     parameter_code: "00065,00060",
     statistic_id: "00011",
     properties: "monitoring_location_id,parameter_code,statistic_id,unit_of_measure,time,value",
@@ -196,10 +194,22 @@ async function readWaterSites(period?: Period): Promise<WaterSitesResult> {
     datetime,
     limit: "4000",
   });
+  const rows = await readCollection(url, CACHE_SECONDS, signal);
+  return { readings: groupReadings(rows, now - duration, now), now };
+}
+
+/** Historical readings may remain useful after a gauge stops reporting.
+ * This endpoint doesn't contribute to current-condition or flood status. */
+export async function getGaugeHistory(siteId: string, period: GaugePeriod): Promise<GaugeHistory> {
+  const { readings, now } = await readObservations(period, siteId, AbortSignal.timeout(12_000));
+  const series = readings.get(siteId);
+  return { end: new Date(now).toISOString(), height: sortedReadings(series?.height), flow: sortedReadings(series?.flow) };
+}
+
+async function readWaterSites(period?: GaugePeriod): Promise<WaterSitesResult> {
   const signal = AbortSignal.timeout(15_000);
   try {
-    const rows = await readCollection(url, CACHE_SECONDS, signal);
-    const readings = groupReadings(rows, now - duration, now);
+    const { readings, now } = await readObservations(period, undefined, signal);
     const ids = [...readings.keys()].sort();
     if (!ids.length) return { available: true, data: [] };
     // Observation features omit names. Join real station metadata for the
@@ -219,13 +229,13 @@ export async function getFrederickWaterSites(): Promise<WaterSite[]> {
   return (await readWaterSites()).data;
 }
 
-export async function getFrederickWaterSitesWithHistory(period: Period = "P1D"): Promise<WaterSite[]> {
+export async function getFrederickWaterSitesWithHistory(period: GaugePeriod = "P1D"): Promise<WaterSite[]> {
   return (await getFrederickWaterSitesWithHistoryResult(period)).data;
 }
 
 /** Preserve the distinction between a valid empty observation window and a
  * failed or incomplete provider request for the Pulse coverage indicator. */
-export function getFrederickWaterSitesWithHistoryResult(period: Period = "P1D"): Promise<WaterSitesResult> {
+export function getFrederickWaterSitesWithHistoryResult(period: GaugePeriod = "P1D"): Promise<WaterSitesResult> {
   return readWaterSites(period);
 }
 

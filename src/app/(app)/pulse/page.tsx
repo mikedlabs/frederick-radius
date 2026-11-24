@@ -43,17 +43,14 @@ import NextTrainBoard from "@/components/transit/NextTrainBoard";
 import {
   getFrederickWaterSitesWithHistoryResult,
   readingTrend,
-  usgsGaugeReadingsUrl,
-  type WaterSite,
   type WaterSitesResult,
 } from "@/lib/integrations/usgsWater";
 import {
   classifyFlood,
   currentFloodCoverage,
-  nwsGaugeUrl,
 } from "@/lib/integrations/floodStage";
-import MetricCard from "@/components/live-data/MetricCard";
-import FloodGauge from "@/components/live-data/FloodGauge";
+import RiverGaugeExplorer from "@/components/rivers/RiverGaugeExplorer";
+import { riverCoverageSummary } from "@/lib/rivers/gaugeHistory";
 import { AIRPORT_STATE_LABEL, getAreaAirportStatus } from "@/lib/integrations/faa-airports";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
@@ -224,22 +221,6 @@ function riverLocationOf(name: string): string {
   const prefix = m[1].toLowerCase();
   return `${prefix.charAt(0).toUpperCase()}${prefix.slice(1)} ${titleCaseRiver(m[2].trim())}`;
 }
-/** Group gauges under one waterway, most-gauged river first. */
-function groupByRiver(sites: WaterSite[]): Array<{ river: string; sites: WaterSite[] }> {
-  const m = new Map<string, WaterSite[]>();
-  for (const s of sites) {
-    const bucket = m.get(s.river.toUpperCase());
-    if (bucket) bucket.push(s);
-    else m.set(s.river.toUpperCase(), [s]);
-  }
-  return [...m.entries()]
-    .map(([river, list]) => ({
-      river: titleCaseRiver(river),
-      sites: list.sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    .sort((a, b) => b.sites.length - a.sites.length);
-}
-
 /**
  * Race a feed against a fallback: resolves to the feed's value, or the
  * fallback if the feed rejects OR is slower than `ms`. Bounds the ~10-feed
@@ -598,7 +579,6 @@ export default async function PulsePage() {
   // A countywide water tile cannot use whichever gauge happens to render
   // first. Compare every fresh forecast-point reading against its official NWS
   // categories, then let the worst current category drive the hierarchy.
-  const riverGroups = groupByRiver(rivers);
   const worstFlood = floodCoverage.worst;
   const floodActive = Boolean(
     worstFlood && worstFlood.category.key !== "normal",
@@ -881,14 +861,14 @@ export default async function PulsePage() {
   // higher, the worst current official category takes the face immediately.
   const riverPeekSite = floodActive
     ? worstFlood?.site
-    : riverGroups[0]?.sites.find((site) => site.gageHeightFt != null);
+    : rivers.find((site) => site.id === "01643000" && site.gageHeightFt != null) ?? rivers.find((site) => site.gageHeightFt != null);
   const riverPeekDir = riverPeekSite ? readingTrend(riverPeekSite.gageHistory) : null;
   const riverPeekCategory = riverPeekSite
     ? classifyFlood(riverPeekSite.gageHeightFt, riverPeekSite.floodStages)
     : null;
   const riverPeekName = riverPeekSite
     ? titleCaseRiver(riverPeekSite.river)
-    : riverGroups[0]?.river;
+    : undefined;
   const riverPeek = riverPeekSite
     ? `${riverPeekName} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft${riverPeekDir ? ` · ${riverPeekDir}` : ""}`
     : undefined;
@@ -1868,7 +1848,7 @@ export default async function PulsePage() {
               unit: `ft · ${
                 floodActive && riverPeekCategory
                   ? riverPeekCategory.label.toLowerCase()
-                  : riverPeekDir ?? "steady"
+                  : riverPeekDir ?? "gauge height"
               }`,
             },
           }
@@ -1877,83 +1857,11 @@ export default async function PulsePage() {
       body: rivers.length > 0
         ? (
           <div className="space-y-4">
-            {riverGroups.map((g) => (
-              <div key={g.river} className="space-y-2">
-                <p className="flex items-baseline gap-1.5 px-0.5">
-                  <span className="font-sans text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                    {g.river}
-                  </span>
-                  <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                    {g.sites.length} {g.sites.length === 1 ? "gauge" : "gauges"}
-                  </span>
-                </p>
-                <ul className="space-y-2.5">
-                  {g.sites.map((s) => {
-                    const hasHeight = s.gageHeightFt != null;
-                    const dir = readingTrend(s.gageHistory) ?? readingTrend(s.streamflowHistory);
-                    const flood = classifyFlood(s.gageHeightFt, s.floodStages);
-                    const trendTone: "neutral" | "good" | "warning" =
-                      dir === "rising" ? "warning" : dir === "falling" ? "good" : "neutral";
-                    const trendLabel =
-                      dir === "rising" ? "Rising" : dir === "falling" ? "Falling" : dir === "steady" ? "Steady" : "Current";
-                    // A flood category (action+) outranks the trend on the pill —
-                    // on a water board, "how close to flooding" beats "rising".
-                    const status: { label: string; tone: "neutral" | "good" | "warning" | "danger" } =
-                      flood && flood.key !== "normal"
-                        ? { label: flood.label, tone: flood.tone === "danger" ? "danger" : "warning" }
-                        : { label: trendLabel, tone: trendTone };
-                    const value = hasHeight ? s.gageHeightFt!.toFixed(2) : (s.streamflowCfs ?? 0).toLocaleString();
-                    const unit = hasHeight ? "ft" : "ft³/s";
-                    const trend = hasHeight ? s.gageHistory?.map((r) => r.value) : s.streamflowHistory?.map((r) => r.value);
-                    const secondary = hasHeight && s.streamflowCfs != null
-                      ? `Flow ${s.streamflowCfs.toLocaleString()} ft³/s`
-                      : null;
-                    const gaugeObservedAt = s.gageHistory?.at(-1)?.at ?? s.observedAt;
-                    const ago = gaugeObservedAt ? timeAgo(gaugeObservedAt) : "";
-                    return (
-                      <li key={s.id}>
-                        <MetricCard
-                          title={riverLocationOf(s.name) || titleCaseRiver(s.name)}
-                          value={value}
-                          unit={unit}
-                          trend={trend}
-                          animatedTrend
-                          accent="var(--app-cool)"
-                          trendStroke="var(--app-cool)"
-                          status={status}
-                          meta={
-                            ago || secondary ? (
-                              <>
-                                {ago}
-                                {ago && secondary && <span className="mx-1.5 opacity-50">·</span>}
-                                {secondary}
-                              </>
-                            ) : undefined
-                          }
-                          footer={
-                            flood && s.floodStages && s.gageHeightFt != null ? (
-                              <FloodGauge current={s.gageHeightFt} stages={s.floodStages} category={flood} animated />
-                            ) : undefined
-                          }
-                          href={
-                            s.floodStages
-                              ? nwsGaugeUrl(s.floodStages.nws)
-                              : usgsGaugeReadingsUrl(s.id)
-                          }
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-            <Link
-              href="/rivers"
-              className="inline-flex items-center gap-1 px-1 pt-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-cool)" }}
-            >
-              See 24-hour trends and the gauge map
-              <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            <p className="text-sm text-[var(--app-ink-2)]">{riverCoverageSummary(floodCoverage, rivers.length)}</p>
+            <RiverGaugeExplorer sites={rivers} initialGauge={riverPeekSite?.id} end={requestNow.toISOString()} />
+            <Link href="/rivers" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--app-link)] underline">
+              Open the river gauge page
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
             <Link
               href="/map?show=roads"
@@ -1964,13 +1872,13 @@ export default async function PulsePage() {
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </Link>
             <p className="px-1 pt-0.5 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Gauge readings are live. The high-water map is static risk
+              Gauge readings are observations. The high-water map is static risk
               context and does not report current flooding.
             </p>
           </div>
         )
         : <>
-            {emptyNote("Radius has no current river reading. Check the official gauge before using a crossing.")}
+            {emptyNote(riverCoverageSummary(floodCoverage, rivers.length))}
             <PulseOfficialLinks topic="rivers" />
           </>,
     },

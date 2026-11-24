@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getFrederickWaterSites,
+  getGaugeHistory,
   getFrederickWaterSitesWithHistoryResult,
 } from "@/lib/integrations/usgsWater";
 import { HIGH_VALUE_SOURCE_ENDPOINTS } from "@/lib/quality/feed-health";
@@ -90,6 +91,18 @@ describe("USGS Frederick County observations", () => {
       expect(data[0].gageHistory?.map(r => r.value)).toEqual(includeOlder ? [1.9, 1.5] : [1.5]);
     },
   );
+
+  it("requests only the selected gauge for longer historical ranges and keeps old readings out of current conditions", async () => {
+    const fetch = mockFeed((url) => {
+      expect(url.searchParams.get("monitoring_location_id")).toBe(JUG);
+      expect(url.searchParams.get("county_code")).toBe("021");
+      return collection([observation({ value: "7.2", time: "2026-11-21T15:30:00Z" }),
+        observation({ monitoring_location_id: DICKERSON, value: "9" })]);
+    });
+    const history = await getGaugeHistory("01643000", "P7D");
+    expect(history).toEqual({ end: NOW.toISOString(), flow: [], height: [{ value: 7.2, at: "2026-11-21T15:30:00.000Z" }] });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
 
   it("never revives an old height or flood category with a recent flow measurement", async () => {
     mockFeed(url => isMetadata(url) ? collection(stations) : collection([
