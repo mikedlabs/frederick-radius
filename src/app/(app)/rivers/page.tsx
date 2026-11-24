@@ -170,13 +170,13 @@ export default async function RiversPage() {
           Flood labels use official NWS thresholds where available. Forecasts,
           watches and warnings always remain with{" "}
           <a
-            href="https://water.weather.gov/ahps/region.php?state=md"
+            href="https://water.noaa.gov/wfo/lwx"
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold underline-offset-2 hover:underline"
             style={{ color: "var(--app-cool)" }}
           >
-            NWS&rsquo;s
+            the National Weather Service
           </a>
           .
         </p>
@@ -294,7 +294,7 @@ export default async function RiversPage() {
                       href={
                         site.floodStages
                           ? nwsGaugeUrl(site.floodStages.nws)
-                          : `https://waterdata.usgs.gov/monitoring-location/${site.id}/`
+                          : `https://api.waterdata.usgs.gov/ogcapi/v1/collections/latest-continuous/items?f=html&monitoring_location_id=USGS-${site.id}&parameter_code=00065,00060`
                       }
                     />
                   </li>
@@ -315,39 +315,39 @@ export default async function RiversPage() {
         }}
       >
         <p className="leading-relaxed">
-          Live readings from the U.S. Geological Survey (
+          Readings from the U.S. Geological Survey (
           <a
-            href="https://waterservices.usgs.gov/"
+            href="https://api.waterdata.usgs.gov/"
             target="_blank"
             rel="noopener noreferrer"
             className="underline-offset-2 hover:underline"
             style={{ color: "var(--app-cool)" }}
           >
-            waterservices.usgs.gov
+            USGS Water Data
           </a>
-          ); flood thresholds from the National Weather Service. Refreshed
-          every 15 minutes.
+          ) refresh every 15 minutes. Flood thresholds come from the National
+          Weather Service.
         </p>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <a
-            href="https://water.weather.gov/ahps/region.php?state=md"
+            href="https://water.noaa.gov/wfo/lwx"
             target="_blank"
             rel="noopener noreferrer"
             className="tap-44-y inline-flex items-center gap-1 underline-offset-2 hover:underline"
             style={{ color: "var(--app-cool)" }}
           >
             <Droplets className="h-3 w-3" strokeWidth={2} aria-hidden />
-            NWS Flood Outlook · Maryland
+            NWS regional river forecasts
           </a>
           <a
-            href={`https://www.google.com/maps/search/USGS+gauge+Frederick+County+MD`}
+            href="https://api.waterdata.usgs.gov/ogcapi/v1/collections/monitoring-locations/items?f=html&state_code=24&county_code=021&agency_code=USGS&site_type_code=ST&limit=200"
             target="_blank"
             rel="noopener noreferrer"
             className="tap-44-y inline-flex items-center gap-1 underline-offset-2 hover:underline"
             style={{ color: "var(--app-cool)" }}
           >
             <MapPin className="h-3 w-3" strokeWidth={2} aria-hidden />
-            Gauge map
+            USGS stream monitoring locations
           </a>
         </p>
       </footer>
