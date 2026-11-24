@@ -35,6 +35,8 @@ import { useNativeRequestReturn } from "@/components/search/useNativeRequestRetu
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { useScrollLock } from "@/hooks/useScrollLock";
 
+import { forgetFindResult, readFindResultReturn } from "@/components/search/find-result-return";
+
 const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
 let searchLayerSequence = 0;
 const FIND_DRAFT_KEY = "fr:find-draft:v1";
@@ -93,6 +95,7 @@ function anotherModalOwnsInput(): boolean {
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchInitialQuery, setSearchInitialQuery] = useState("");
+  const returnPlaceRef = useRef<string | null>(null);
   const searchDraftRef = useRef("");
   const searchDraftNeedsStorageRef = useRef(false);
   const [findInteractionReady, setFindInteractionReady] = useState(false);
@@ -147,7 +150,11 @@ export default function TopBar() {
   }, []);
   useEffect(installNativeReturnOwner, []);
   useNativeRequestReturn({ target: "tools-opener", inputRef: toolsOpenerRef, pathname, ready: findInteractionReady });
-  const closeSearch = useCallback(() => setSearchOpen(false), []);
+  const closeSearch = useCallback(() => {
+    forgetFindResult(searchLayerIdRef.current);
+    returnPlaceRef.current = null;
+    setSearchOpen(false);
+  }, []);
 
   // The overlay stays lazy and unmounts on close. Only its query survives in
   // this tab, including the existing full navigation to a result. Never retain
@@ -177,6 +184,33 @@ export default function TopBar() {
       searchDraftNeedsStorageRef.current = true;
     }
   }, []);
+
+  // Native Back can resume the original document from BFCache or mount a
+  // fresh shell. Reuse that entry's layer ID so reopening adds no history step.
+  useEffect(() => {
+    const restore = () => {
+      if (window.location.pathname !== pathname || anotherModalOwnsInput()) return;
+      const result = readFindResultReturn();
+      if (!result) return;
+      if (!searchOpenerRef.current?.isConnected) {
+        searchOpenerRef.current = Array.from(document.querySelectorAll<HTMLElement>("[data-find-interaction-ready]"))
+          .find((button) => button.getClientRects().length > 0) ?? null;
+      }
+      searchPathRef.current = pathname;
+      searchLayerIdRef.current = result.id;
+      searchReturnScrollYRef.current = result.scrollY;
+      returnPlaceRef.current = result.href;
+      setSearchInitialQuery(result.query);
+      setSearchOpen(true);
+    };
+    restore();
+    window.addEventListener("pageshow", restore);
+    window.addEventListener("popstate", restore);
+    return () => {
+      window.removeEventListener("pageshow", restore);
+      window.removeEventListener("popstate", restore);
+    };
+  }, [pathname]);
 
   // The app bar is server-rendered before this client component hydrates. An
   // enabled button in that brief window looks actionable but has no click
@@ -536,6 +570,7 @@ export default function TopBar() {
           <SearchOverlay
             open
             initialQuery={searchInitialQuery}
+            returnPlaceHref={returnPlaceRef.current}
             onQueryChange={rememberSearchDraft}
             onClose={closeSearch}
             openerRef={searchOpenerRef}

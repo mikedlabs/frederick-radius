@@ -451,8 +451,8 @@ test.describe("map search selection", () => {
       window.sessionStorage.setItem(
         "fr_geo_v1",
         JSON.stringify({
-          lng: -77.4106,
-          lat: 39.4143,
+          lng: -77.410692,
+          lat: 39.414378,
           accuracy: 20,
           timestamp: Date.now(),
         }),
@@ -461,6 +461,7 @@ test.describe("map search selection", () => {
     let matrixRequests = 0;
     await page.route("**/api/travel-matrix", async (route) => {
       matrixRequests += 1;
+      expect(route.request().postDataJSON().origin).toEqual({ lng: -77.411, lat: 39.414 });
       await route.abort("failed");
     });
     await page.goto("/map", { waitUntil: "domcontentloaded" });

@@ -11,7 +11,7 @@ vi.mock("@/hooks/useReversibleHistoryLayer", () => ({
 }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 const geo = vi.hoisted(() => ({ cached: null as { lat: number; lng: number } | null }));
-vi.mock("@/hooks/useGeolocation", () => ({ readCachedPosition: () => geo.cached }));
+vi.mock("@/hooks/useGeolocation", () => ({ GEOLOCATION_CHANGE_EVENT: "fr:geolocation-change", readCachedPosition: () => geo.cached }));
 vi.mock("@/hooks/useRecentSearches", () => ({
   useRecentSearches: () => [], useRecentSearchStatus: () => ({ available: true, clearFailed: false }),
   usePushRecentSearch: () => navigation.recent, useClearRecentSearches: () => vi.fn(),
@@ -197,6 +197,21 @@ describe("Find states the shared area", () => {
     expect(field().getAttribute("aria-label")).toBe("Ask or find near you");
     await respond(0, [gravel], { qualifiers: { constrained: false }, contextLabel: null });
     expect(areaLine()).toBe("Near me");
+  });
+
+  it("rounds inside the browser and drops the fix when the chosen area changes", async () => {
+    geo.cached = { lat: 39.414378, lng: -77.410692 };
+    await render("coffee"); await tick();
+    const sent = () => new URL(requests.at(-1)!.url, "https://test.local").searchParams;
+    expect([sent().get("lat"), sent().get("lng")]).toEqual(["39.414", "-77.411"]);
+    for (const scope of ["county", "town:brunswick"] as const) {
+      await act(async () => setScope(scope)); await tick();
+      expect(sent().has("lat") || sent().has("lng")).toBe(false);
+    }
+    await act(async () => setScope("nearme"));
+    geo.cached = null; // The fix expires during the debounce.
+    await tick();
+    expect(sent().has("lat") || sent().has("lng")).toBe(false);
   });
 
   it("names the area a near-me question fell back to when no location is usable", async () => {

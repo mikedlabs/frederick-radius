@@ -12,7 +12,8 @@ import {
   useSyncExternalStore,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { getScope, scopeInSentence, scopeLabel, scopeTownSlug, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { deviceOriginForScope, getScope, scopeInSentence, scopeLabel, scopeTownSlug, scopeToParam, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { isPlaceDetailPath, rememberFindResult } from "./find-result-return";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Phone, Train, Activity } from "lucide-react";
@@ -21,7 +22,7 @@ import type {
   SearchResult,
   SearchResultType,
 } from "@/lib/search/index";
-import { readCachedPosition } from "@/hooks/useGeolocation";
+import { GEOLOCATION_CHANGE_EVENT, readCachedPosition } from "@/hooks/useGeolocation";
 import { haversineMeters, formatDistance } from "@/lib/geo";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
 import { findQuickAnswers } from "@/lib/answers/intents";
@@ -357,6 +358,7 @@ export default function SearchOverlay({
   open,
   onClose,
   initialQuery = "",
+  returnPlaceHref,
   onQueryChange,
   openerRef,
   historyLayerId,
@@ -366,6 +368,7 @@ export default function SearchOverlay({
   onClose: () => void;
   /** Restore words only. Every mount gets current results and scope from the API. */
   initialQuery?: string;
+  returnPlaceHref?: string | null;
   onQueryChange?: (query: string) => void;
   /** Explicit opener for touch browsers, which do not always move focus to
    * the button a person taps before mounting the dialog. */
@@ -396,6 +399,7 @@ export default function SearchOverlay({
   const searchedArea: Scope | null = area ?? (coords ? "nearme" : null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const focusResultRef = useRef(returnPlaceHref);
   const dialogRef = useRef<HTMLDivElement>(null);
   /** Element focused before the overlay opened — focus returns to it on
    *  close (WCAG 2.4.3; previously focus was dropped on the body). */
@@ -418,6 +422,7 @@ export default function SearchOverlay({
     active: open,
     id: historyLayerId,
     onDismiss: closeFindLayer,
+    retainEntryFor: isPlaceDetailPath,
     returnScrollY,
   });
   const dismiss = historyLayer.dismiss;
@@ -425,12 +430,13 @@ export default function SearchOverlay({
     (href: string) => {
       leavingFindRef.current = true;
       // Native navigation can freeze this document in BFCache immediately.
-      // Close before that boundary so Back cannot revive old query/results.
-      // Keep the layer entry for leaveTo's existing atomic replace contract.
+      // Abort pending work before it freezes. On Back, rank the original
+      // query again under the current scope and freshness rules.
       flushSync(onClose);
+      rememberFindResult(historyLayerId, query, href);
       historyLayer.leaveTo(href);
     },
-    [historyLayer, onClose],
+    [historyLayer, historyLayerId, onClose, query],
   );
   const openOfficialAnswer = useCallback((href: string) => {
     const safeHref = safeOfficialAnswerHref(href);
@@ -446,6 +452,7 @@ export default function SearchOverlay({
   }, []);
 
   const updateQuery = (next: string) => {
+    focusResultRef.current = null;
     onQueryChange?.(next);
     setQuery(next);
     // Never leave a result from the previous query tappable during the
@@ -488,11 +495,13 @@ export default function SearchOverlay({
       setStatus("loading");
       const lookupQuery = simpleCategoryRequestQuery(q) ?? exactLookup ?? q;
       const params = new URLSearchParams({ q: lookupQuery, limit: "12" });
-      if (coords) {
-        // About 11m precision: enough to rank nearby places without sending an
-        // unnecessarily exact location to the search endpoint.
-        params.set("lat", coords.lat.toFixed(4));
-        params.set("lng", coords.lng.toFixed(4));
+      // The debounce may cross the fix deadline or a location-scope change.
+      const scope = getScope();
+      if (scope && scope !== "nearme") params.set("in", scopeToParam(scope));
+      const origin = deviceOriginForScope(scope, readCachedPosition());
+      if (origin) {
+        params.set("lat", String(origin.lat));
+        params.set("lng", String(origin.lng));
       }
       fetch(`/api/search?${params.toString()}`, {
         signal: ctrl.signal,
@@ -522,7 +531,7 @@ export default function SearchOverlay({
             setStatus("error");
           }
         });
-    }, 150);
+    }, focusResultRef.current ? 0 : 150);
     return () => {
       clearTimeout(t);
       ctrl.abort();
@@ -564,19 +573,23 @@ export default function SearchOverlay({
       leavingFindRef.current = false;
       returnScrollYRef.current =
         returnScrollY ?? storedFindReturnScrollY() ?? window.scrollY;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot read of a client-only cached fix when the overlay opens
-      setCoords(readCachedPosition());
+      const syncLocation = () => setCoords(readCachedPosition());
+      syncLocation();
+      window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncLocation);
       // Remember what had focus (the TopBar search button) so closing the
       // overlay puts the keyboard user back where they were.
       returnFocusRef.current =
         openerRef?.current ??
         (document.activeElement instanceof HTMLElement ? document.activeElement : null);
       const t = setTimeout(
-        () => inputRef.current?.focus({ preventScroll: true }),
+        () => {
+          if (!listRef.current?.contains(document.activeElement)) inputRef.current?.focus({ preventScroll: true });
+        },
         50,
       );
       return () => {
         clearTimeout(t);
+        window.removeEventListener(GEOLOCATION_CHANGE_EVENT, syncLocation);
         // Restoring focus must not pull the page underneath the full-screen
         // Find surface to a new scroll position. That jump is especially
         // noticeable on a phone after someone opens Find halfway down Today.
@@ -588,11 +601,25 @@ export default function SearchOverlay({
     }
   }, [open, openerRef, returnScrollY]);
 
+  // Return the keyboard or screen-reader user to the place they opened. If
+  // the updated ranking no longer includes it, the search field keeps focus.
+  useEffect(() => {
+    if (!focusResultRef.current || status !== "done") return;
+    const href = focusResultRef.current;
+    focusResultRef.current = null;
+    if (document.activeElement !== inputRef.current &&
+        dialogRef.current?.contains(document.activeElement)) return;
+    const link = Array.from(listRef.current?.querySelectorAll<HTMLAnchorElement>("a[href]") ?? [])
+      .find((candidate) => candidate.getAttribute("href") === href);
+    link?.focus();
+  }, [status, results]);
+
   // Reset on close
   useEffect(() => {
     if (!open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional UI reset when the overlay closes
       setQuery("");
+      setCoords(null);
       setResults([]);
       setSearchMeta(null);
       setStatus("idle");
