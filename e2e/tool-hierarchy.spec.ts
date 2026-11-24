@@ -5,6 +5,62 @@ const COMPASS_PINS_KEY = "fr.compass.pins.v1";
 const DEFAULT_PINNED_TOOLS = ["Ask Radius", "Near me", "County status", "Nearby essentials"];
 const activate = (locator: Locator) => locator.tap();
 
+test("touch tablets keep the index, focused filter and results through rotation", async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto("/compass", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
+  const tasks = await page.locator('section[aria-labelledby="compass-browse-heading"]').boundingBox();
+  const pins = await page.locator('section[aria-labelledby="compass-pinned-heading"]').boundingBox();
+  expect(tasks && pins && pins.x >= tasks.x + tasks.width).toBe(true);
+
+  const index = page.getByRole("button", { name: "Browse the full tool index" });
+  await index.tap();
+  const dialog = page.getByRole("dialog", { name: "All tools" });
+  const categories = dialog.getByRole("navigation", { name: "Tool categories" });
+  const firstSection = dialog.locator("#compass-tools-decide");
+  const rail = await categories.boundingBox();
+  const rows = await firstSection.boundingBox();
+  expect(rail && rows && rows.x >= rail.x + rail.width).toBe(true);
+  const filter = dialog.getByRole("searchbox");
+  await filter.fill("restroom");
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await expect(filter).toHaveValue("restroom");
+  await expect(filter).toBeFocused();
+  await expect(dialog.getByRole("link", { name: /^Find a restroom/ })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect.poll(() => dialog.evaluate(node => {
+    const box = node.getBoundingClientRect();
+    return Math.abs(2 * box.x + box.width - window.innerWidth);
+  })).toBeLessThanOrEqual(2);
+  expect(await dialog.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+  await page.keyboard.press("Escape");
+  await expect(index).toBeFocused();
+});
+
+test.describe("Tools on a keyboard and mouse", () => {
+  test.use({ isMobile: false, hasTouch: false, viewport: { width: 1366, height: 768 } });
+
+  test("the side panel keeps its categories visible and returns keyboard focus", async ({ page }) => {
+    await page.goto("/compass", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
+    const index = page.getByRole("button", { name: "Browse the full tool index" });
+    await index.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "All tools" });
+    const lastCategory = dialog.getByRole("navigation", { name: "Tool categories" }).getByRole("button").last();
+    await expect(lastCategory).toBeInViewport();
+    await expect.poll(() => dialog.evaluate(node =>
+      Math.abs(node.getBoundingClientRect().right - window.innerWidth),
+    )).toBeLessThanOrEqual(2);
+    const filter = dialog.getByRole("searchbox");
+    await filter.fill("restroom");
+    await filter.press("ArrowDown");
+    await expect(dialog.locator("[data-tool-link]").first()).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(index).toBeFocused();
+  });
+});
+
 for (const width of [320, 375, 390, 430]) {
   test(`Tools exposes one readable intent action set at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });

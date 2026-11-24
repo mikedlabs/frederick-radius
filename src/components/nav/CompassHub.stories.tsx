@@ -79,7 +79,7 @@ export const IntentAt390: Story = { globals: { viewport: { value: "radiusMobile"
 export const IntentAt430ReducedMotion: Story = { globals: { viewport: { value: "radiusMobileLarge", isRotated: false }, motion: "reduce" }, play: intentFlow };
 
 /**
- * The full index as a phone sheet. The Storybook canvas uses the story's
+ * The Storybook canvas uses the story's
  * viewport; the browser gate resizes its own frame to the same size.
  */
 function indexSheetAt(width: number, height: number, viewport: string): Story {
@@ -99,12 +99,18 @@ function indexSheetAt(width: number, height: number, viewport: string): Story {
         await waitFor(() => expect(launcher).toBeEnabled()); await userEvent.click(launcher);
         const sheet = await within(document.body).findByRole("dialog", { name: "All tools" });
         const index = within(sheet);
-        // Wait for the entrance transform before measuring the resting sheet.
-        await waitFor(() => expect(Math.round(sheet.getBoundingClientRect().bottom)).toBe(window.innerHeight));
-        const box = sheet.getBoundingClientRect();
-        await expect(Math.round(box.left)).toBe(0);
-        await expect(Math.round(box.width)).toBe(document.documentElement.clientWidth);
-        await expect(box.top).toBeGreaterThanOrEqual(window.innerHeight * 0.1 - 1);
+        if (width < 704) {
+          await waitFor(() => expect(Math.round(sheet.getBoundingClientRect().bottom)).toBe(window.innerHeight));
+          const box = sheet.getBoundingClientRect();
+          await expect(Math.round(box.left)).toBe(0);
+          await expect(Math.round(box.width)).toBe(document.documentElement.clientWidth);
+          await expect(box.top).toBeGreaterThanOrEqual(window.innerHeight * 0.1 - 1);
+        } else {
+          const categories = index.getByRole("navigation", { name: "Tool categories" });
+          const heading = index.getByRole("heading", { name: "Find something" });
+          await waitFor(() => expect(categories.getBoundingClientRect().right)
+            .toBeLessThanOrEqual(heading.getBoundingClientRect().left));
+        }
         // The sheet does not drag, so its first element is the header, not a grab pill.
         await expect(sheet.firstElementChild?.tagName).toBe("HEADER");
         // Measure the Close control at rest. A bounding box read while a press
@@ -142,6 +148,8 @@ export const IndexSheetAt320 = indexSheetAt(320, 568, "radiusMobileNarrow");
 export const IndexSheetAt375 = indexSheetAt(375, 667, "radiusMobileCompact");
 export const IndexSheetAt390 = indexSheetAt(390, 844, "radiusMobile");
 export const IndexSheetAt430 = indexSheetAt(430, 932, "radiusMobileLarge");
+export const IndexOnTablet = indexSheetAt(768, 1024, "radiusTablet");
+export const IndexOnLaptop = indexSheetAt(1440, 900, "radiusDesktop");
 
 export const FullIndex: Story = {
   play: async ({ canvasElement }) => {

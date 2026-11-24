@@ -32,6 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import ToolDeckDialog from "@/components/nav/ToolDeckDialog";
+import styles from "./ToolsLayout.module.css";
 import { TOOL_ICONS } from "@/components/tools/toolIcons";
 import {
   RADIUS_TOOLS,
@@ -760,7 +761,7 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
     : [];
   return (
     <div
-      className="space-y-5"
+      className={`space-y-5 ${styles.hub}`}
       data-compass-ready={hydrated ? "true" : "false"}
     >
       <div hidden={embeddedInToolsDrawer && deckView !== null} className="space-y-4">
@@ -820,7 +821,7 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
           />
         ) : null}
 
-        <div className={embeddedInToolsDrawer ? "space-y-4" : "grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-10"}>
+        <div className={styles.hubColumns}>
           <CompassIntentBoard
             intents={COMPASS_INTENT_DEFINITIONS}
             groups={groups}
@@ -961,7 +962,7 @@ function PinnedTools({
       </div>
 
       {items.length > 0 ? (
-        <ul className={compassShortcutGridClass(items.length)}>
+        <ul className={`${compassShortcutGridClass(items.length)} ${styles.shortcutGrid}`}>
           {items.map((item) => (
               <li key={item.id} className="min-w-0">
                 <Link
@@ -969,13 +970,13 @@ function PinnedTools({
                   prefetch={false}
                   {...externalLinkProps(item)}
                   {...intentProps(item)}
-                  className="tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-start gap-1.5 rounded-[var(--app-radius-md)] px-0.5 py-1.5 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                  className={`tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-start gap-1.5 rounded-[var(--app-radius-md)] px-0.5 py-1.5 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] ${styles.shortcutLink}`}
                 >
                   {/* The glyph in its own color, directly on Cream. The old
                       bordered-and-filled tile was a box inside a box: the
                       grid cell already bounds the target. */}
                   <span
-                    className="grid h-9 w-9 place-items-center"
+                    className={`grid h-9 w-9 shrink-0 place-items-center ${styles.shortcutIcon}`}
                     style={{ color: item.color }}
                   >
                     <item.icon
@@ -1507,58 +1508,7 @@ function DeckToolBrowser({
   };
 
   return (
-    <div ref={browserRef} className="space-y-4">
-      {showCategoryNav && !filter ? (
-        <nav
-          aria-label="Tool categories"
-          className="sticky top-0 z-10 -mx-1 border-b bg-[var(--app-bg-elevated-solid)] px-1 pb-2 pt-0.5"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <div className="flex snap-x gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {groups.map((group) => {
-              const Icon = GROUP_META[group.id].icon;
-              return (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => {
-                    document
-                      .getElementById(`compass-tools-${group.id}`)
-                      ?.scrollIntoView({
-                        behavior: window.matchMedia(
-                          "(prefers-reduced-motion: reduce)",
-                        ).matches
-                          ? "auto"
-                          : "smooth",
-                        block: "start",
-                      });
-                  }}
-                  // tap-44: the chip PAINTS 40px tall (min-h-10, deliberate
-                  // density for a nine-chip rail) but must HIT 44, per the
-                  // repo's own tap-target rule. The invisible extender adds
-                  // the missing 4px of touch without changing the paint.
-                  className="tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-2.5 text-[12px] font-semibold text-[var(--app-ink)] outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-                >
-                  <Icon
-                    className="h-3.5 w-3.5"
-                    style={{ color: GROUP_META[group.id].color }}
-                    strokeWidth={2.1}
-                    aria-hidden
-                  />
-                  {group.label}
-                  <span
-                    className="font-mono text-[10px] tabular-nums"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {group.items.length}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      ) : null}
-
+    <div ref={browserRef} className={`space-y-4 ${styles.index}`}>
       {total > 7 ? (
         <label className="block">
           <span className="sr-only">Search tools in this section</span>
@@ -1581,7 +1531,7 @@ function DeckToolBrowser({
               onKeyDown={onFilterKeyDown}
               enterKeyHint={showPinControls ? undefined : "go"}
               placeholder="Filter these tools"
-              className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-10 text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-10 text-[16px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
               style={{
                 borderColor: "var(--app-border)",
                 color: "var(--app-ink)",
@@ -1605,37 +1555,91 @@ function DeckToolBrowser({
         </label>
       ) : null}
 
-      {visibleGroups.length > 0 ? (
-        visibleGroups.map((group) => (
-          <section
-            key={group.id}
-            id={`compass-tools-${group.id}`}
-            className="scroll-mt-14 space-y-2.5"
+      <div className={`${styles.indexColumns} ${showCategoryNav && !filter ? styles.indexWithCategories : ""}`}>
+        {showCategoryNav && !filter ? (
+          <nav
+            aria-label="Tool categories"
+            className={`sticky top-0 z-10 -mx-1 border-b bg-[var(--app-bg-elevated-solid)] px-1 pb-2 pt-0.5 ${styles.categoryNav}`}
+            style={{ borderColor: "var(--app-border)" }}
           >
-            {showGroupHeadings ? (
-              <h3 className="text-[15px] font-semibold">{group.label}</h3>
-            ) : null}
-            <ToolLedger
-              items={group.items}
-              pinnedIds={pinnedIds}
-              onTogglePin={onTogglePin}
-              intentProps={filterIntentProps}
-              showPinControls={showPinControls}
-            />
-          </section>
-        ))
-      ) : (
-        <p
-          role="status"
-          className="rounded-[var(--app-radius-md)] border px-4 py-5 text-[13px] font-medium"
-          style={{
-            borderColor: "var(--app-border)",
-            color: "var(--app-ink-3)",
-          }}
-        >
-          No tools in this section match “{filter.trim()}.”
-        </p>
-      )}
+            <div className={styles.categoryStrip}>
+              {groups.map((group) => {
+                const Icon = GROUP_META[group.id].icon;
+                return (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => {
+                      document
+                        .getElementById(`compass-tools-${group.id}`)
+                        ?.scrollIntoView({
+                          behavior: window.matchMedia(
+                            "(prefers-reduced-motion: reduce)",
+                          ).matches
+                            ? "auto"
+                            : "smooth",
+                          block: "start",
+                        });
+                    }}
+                    // tap-44: the chip PAINTS 40px tall (min-h-10, deliberate
+                    // density for a nine-chip rail) but must HIT 44, per the
+                    // repo's own tap-target rule. The invisible extender adds
+                    // the missing 4px of touch without changing the paint.
+                    className="tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-2.5 text-[12px] font-semibold text-[var(--app-ink)] outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                  >
+                    <Icon
+                      className="h-3.5 w-3.5"
+                      style={{ color: GROUP_META[group.id].color }}
+                      strokeWidth={2.1}
+                      aria-hidden
+                    />
+                    {group.label}
+                    <span
+                      className="font-mono text-[10px] tabular-nums"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {group.items.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        ) : null}
+        <div className="min-w-0 space-y-4">
+          {visibleGroups.length > 0 ? (
+            visibleGroups.map((group) => (
+              <section
+                key={group.id}
+                id={`compass-tools-${group.id}`}
+                className="scroll-mt-14 space-y-2.5"
+              >
+                {showGroupHeadings ? (
+                  <h3 className="text-[15px] font-semibold">{group.label}</h3>
+                ) : null}
+                <ToolLedger
+                  items={group.items}
+                  pinnedIds={pinnedIds}
+                  onTogglePin={onTogglePin}
+                  intentProps={filterIntentProps}
+                  showPinControls={showPinControls}
+                />
+              </section>
+            ))
+          ) : (
+            <p
+              role="status"
+              className="rounded-[var(--app-radius-md)] border px-4 py-5 text-[13px] font-medium"
+              style={{
+                borderColor: "var(--app-border)",
+                color: "var(--app-ink-3)",
+              }}
+            >
+              No tools in this section match “{filter.trim()}.”
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
