@@ -46,6 +46,9 @@ type Story = StoryObj<typeof meta>;
 
 const intentFlow = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
   const canvas = within(canvasElement);
+  const essentials = within(canvas.getByRole("navigation", { name: "Everyday essentials" }));
+  await expect(essentials.getByRole("link", { name: "Restrooms" })).toHaveAttribute("href", "/map?amenity=restroom");
+  await expect(essentials.getByRole("link", { name: "Emergency" })).toHaveAttribute("href", "/emergency");
   const find = canvas.getByRole("link", { name: "Find a place, service, event, or answer" });
   await expect(find).toHaveAttribute("href", "/search");
   await expect(find.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);

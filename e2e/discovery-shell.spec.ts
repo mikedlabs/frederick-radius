@@ -693,7 +693,7 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "What do you need?" }),
+      page.getByRole("heading", { level: 1, name: "Local tools" }),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "Find a place, service, event, or answer" })).toHaveAttribute("href", "/search");
     await expect(page.getByRole("searchbox")).toHaveCount(0);

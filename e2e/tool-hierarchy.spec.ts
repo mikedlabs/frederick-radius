@@ -13,6 +13,15 @@ for (const width of [320, 375, 390, 430]) {
     await expect(compass).toHaveAttribute("data-compass-ready", "true");
     const find = compass.getByRole("link", { name: "Find a place, service, event, or answer" });
     await expect(find).toBeVisible(); await expect(find).toHaveAttribute("href", "/search");
+    const essentials = compass.getByRole("navigation", { name: "Everyday essentials" });
+    for (const [name, href] of [["Parking", "/parking"], ["Restrooms", "/map?amenity=restroom"], ["Emergency", "/emergency"]]) {
+      const link = essentials.getByRole("link", { name, exact: true });
+      await expect(link).toHaveAttribute("href", href);
+      await expect(link).toBeInViewport();
+      const box = await link.boundingBox();
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+    }
     await expect(compass.getByRole("searchbox")).toHaveCount(0);
     const chapters = compass.locator("[data-compass-intent]");
     await expect(chapters).toHaveCount(4);

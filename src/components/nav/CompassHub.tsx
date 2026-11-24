@@ -58,6 +58,11 @@ import {
 } from "./toolDeckModel";
 
 const RECENT_TOOLS_KEY = "fr.compass.recent.v1";
+const EVERYDAY_TOOLS = [
+  { id: "parking", label: "Parking" },
+  { id: "restrooms", label: "Restrooms" },
+  { id: "emergency", label: "Emergency" },
+] as const;
 export const ALL_COMPASS_TOOLS_ID = "all-tools";
 
 export function compassShortcutGridClass(itemCount: number): string {
@@ -685,6 +690,10 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
     const item = itemById.get(id);
     return item ? [item] : [];
   });
+  const everydayItems = EVERYDAY_TOOLS.flatMap(({ id, label }) => {
+    const item = itemById.get(id);
+    return item ? [{ item, label }] : [];
+  });
   // Noon is the stable server/first-client snapshot. Once local settings are
   // hydrated, the row quietly changes to the device's current daypart.
   const localHour = hydrated ? new Date().getHours() : 12;
@@ -708,6 +717,7 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
   // whole board would empty this row permanently - and "what you opened
   // last" is worth more at the top of a long page, not less.
   const visibleDestinationHrefs = new Set([
+    ...everydayItems.map(({ item }) => item.href),
     ...pinnedItems.map((item) => item.href),
     "/today",
     "/map",
@@ -753,26 +763,16 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
       className="space-y-5"
       data-compass-ready={hydrated ? "true" : "false"}
     >
-      <div hidden={embeddedInToolsDrawer && deckView !== null} className="space-y-5">
-        <header
-          // No horizontal bleed: the header text, the Find field and this
-          // rule share the rows' left edge, and the rule is inset like every
-          // other rule on the page.
-          className="-mt-4 border-b pb-4 pt-4 sm:-mt-6 sm:pt-5 lg:mt-0"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-            Tools
-          </p>
-          <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-tight sm:text-[32px]">
-            What do you need?
+      <div hidden={embeddedInToolsDrawer && deckView !== null} className="space-y-4">
+        <header className="-mt-4 pt-4 sm:-mt-6 sm:pt-5 lg:mt-0">
+          <h1 className="text-[28px] font-semibold leading-tight tracking-tight sm:text-[32px]">
+            Local tools
           </h1>
           <Link
             ref={findLauncherRef}
             href="/search"
             prefetch={false}
             data-compass-find
-            aria-label="Find a place, service, event, or answer"
             onClick={(event) => {
               // The existing Tools drawer already owns modal input. Let this
               // real search destination clear that route rather than stacking Find.
@@ -788,18 +788,27 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
               haptic("light");
               requestFind("global");
             }}
-            className="tactile-interactive mt-4 flex min-h-16 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 py-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+            className="tactile-interactive mt-3 flex min-h-12 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
             style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
           >
             <Search className="h-5 w-5 shrink-0" style={{ color: "var(--app-link)" }} strokeWidth={2} aria-hidden />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[16px] font-semibold leading-tight">Find places and events</span>
-              <span className="mt-1 block text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                Search a name, a need, or a question.
-              </span>
-            </span>
+            <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug">Find a place, service, event, or answer</span>
             <ArrowRight className="h-4 w-4 shrink-0" style={{ color: "var(--app-ink-2)" }} strokeWidth={2} aria-hidden />
           </Link>
+          <nav aria-label="Everyday essentials" className="mt-1 grid grid-cols-3 border-b" style={{ borderColor: "var(--app-border)" }}>
+            {everydayItems.map(({ item, label }) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                prefetch={false}
+                {...intentProps(item)}
+                className="flex min-h-12 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-1 text-[14px] font-semibold outline-none hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+              >
+                <item.icon className="h-4 w-4 shrink-0" style={{ color: item.id === "emergency" ? "var(--app-danger)" : item.color }} aria-hidden />
+                {label}
+              </Link>
+            ))}
+          </nav>
         </header>
 
         {contextualItem && contextualSuggestion ? (
@@ -811,25 +820,27 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
           />
         ) : null}
 
-        <CompassIntentBoard
-          intents={COMPASS_INTENT_DEFINITIONS}
-          groups={groups}
-          liveKeys={deckLiveKeys}
-          onOpen={openDeck}
-          intentProps={intentProps}
-          ready={hydrated}
-        />
-
-        {recentItems.length > 0 ? (
-          <RecentTools items={recentItems} intentProps={intentProps} />
-        ) : null}
-
-        <PinnedTools
-          items={pinnedItems}
-          intentProps={intentProps}
-          onManage={() => openDeck("all", true)}
-          ready={hydrated}
-        />
+        <div className={embeddedInToolsDrawer ? "space-y-4" : "grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-10"}>
+          <CompassIntentBoard
+            intents={COMPASS_INTENT_DEFINITIONS}
+            groups={groups}
+            liveKeys={deckLiveKeys}
+            onOpen={openDeck}
+            intentProps={intentProps}
+            ready={hydrated}
+          />
+          <div className="min-w-0 space-y-4">
+            <PinnedTools
+              items={pinnedItems}
+              intentProps={intentProps}
+              onManage={() => openDeck("all", true)}
+              ready={hydrated}
+            />
+            {recentItems.length > 0 ? (
+              <RecentTools items={recentItems} intentProps={intentProps} />
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <ToolDeckDialog
@@ -844,9 +855,7 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
         description={
           editingPins
             ? `Pin up to ${TOOL_DECK_PIN_LIMIT} tools for quick access on this device.`
-            : selectedIntent?.description ??
-              selectedGroup?.description ??
-              "Browse by category or search for a specific tool."
+            : selectedIntent?.description ?? selectedGroup?.description
         }
         onClose={closeDeck}
       >
@@ -1006,10 +1015,7 @@ function PinnedTools({
             background: "var(--app-bg-elevated-solid)",
           }}
         >
-          <span className="block text-[13px] font-semibold">Choose your shortcuts</span>
-          <span className="mt-1 block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Open all tools and pin the ones you use most.
-          </span>
+          <span className="block text-[14px] font-semibold">Choose your shortcuts</span>
         </button>
       )}
 
@@ -1350,13 +1356,11 @@ function CompassIntentBoard({
   };
 
   return (
-    <section aria-labelledby="compass-browse-heading" className="space-y-3">
-      <h2 id="compass-browse-heading" className="text-[16px] font-semibold tracking-tight">
-        Choose a direction
+    <section aria-labelledby="compass-browse-heading">
+      <h2 id="compass-browse-heading" className="sr-only">
+        Browse by task
       </h2>
-      {/* Ruled rows on the page ground: a hairline between directions, no
-          boxes. Each row is a 44px-plus disclosure with one muted line. */}
-      <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+      <ul>
         {intents.map((intent) => {
           const actions = intent.featuredIds.flatMap((id) => {
             const item = itemById.get(id);
@@ -1379,16 +1383,16 @@ function CompassIntentBoard({
                     chooseChapter(open ? null : intent.id);
                     track("compass_intent_toggle", { intent: intent.id, open: !open });
                   }}
-                  className="flex min-h-16 w-full items-center gap-3 py-3 text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
+                  className="flex min-h-14 w-full items-center gap-3 py-2 text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
                 >
                   <intent.icon className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: intentColor[intent.id] }} aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[17px] font-semibold leading-tight">{intent.label}</span>
-                    {line ? <span className="mt-1 block text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</span> : null}
                   </span>
                   <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
                 </button>
                 <div id={contentId} hidden={!open}>
+                  {line ? <p className="mb-1 pl-8 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</p> : null}
                   <ul className="pb-1 pl-8">
                     {actions.map((item) => (
                       <li key={item.id}>
@@ -1609,15 +1613,7 @@ function DeckToolBrowser({
             className="scroll-mt-14 space-y-2.5"
           >
             {showGroupHeadings ? (
-              <div>
-                <h3 className="text-[14px] font-semibold">{group.label}</h3>
-                <p
-                  className="mt-0.5 text-[12px] leading-snug"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {group.description}
-                </p>
-              </div>
+              <h3 className="text-[15px] font-semibold">{group.label}</h3>
             ) : null}
             <ToolLedger
               items={group.items}
