@@ -152,7 +152,7 @@ export default function ReportClient({
   const submit = useCallback(async () => {
     const map = mapRef.current?.getMap();
     if (!map) {
-      setStatus({ tone: "error", text: "The map isn’t ready. Your report hasn’t been sent. Try again when the map loads." });
+      setStatus({ tone: "error", text: "Your report hasn’t been sent. Try again once the map loads." });
       return;
     }
     const c = map.getCenter();
