@@ -413,7 +413,9 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(subject.caption.y + subject.caption.height).toBeLessThanOrEqual(subject.box.y + subject.box.height + 1);
       for (const line of subject.lines) {
         expect(line.x).toBeGreaterThanOrEqual(subject.caption.x);
-        expect(line.y).toBeGreaterThanOrEqual(subject.caption.y);
+        // A Range includes the font's ascent, which can sit 1px above
+        // the line box even when the visible letters are inside the caption.
+        expect(line.y).toBeGreaterThanOrEqual(subject.caption.y - 1);
         expect(line.x + line.width).toBeLessThanOrEqual(subject.caption.x + subject.caption.width + 1);
         expect(line.y + line.height).toBeLessThanOrEqual(subject.caption.y + subject.caption.height + 1);
       }
@@ -533,7 +535,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       const news = document.querySelector('section[aria-label="Local news"]')?.getBoundingClientRect();
       const explore = document.querySelector('section[aria-labelledby="today-explore-heading"]')?.getBoundingClientRect();
       return Boolean(entry && photo && quick && events && places && news && explore && photo.y >= entry.bottom
-        && places.y >= photo.bottom && events.y >= places.bottom && news.y >= events.bottom
+        && places.y >= photo.bottom && events.y >= photo.bottom && news.y >= Math.max(places.bottom, events.bottom)
         && explore.y >= news.bottom && quick.y >= explore.y);
     })).toBe(true);
     const currentLayout = await page.evaluate(() => {
@@ -550,8 +552,11 @@ for (const width of [320, 375, 390, 430, 1366]) {
       const entry = document.querySelector("header:has([data-today-area-trigger])")!;
       const news = document.querySelector('section[aria-label="Local news"]')!;
       const explore = document.querySelector('section[aria-labelledby="today-explore-heading"]')!;
+      const grid = document.querySelector("[data-today-current-content]")!;
+      const wideGrid = grid.clientWidth >= 48 * parseFloat(getComputedStyle(document.documentElement).fontSize);
       const precedes = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
       return { places: read(places), events: read(events), decision: read(decision), photo: read(photo), quick: read(quick), news: read(news), explore: read(explore),
+        sideBySide: wideGrid && events.childElementCount > 0,
         entryBeforePhoto: precedes(entry, photo), photoBeforeQuick: precedes(photo, quick),
         photoOutsidePlaces: !places.contains(photo), photoBeforeEvents: precedes(photo, events),
         photoBeforePlaces: precedes(photo, places), placesBeforeEvents: precedes(places, events),
@@ -576,7 +581,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(currentLayout.saved.afterRecommendation).toBe(true);
       expect(currentLayout.saved.outsideDisclosure).toBe(true);
       expect(currentLayout.saved.cards).toBeLessThanOrEqual(2);
-      expect(currentLayout.saved.box.y + currentLayout.saved.box.height).toBeLessThanOrEqual(eventsBox.y);
+      expect(currentLayout.saved.box.y + currentLayout.saved.box.height).toBeLessThanOrEqual(placesBox.y + placesBox.height);
     }
     expect(currentLayout.placesBeforeNews).toBe(true);
     expect(currentLayout.newsBeforeExplore).toBe(true);
@@ -584,7 +589,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(currentDoorwayBox.y + currentDoorwayBox.height).toBeLessThanOrEqual(placesBox.y);
     expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(currentQuickNeedsBox.y);
     expect(findBox.y + findBox.height).toBeLessThanOrEqual(currentQuickNeedsBox.y);
-    expect(placesBox.y + placesBox.height).toBeLessThanOrEqual(eventsBox.y);
+    if (currentLayout.sideBySide) {
+      expect(placesBox.x + placesBox.width).toBeLessThanOrEqual(eventsBox.x);
+      expect(Math.abs(placesBox.y - eventsBox.y)).toBeLessThanOrEqual(1);
+    } else {
+      expect(placesBox.y + placesBox.height).toBeLessThanOrEqual(eventsBox.y);
+    }
+    expect(placesBox.y + placesBox.height).toBeLessThanOrEqual(currentLayout.news.y);
     expect(eventsBox.y + eventsBox.height).toBeLessThanOrEqual(currentLayout.news.y);
     expect(currentLayout.news.y + currentLayout.news.height).toBeLessThanOrEqual(currentLayout.explore.y);
     expect(currentQuickNeedsBox.y).toBeGreaterThanOrEqual(currentLayout.explore.y);
