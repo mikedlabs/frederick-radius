@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowRight, Check, ChevronDown } from "lucide-react";
 import { submitPlaceAction, type SubmitPlaceInput } from "./actions";
 import BotTrapFields from "./BotTrapFields";
+import SubmissionByEmail from "./SubmissionByEmail";
+import { useMounted } from "@/hooks/useSaved";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { TOP_CATEGORIES } from "@/data/categories";
 
@@ -22,6 +24,7 @@ const PLACE_FIELD_MAX_LENGTHS: Record<string, number> = {
 
 export default function SubmitPlaceForm({ variant = "place" }: { variant?: "place" | "food-truck" }) {
   const isFoodTruck = variant === "food-truck";
+  const ready = useMounted();
   const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -68,10 +71,19 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
         setSubmitted(true);
         setError(null);
       } catch {
-        setError("We couldn’t submit this place. Try again in a minute.");
+        setError("We couldn’t confirm delivery. Your details are still here. Try again in a minute.");
       }
     });
   };
+
+  if (!ready) {
+    return (
+      <div className="mt-6 space-y-2">
+        <p className="text-sm">The online form needs JavaScript.</p>
+        <SubmissionByEmail kind={isFoodTruck ? "food truck" : "place"} />
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -99,7 +111,7 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+    <form method="post" onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
       <BotTrapFields />
       <FieldText name="name" label={isFoodTruck ? "Truck name" : "Place name"} required placeholder={isFoodTruck ? "Your food truck’s name" : "e.g. Brewer's Alley"} />
       {isFoodTruck ? (
@@ -160,9 +172,10 @@ export default function SubmitPlaceForm({ variant = "place" }: { variant?: "plac
       </div>
 
       {error && (
-        <p role="alert" className="rounded-[var(--app-radius-md)] px-3 py-2 text-sm" style={{ background: "var(--app-danger-tint-14)", color: "var(--app-danger)" }}>
-          {error}
-        </p>
+        <div role="alert" className="space-y-1 rounded-[var(--app-radius-md)] px-3 py-2 text-sm" style={{ background: "var(--app-danger-tint-14)", color: "var(--app-danger)" }}>
+          <p>{error}</p>
+          <SubmissionByEmail kind={isFoodTruck ? "food truck" : "place"} />
+        </div>
       )}
 
       <button
