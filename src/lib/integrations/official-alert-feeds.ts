@@ -14,6 +14,8 @@
  * burn-ban, closing, and health notices.
  */
 
+import { XMLValidator } from "fast-xml-parser";
+import { createAbortDeadline, withDeadlineOutcome } from "@/lib/promise-deadline";
 import { cleanFeedText, tidyListSeparators } from "@/lib/format/text";
 import type {
   OfficialOperationalSignalBase,
@@ -48,6 +50,9 @@ export type OfficialCivicAlertSourceHealth = {
   available: boolean;
   asOf: string | null;
   activeCount: number;
+  /** Time the category was actually read, distinct from the publisher’s lastBuildDate. */
+  checkedAt?: string | null;
+  stale?: boolean;
 };
 
 export type OfficialCivicAlertsResult = {
@@ -320,7 +325,7 @@ export function parseOfficialAlertFeed(
   definition: FeedDefinition,
   retrievedAt = new Date().toISOString(),
 ): ParsedOfficialAlertFeed {
-  if (!/<rss(?:\s|>)/i.test(xml) || !/<channel(?:\s|>)/i.test(xml)) {
+  if (!/<rss(?:\s|>)/i.test(xml) || !/<channel(?:\s|>)/i.test(xml) || XMLValidator.validate(xml) !== true) {
     return { valid: false, asOf: null, alerts: [] };
   }
 
@@ -391,61 +396,61 @@ type LoadOfficialCivicAlertOptions = {
   now?: Date;
 };
 
-export async function getOfficialCivicAlertsResult({
-  deadlineMs = 5_000,
-  revalidateSeconds = 300,
-  now = new Date(),
-}: LoadOfficialCivicAlertOptions = {}): Promise<OfficialCivicAlertsResult> {
-  const retrievedAt = now.toISOString();
-  const feeds = await Promise.all(
-    OFFICIAL_CIVIC_ALERT_FEEDS.map(async (definition) => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), deadlineMs);
-      try {
-        const response = await fetch(definition.url, {
-          headers: {
-            Accept: "application/rss+xml, application/xml;q=0.9",
-            "User-Agent":
-              "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
-          },
-          signal: controller.signal,
-          next: { revalidate: revalidateSeconds },
-        });
-        if (!response.ok) {
-          return {
-            definition,
-            parsed: {
-              valid: false,
-              asOf: null,
-              alerts: [] as OfficialCivicAlert[],
-            },
-          };
-        }
-        return {
-          definition,
-          parsed: parseOfficialAlertFeed(
-            await response.text(),
-            definition,
-            retrievedAt,
-          ),
-        };
-      } catch {
-        return {
-          definition,
-          parsed: {
-            valid: false,
-            asOf: null,
-            alerts: [] as OfficialCivicAlert[],
-          },
-        };
-      } finally {
-        clearTimeout(timer);
-      }
-    }),
-  );
+export const CIVIC_ALERT_MAX_CHECK_AGE_MS = 10 * 60 * 1_000;
+export const CIVIC_ALERT_CATEGORY_NAMES: Record<OfficialCivicAlertKind, string> = {
+  "city-emergency": "City of Frederick emergencies",
+  "health-burn-ban": "County Health Department · Burn bans",
+  "health-closing": "County Health Department · Closings",
+  "health-notice": "County Health Department · Health notices",
+};
+
+type CivicFeedRead = { parsed: ParsedOfficialAlertFeed; checkedAt: string };
+type CivicFeedReader = (definition: FeedDefinition, options: LoadOfficialCivicAlertOptions) => Promise<CivicFeedRead>;
+
+export const readOfficialCivicAlertFeed: CivicFeedReader = async (definition, { deadlineMs = 5_000, revalidateSeconds = 0, now }) => {
+  const deadline = createAbortDeadline(deadlineMs);
+  const operation = (async () => {
+    const response = await fetch(definition.url, {
+      headers: {
+        Accept: "application/rss+xml, application/xml;q=0.9",
+        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+      },
+      signal: deadline.signal,
+      ...(revalidateSeconds ? { next: { revalidate: revalidateSeconds } } : { cache: "no-store" as const }),
+    });
+    if (!response.ok) throw new Error(`Civic alert RSS returned HTTP ${response.status}`);
+    const xml = await response.text();
+    const checkedAt = (now ?? new Date()).toISOString();
+    const parsed = parseOfficialAlertFeed(xml, definition, checkedAt);
+    if (!parsed.valid) throw new Error("Invalid civic alert RSS");
+    return { parsed, checkedAt };
+  })();
+  try {
+    const result = await withDeadlineOutcome(operation, deadlineMs);
+    if (result.status !== "fulfilled") throw new Error("Unable to verify official civic RSS");
+    return result.value;
+  } finally {
+    deadline.dispose();
+  }
+};
+
+export async function getOfficialCivicAlertsResult(
+  options: LoadOfficialCivicAlertOptions = {},
+  readFeed: CivicFeedReader = readOfficialCivicAlertFeed,
+): Promise<OfficialCivicAlertsResult> {
+  const feeds = await Promise.all(OFFICIAL_CIVIC_ALERT_FEEDS.map(async (definition) => {
+    try {
+      const { parsed, checkedAt } = await readFeed(definition, options);
+      const age = (options.now?.getTime() ?? Date.now()) - Date.parse(checkedAt);
+      const stale = !(age >= 0 && age < CIVIC_ALERT_MAX_CHECK_AGE_MS);
+      return { definition, parsed, checkedAt, stale };
+    } catch {
+      return { definition, parsed: { valid: false, asOf: null, alerts: [] }, checkedAt: null, stale: false };
+    }
+  }));
 
   const alerts = feeds
-    .flatMap((feed) => feed.parsed.alerts)
+    .flatMap((feed) => feed.stale ? [] : feed.parsed.alerts)
     .sort((left, right) => {
       const leftTime = left.publishedAt
         ? Date.parse(left.publishedAt)
@@ -455,7 +460,7 @@ export async function getOfficialCivicAlertsResult({
         : Number.NEGATIVE_INFINITY;
       return rightTime - leftTime;
     });
-  const validCount = feeds.filter((feed) => feed.parsed.valid).length;
+  const validCount = feeds.filter((feed) => feed.parsed.valid && !feed.stale).length;
 
   return {
     alerts,
@@ -463,12 +468,14 @@ export async function getOfficialCivicAlertsResult({
     degraded: validCount < feeds.length,
     coverageComplete: false,
     coverageNote: COVERAGE_NOTE,
-    sourceHealth: feeds.map(({ definition, parsed }) => ({
+    sourceHealth: feeds.map(({ definition, parsed, checkedAt, stale }) => ({
       id: definition.id,
       publisher: definition.publisher,
-      available: parsed.valid,
+      available: parsed.valid && !stale,
       asOf: parsed.asOf,
-      activeCount: parsed.alerts.length,
+      checkedAt,
+      stale,
+      activeCount: stale ? 0 : parsed.alerts.length,
     })),
   };
 }

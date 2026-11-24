@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildCurrentSituationSnapshot, sourceEnvelope, type CurrentSituationSnapshot, type CurrentSituationSources } from "@/lib/live/currentSituationModel";
 import type { RoadIntelligenceSnapshot } from "@/lib/live/roadIntelligenceModel";
-import type { OfficialCivicAlertsResult } from "@/lib/integrations/official-alert-feeds";
+import { OFFICIAL_CIVIC_ALERT_FEEDS, type OfficialCivicAlertsResult } from "@/lib/integrations/official-alert-feeds";
 import { deriveCountyStatus } from "./county-status-model";
 
 const NOW = "2026-10-08T13:00:00.000Z";
@@ -33,6 +33,24 @@ const road = {
 const civic = { alerts: [], available: true, degraded: false } as unknown as OfficialCivicAlertsResult;
 
 describe("Shared county status severity and coverage", () => {
+  it("names each official category and bounds its active membership by the original retrieval timestamp", () => {
+    const expiry = "2026-10-08T13:00:05.000Z";
+    const checkedAt = "2026-10-08T12:50:05.000Z";
+    const sourceHealth = OFFICIAL_CIVIC_ALERT_FEEDS.map((feed) => ({ id: feed.id, publisher: feed.publisher,
+      available: true, activeCount: Number(feed.id === "city-emergency"), asOf: null,
+      checkedAt: feed.id === "city-emergency" ? checkedAt : NOW }));
+    const official = { ...civic, sourceHealth, alerts: [{ kind: "city-emergency", active: true, state: "active",
+      title: "Frederick emergency", summary: "Official instructions", expiresAt: "2026-10-08T14:00:00.000Z" }] } as OfficialCivicAlertsResult;
+    const current = deriveCountyStatus(situation(), road, official, Date.parse(NOW));
+    expect(current).toMatchObject({ level: "Urgent", count: 1, validUntil: expiry });
+    expect(current.checks?.slice(-4).map((check) => check.source)).toEqual([
+      "City of Frederick emergencies", "County Health Department · Burn bans",
+      "County Health Department · Closings", "County Health Department · Health notices",
+    ]);
+    const expired = deriveCountyStatus(situation(), road, official, Date.parse(expiry));
+    expect(expired).toMatchObject({ level: "Unknown", count: 0, ok: false });
+    expect(expired.checks).toContainEqual({ source: "City of Frederick emergencies", state: "stale", asOf: checkedAt, asOfBasis: "retrieval" });
+  });
   it("bounds a quiet summary by the earliest original accepted source TTL", () => {
     expect(deriveCountyStatus(situation(), road, civic, Date.parse(NOW))).toMatchObject({ validUntil: "2026-10-08T13:05:00.000Z", lastUpdated: NOW });
   });
