@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:9caa44043f3c453c19453386328f6dd12f6b8d5dc08cbd3905daa937df4c935a",
+  "data_version": "sha256:083a3cfd7fad17ccb0329b400d7869f0acce86a74a83e7cf2cb31f4d5c450f50",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-24T15:29:17.152Z",
+      "promoted_at": "2026-11-24T18:53:30.272Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -138,9 +138,9 @@
         },
         {
           "path": "src/data/events.ts",
-          "sha256": "ff7dc59a711d43f65c0c5d876c254513d7b7bb70aa0958fdf7831e6596f316ba",
+          "sha256": "70f543c856633c4c2c9294ee0a09e14bfd28bcad86d8d3076317dcd16eb1b75d",
           "records": null,
-          "bytes": 30641
+          "bytes": 30748
         },
         {
           "path": "src/data/cravings.ts",
@@ -174,9 +174,9 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "743f62206e3526119bb21be66d334c059f90a9b3d58f81f5899aa48fa06fdfb8",
+          "sha256": "251e0bda7946988c16a8228bd00f11aaad73508cf390b3ebd616be66f2c4246d",
           "records": null,
-          "bytes": 12610
+          "bytes": 12608
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
