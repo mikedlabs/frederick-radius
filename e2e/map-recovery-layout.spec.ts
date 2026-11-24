@@ -355,3 +355,51 @@ test.describe(`Native shortlist directions (${typography} typography)`, () => {
   });
 });
 }
+
+// An unavailable optional map source must never float over a recovery heading
+// or the town control when a tablet rotates or the desktop rail appears.
+test.describe("focused amenity recovery across orientation changes", () => {
+  test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true });
+
+  test("keeps the restroom selection and directions clear of the source status", async ({ page }) => {
+    await installRecoveryBoundary(page);
+    await page.route("**/api/map/osm", route => route.fulfill({ status: 503, json: {} }));
+    await page.goto("/map?amenity=restroom");
+    const list = page.locator("[data-map-amenity-list]");
+    const town = list.getByRole("combobox", { name: "Town" });
+    await town.selectOption({ label: "Myersville" });
+    for (const viewport of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
+      await page.setViewportSize(viewport);
+      await expect(town).toHaveValue("Myersville");
+      const status = page.locator(".map-error-fallback-head [data-map-recovery-source-status]");
+      await expect(status).toBeVisible();
+      const heading = list.getByRole("heading", { name: "Restrooms" });
+      await expect.poll(async () => {
+        const [message, title] = await Promise.all([status.boundingBox(), heading.boundingBox()]);
+        return Boolean(message && title && message.y + message.height <= title.y);
+      }).toBe(true);
+      await assert44HitTarget(town);
+      await assert44HitTarget(list.getByRole("link", { name: /walking directions/i }).first());
+      await assert44HitTarget(page.getByRole("link", { name: "All amenities", exact: true }));
+    }
+  });
+
+  test("retains the selected place and its full-page and share targets after rotation", async ({ page }) => {
+    await installRecoveryBoundary(page);
+    await page.goto(mapUrl);
+    const result = page.locator('[data-map-list-place="beans-in-the-belfry-brunswick"]');
+    await result.click();
+    const details = page.locator(".map-peek").getByRole("button", { name: "Details", exact: true });
+    await details.click();
+    const sheet = page.getByRole("dialog", { name: "Beans in the Belfry", exact: true });
+    for (const viewport of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
+      await page.setViewportSize(viewport);
+      await expect(sheet.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
+      const full = sheet.getByRole("link", { name: "See full page", exact: true });
+      await full.scrollIntoViewIfNeeded();
+      await assert44HitTarget(full);
+      await assert44HitTarget(sheet.getByRole("button", { name: "Share Beans in the Belfry", exact: true }));
+      await assert44HitTarget(sheet.getByRole("button", { name: "Close place details", exact: true }));
+    }
+  });
+});

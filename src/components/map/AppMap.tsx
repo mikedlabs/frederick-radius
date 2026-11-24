@@ -4821,13 +4821,18 @@ export default function AppMap({
                     ? "Find the same results in the list below."
                     : "Use the list below, or reload the map."}
                 </p>
+                {(osmLoading || osmError) && (
+                  <p className="mt-1 text-xs" style={{ color: "var(--app-ink-2)" }} data-map-recovery-source-status>
+                    {osmLoading ? "Checking for additional OpenStreetMap locations…" : "Additional OpenStreetMap locations are unavailable."}
+                  </p>
+                )}
               </div>
               <div className="map-error-fallback-actions">
                 {MAP_RENDERER_CONFIGURED && !mapUnsupported && (
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
-                    className="tap-44 inline-flex items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                    className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
                     style={{
                       borderColor: "var(--app-border)",
                       color: "var(--app-ink-2)",
@@ -4838,7 +4843,7 @@ export default function AppMap({
                 )}
                 <Link
                   href={amenityGroups.size > 0 && !q.trim() ? "/amenities" : "/places"}
-                  className="tap-44 inline-flex min-h-9 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                  className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
                   style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
                 >
                   {amenityGroups.size > 0 && !q.trim() ? "All amenities" : "All places"}
@@ -4975,7 +4980,7 @@ export default function AppMap({
             "{N} verified OSM places" chip was a permanent floating count with
             no tap target (pure top-left noise once everything had loaded), so
             on a healthy map nothing shows here now. */}
-        {(osmLoading || osmError) && (
+        {!mapError && (osmLoading || osmError) && (
           <div
             className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-2.5 py-1 text-[11px] font-medium ${
               dock ? "top-[168px]" : "top-3"

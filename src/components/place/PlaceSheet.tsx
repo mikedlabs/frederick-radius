@@ -683,18 +683,19 @@ function PlaceSheetContent({
         )}
 
         {/* Footer — link to full page + share */}
-        <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
+        <div className="mt-5 flex items-center justify-between gap-3 border-t pt-1 text-xs" style={{ borderColor: "var(--app-border)" }}>
           {/* BottomSheet owns this native document navigation. App Router
               prefetch cannot be reused and races the atomic page replacement. */}
           <Link
             href={fullPageHref}
             prefetch={false}
-            className="inline-flex items-center gap-1 font-medium"
+            className="inline-flex min-h-11 items-center gap-1 font-medium"
             style={{ color: "var(--app-link)" }}
           >
             See full page <ExternalLink className="h-3 w-3" aria-hidden />
           </Link>
           <ShareButton
+            className="inline-flex min-h-11 min-w-11 items-center justify-end gap-1 text-xs font-medium transition active:scale-95"
             title={place.name}
             text={place.short_blurb}
             url={`/places/${place.slug}`}
