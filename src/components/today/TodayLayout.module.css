@@ -313,6 +313,9 @@
 }
 .walkTimes ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @container today-discovery (max-width: 17rem) {
+  /* Where the stop labels stack, give the lead archive photo its taller
+     frame so it stays prominent beside the enlarged place captions. */
+  .outingPhoto { aspect-ratio: 1.34; }
   .walkTimes ol { grid-template-columns: 1fr; }
 }
 
