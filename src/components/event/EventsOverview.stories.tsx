@@ -4,7 +4,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import EventsOverview from "./EventsOverview";
 
 const tonight: EventWithMeta = {
-  slug: "overview-evening-concert", title: "Concert at the bandshell", description: "This event is fictional.",
+  slug: "overview-evening-concert", title: "Evening concert at the Baker Park bandshell", description: "This event is fictional.",
   starts_at: "2026-11-19T19:00:00-05:00", ends_at: "2026-11-19T21:00:00-05:00", timezone: "America/New_York",
   venue_name: "Baker Park Bandshell", venue_place_slug: "baker-park-bandshell", address: "", municipality: "frederick", municipality_name: "Frederick",
   geom: { lat: 39.417, lng: -77.417 }, geo_confidence: "venue_match", category: "music", category_name: "Music", audience: [],
@@ -42,7 +42,8 @@ export const TwoWindows390: Story = {
     const canvas = within(canvasElement);
     const evening = within(canvas.getByRole("region", { name: "Tonight" }));
     const upcoming = within(canvas.getByRole("region", { name: "This weekend" }));
-    await expect(evening.getByRole("link", { name: tonight.title })).toHaveAttribute("href", `/events/${tonight.slug}`);
+    const leadLink = evening.getByRole("link", { name: tonight.title });
+    await expect(leadLink).toHaveAttribute("href", `/events/${tonight.slug}`);
     await expect(upcoming.getByRole("link", { name: weekend.title })).toHaveAttribute("href", `/events/${weekend.slug}`);
     const firstPhoto = canvasElement.querySelector<HTMLImageElement>('[data-events-window="tonight"] img')!;
     await firstPhoto.decode();
@@ -57,8 +58,14 @@ export const TwoWindows390: Story = {
     await expect(bounds("[data-event-photo-credit]").top).toBeGreaterThanOrEqual(bounds("figure").bottom);
     await expect(canvasElement.querySelectorAll('[data-event-row="lead"]')).toHaveLength(1);
     await expect(canvasElement.querySelectorAll('[data-decision-position="lead"]')).toHaveLength(1);
+    await expect(leadLink).toHaveAccessibleDescription("Frederick time. 7:00 PM to 9:00 PM.");
+    const rail = evening.getByRole("article").querySelector("[data-time-track]")!;
+    await expect(rail.getBoundingClientRect().width).toBeGreaterThan(firstPhoto.getBoundingClientRect().width * .95);
     await expect(upcoming.getByRole("heading", { name: "This weekend" }).getBoundingClientRect().top).toBeLessThan(450);
-    await userEvent.click(upcoming.getByRole("button", { name: "See all events this weekend" }));
+    const allWeekend = upcoming.getByRole("button", { name: "See all events this weekend" });
+    await expect(allWeekend.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await expect(allWeekend.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+    await userEvent.click(allWeekend);
     await expect(args.onSelectWindow).toHaveBeenCalledWith("weekend");
   },
 };

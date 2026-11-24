@@ -146,6 +146,17 @@
 .overview [data-overview-photo-rights][open] { padding-bottom: .5rem; }
 .empty { margin: 0; padding: 0 0 .75rem; color: var(--app-ink-2); font-size: .9375rem; line-height: 1.45; }
 
+/* A timed venue photograph shares a phone's first screen with the event
+   facts, the full-width schedule and the start of the next window. */
+@container (min-width: 20.01rem) and (max-width: 30rem) {
+  .lead article:has([data-event-time-rail]) [data-event-banner]:has([data-event-poster-photo]) {
+    margin-bottom: .5rem;
+  }
+  .lead article:has([data-event-time-rail]) [data-event-poster-photo] {
+    aspect-ratio: 2.45;
+  }
+}
+
 /* Enlarged text receives the full measure, and keeps its time and all links. */
 @container (max-width: 20rem) {
   .lead article { grid-template-columns: minmax(0,1fr); }
