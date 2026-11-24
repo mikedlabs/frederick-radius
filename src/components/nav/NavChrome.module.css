@@ -339,6 +339,11 @@
   .actions .todayHeaderTrigger { gap: 4px; padding-inline: 6px; }
   .context { column-gap: 2px; padding-inline-start: 8px; }
   .context :global([data-pulse-indicator]), .context .todayHeaderTrigger { padding-inline: 4px; }
+  /* Keep the words and the area chevron. These two redundant icons would
+     otherwise push the entire context group onto another row in wider fonts. */
+  .actions .todayHeaderTrigger > svg,
+  .context .todayHeaderTrigger[data-today-area-trigger] > svg:first-child,
+  .context :global([data-location-chip]) > svg:first-child { display: none; }
 }
 @media (min-width: 1024px) {
   .bar { --header-bottom-space: env(safe-area-inset-bottom, 0px); }

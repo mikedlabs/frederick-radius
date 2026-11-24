@@ -184,7 +184,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
               <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</p>
               <ItineraryButton eventId={event.slug} label={`Add ${eventDisplayTitle(event)} to itinerary`} />
             </div>
-            <h2 className={`mt-1 break-words text-[1.375rem] font-semibold leading-tight tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
+            <h2 className={`mt-1 break-words text-[1.375rem] font-semibold leading-snug tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
               style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h2>
           </header>
 

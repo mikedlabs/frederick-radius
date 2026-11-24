@@ -312,6 +312,16 @@ function measuredTextStory(pathname: string, enlarged = false): Story {
             [data-measured-header-text] [data-header-wordmark] { min-inline-size: 6.22em; }
             [data-measured-header-text] [data-pulse-mobile-state] { min-inline-size: 5.69em; }
           }
+          @media (min-width: 640px) and (max-width: 767.98px) {
+            /* The hosted runner measured a 170px lockup, 73px icon-and-text
+               More control and 132px report. Widen the text only so the
+               product remains free to spend less space on optional icons. */
+            [data-measured-header-text] [data-header-wordmark] { min-inline-size: 5.71em; }
+            [data-measured-header-text] [data-today-tools-trigger] > span { min-inline-size: 2.79em; }
+            [data-measured-header-text] [data-pulse-indicator] { min-inline-size: 8.25rem; }
+            [data-measured-header-text] [data-today-area-trigger] > span,
+            [data-measured-header-text] [data-location-scope-label="full"] { min-inline-size: 7.65em; }
+          }
         `}</style>
         <Story />
       </div>
