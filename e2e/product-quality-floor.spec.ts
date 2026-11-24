@@ -103,7 +103,7 @@ test("an empty Agenda can remove its search filter without leaving the chosen vi
   await page.goto("/events", { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: /^Filters / }).click();
   await page.getByRole("textbox", { name: "Filter the events shown", exact: true }).fill("radiusnomatchqualitycheck");
-  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }).click();
   await page.locator('summary[aria-label^="Change event display."]').click();
   await page.getByRole("button", { name: "Agenda view", exact: true }).click();
   const remove = page.getByRole("button", { name: "Remove Search: radiusnomatchqualitycheck filter", exact: true });

@@ -341,8 +341,8 @@ async function eventFilters(page: Page) {
   await filters.getByRole("tab", { name: "What", exact: true }).tap();
   await filters.getByRole("button", { name: "Free", exact: true }).tap();
   await expect(filters.getByRole("button", { name: "Free", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await target(filters.getByRole("button", { name: "Done", exact: true }));
-  await filters.getByRole("button", { name: "Done", exact: true }).tap();
+  await target(filters.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }));
+  await filters.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }).tap();
   await expect(filters).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await expect.poll(() => new URL(page.url()).searchParams.get("free")).toBe("true");

@@ -54,7 +54,7 @@ for (const width of [390, 1200]) {
       return [first.y, window.scrollY];
     });
     expect(wheelSamples).toEqual([openingY, openingY]);
-    const done = dialog.getByRole("button", { name: "Done", exact: true });
+    const done = dialog.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ });
     await done.focus();
     await page.keyboard.press("/");
     await page.evaluate(() => window.dispatchEvent(new CustomEvent("fr:open-search")));

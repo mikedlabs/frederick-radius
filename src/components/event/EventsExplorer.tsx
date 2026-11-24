@@ -6,12 +6,12 @@ import Link from "next/link";
 import { ArrowRight, ChevronDown, LocateFixed, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventsOverview from "@/components/event/EventsOverview";
-import { selectEventHighlights, eventMatchesTonight, eventMatchesHighlightWeekend } from "@/lib/events/highlights";
+import { boardEveningStart, selectEventHighlights, eventMatchesTonight, eventMatchesHighlightWeekend } from "@/lib/events/highlights";
 import EventsRestorePreview from "@/components/event/EventsRestorePreview";
 import EventSheetBoundary from "@/components/event/EventSheetBoundary";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
-import EventsBoardDock, { type ViewKey, type EventSortKey } from "@/components/event/EventsBoardDock";
+import EventsBoardDock, { type ViewKey, type EventSortKey, type EventBoardFilters } from "@/components/event/EventsBoardDock";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { easternDayKey } from "@/lib/tz";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -363,15 +363,9 @@ const timeToWhen = (t: TimeKey): When | undefined =>
 const whenToTime = (w?: When): TimeKey =>
   w === "today" || w === "weekend" || w === "week" ? w : "all";
 
-// One-off Eastern-day key (YYYY-MM-DD) for the day filter. Mirrors
-// the helper in WeekStrip so the explorer matches its tile keys.
+// Match the ribbon's Eastern date using the shared cached ICU formatter.
 function dayKeyEastern(iso: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(iso));
+  return easternDayKey(new Date(iso));
 }
 
 /**
@@ -440,6 +434,53 @@ export function eventMatchesTimeWindow(
 function chronoKey(e: EventWithMeta, nowISO: string): number {
   const t = +new Date(e.starts_at);
   return isRangeListing(e) && t <= Date.parse(nowISO) ? +new Date(e.ends_at) : t;
+}
+
+function filterBoardEvents(pool: EventWithMeta[], filters: EventBoardFilters, bounds: ReturnType<typeof buildHorizonBounds>) {
+  const { intent, sub, cat, lens, tod, day, town, q, freeOnly, happyOnly, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly } = filters;
+  const term = q.trim().toLowerCase();
+  const clock = new Date(bounds.now);
+  const tonight = !day && lens === "today" && tod === "evening" ? boardEveningStart(clock) : null;
+  return pool.filter((e) => {
+    // FINISHED events never render, on ANY path. The horizon grouping
+    // already dropped them, but the flat paths — the week ribbon's ?d= day
+    // view, search results, the A-Z/venue sorts — filtered by start-day
+    // only, so tapping "today" at 11 PM listed the whole day's ended
+    // events as if they were still worth your time. One gate here covers
+    // every mode. (All-day events run to the end of their Eastern day.)
+    if (!eventMatchesTimeWindow(e, day ? "all" : lens, bounds) &&
+        !(lens === "weekend" && !day && eventMatchesHighlightWeekend(e, bounds))) return false;
+    // Day filter wins over time-window filters when both are set.
+    if (day && dayKeyEastern(e.starts_at) !== day) return false;
+    if (town && e.municipality !== town) return false;
+    if (freeOnly && !e.is_free) return false;
+    if (tonight !== null ? !eventMatchesTonight(e, clock, tonight) : tod && eventDaypart(e) !== tod) return false;
+    if (kidsOnly && !isForKids(e)) return false;
+    if (lgbtqOnly && !isLgbtqEvent(e)) return false;
+    if (
+      communicationAccessOnly &&
+      !hasDeafCommunityOrCommunicationAccess(e)
+    ) return false;
+    if (recurringOnly && !isRecurringEvent(e)) return false;
+    if (happyOnly) {
+      // Match against title + venue + description so we catch both
+      // event-level happy hours ("Tuesday happy hour at X") and the
+      // venue-level recurring lineups some publishers tag this way.
+      const hay = `${e.title} ${e.venue_name ?? ""} ${e.description ?? ""}`;
+      if (!/\bhappy\s*hour\b/i.test(hay)) return false;
+    }
+    if (
+      term &&
+      !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""} ${e.description ?? ""} ${e.organizer ?? ""} ${e.source}`
+        .toLowerCase()
+        .includes(term)
+    )
+      return false;
+    if (intent && eventIntentOf(e) !== intent) return false;
+    if (sub && e.category !== sub) return false;
+    if (cat && e.category !== cat) return false;
+    return true;
+  });
 }
 
 export default function EventsExplorer({
@@ -734,54 +775,29 @@ export default function EventsExplorer({
     [deviceOrigin, eventPool, nearMeActive],
   );
 
-  // Stage 1 — everything EXCEPT the category dimension (intent / sub /
-  // exact cat). The canonical filter sheet applies those choices in stage 2
-  // so they compose cleanly with time, town, access, and search.
-  const baseFiltered = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    const clock = new Date(bounds.now);
-    const tonight = !day && time === "today" && tod === "evening";
-    return decisionEventPool.filter((e) => {
-      // FINISHED events never render, on ANY path. The horizon grouping
-      // already dropped them, but the flat paths — the week ribbon's ?d= day
-      // view, search results, the A-Z/venue sorts — filtered by start-day
-      // only, so tapping "today" at 11 PM listed the whole day's ended
-      // events as if they were still worth your time. One gate here covers
-      // every mode. (All-day events run to the end of their Eastern day.)
-      if (!eventMatchesTimeWindow(e, day ? "all" : time, bounds) &&
-          !(time === "weekend" && !day && eventMatchesHighlightWeekend(e, bounds))) return false;
-      // Day filter wins over time-window filters when both are set.
-      if (day && dayKeyEastern(e.starts_at) !== day) return false;
-      if (town && e.municipality !== town) return false;
-      if (freeOnly && !e.is_free) return false;
-      if (tonight ? !eventMatchesTonight(e, clock) : tod && eventDaypart(e) !== tod) return false;
-      if (kidsOnly && !isForKids(e)) return false;
-      if (lgbtqOnly && !isLgbtqEvent(e)) return false;
-      if (
-        communicationAccessOnly &&
-        !hasDeafCommunityOrCommunicationAccess(e)
-      ) return false;
-      if (recurringOnly && !isRecurringEvent(e)) return false;
-      if (happyOnly) {
-        // Match against title + venue + description so we catch both
-        // event-level happy hours ("Tuesday happy hour at X") and the
-        // venue-level recurring lineups some publishers tag this way.
-        const hay = `${e.title} ${e.venue_name ?? ""} ${e.description ?? ""}`;
-        if (!/\bhappy\s*hour\b/i.test(hay)) return false;
-      }
-      if (
-        term &&
-        !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""} ${e.description ?? ""} ${e.organizer ?? ""} ${e.source}`
-          .toLowerCase()
-          .includes(term)
-      )
-        return false;
-      return true;
-    });
-  }, [decisionEventPool, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly, bounds]);
-
-  // Stage 2 — the category dimension (intent roll-up + sub + the legacy
-  // exact-cat from the Type drawer / deep-links), then the chosen sort.
+  const filters = useMemo<EventBoardFilters>(() => ({
+    intent, sub, cat, lens: time, tod, day, town, q, freeOnly, happyOnly, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly,
+  }), [intent, sub, cat, time, tod, day, town, q, freeOnly, happyOnly, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly]);
+  const previewCount = useCallback((draft: EventBoardFilters) =>
+    dataComplete && !currentSourceHealth.degraded ? filterBoardEvents(decisionEventPool, draft, bounds).length : null,
+    [bounds, currentSourceHealth.degraded, dataComplete, decisionEventPool]);
+  const applyFilters = (next: EventBoardFilters, changeTown: boolean) => {
+    setIntent(next.intent);
+    setSub(next.sub);
+    setCat(next.cat);
+    setTime(next.lens);
+    setTod(next.tod);
+    setDay(next.day);
+    setQ(next.q);
+    setFreeOnly(next.freeOnly);
+    setHappyOnly(next.happyOnly);
+    setKidsOnly(next.kidsOnly);
+    setLgbtqOnly(next.lgbtqOnly);
+    setCommunicationAccessOnly(next.communicationAccessOnly);
+    setRecurringOnly(next.recurringOnly);
+    if (changeTown) chooseTown(next.town);
+  };
+  // The filtered list and the draft preview use the same matches.
   // Recommended and Soonest both retain the human time horizons. A→Z and
   // Venue are deliberate directory modes and render as flat lists below.
   // Owner-featured slugs float to the top of Recommended. Resolved once per
@@ -804,15 +820,8 @@ export default function EventsExplorer({
       }
       return chronoKey(a, nowISO) - chronoKey(b, nowISO);
     };
-    return baseFiltered
-      .filter((e) => {
-        if (intent && eventIntentOf(e) !== intent) return false;
-        if (sub && e.category !== sub) return false;
-        if (cat && e.category !== cat) return false;
-        return true;
-      })
-      .sort(sortFn);
-  }, [baseFiltered, intent, sub, cat, sort, nowISO, featured]);
+    return filterBoardEvents(decisionEventPool, filters, bounds).sort(sortFn);
+  }, [decisionEventPool, filters, bounds, sort, nowISO, featured]);
 
   // A healthy server snapshot knows the complete unfiltered totals even
   // though the first React payload contains only a bounded preview. Once a
@@ -1115,34 +1124,10 @@ export default function EventsExplorer({
               })
             : null
         }
-        intent={intent}
-        setIntent={setIntent}
-        sub={sub}
-        setSub={setSub}
-        cat={cat}
-        setCat={setCat}
-        lens={time}
-        setLens={setTime}
-        tod={tod}
-        setTod={setTod}
-        day={day}
-        setDay={setDay}
-        town={town}
-        setTown={chooseTown}
-        q={q}
-        setQ={setQ}
-        freeOnly={freeOnly}
-        setFreeOnly={setFreeOnly}
-        happyOnly={happyOnly}
-        setHappyOnly={setHappyOnly}
-        kidsOnly={kidsOnly}
-        setKidsOnly={setKidsOnly}
-        lgbtqOnly={lgbtqOnly}
-        setLgbtqOnly={setLgbtqOnly}
-        communicationAccessOnly={communicationAccessOnly}
-        setCommunicationAccessOnly={setCommunicationAccessOnly}
-        recurringOnly={recurringOnly}
-        setRecurringOnly={setRecurringOnly}
+        filters={filters}
+        applyFilters={applyFilters}
+        onOpenFilters={() => { if (!dataComplete && !currentSourceHealth.degraded) void ensureAllEvents(); }}
+        previewCount={previewCount}
         anyFilter={anyActiveControl}
         clear={clear}
         view={view}

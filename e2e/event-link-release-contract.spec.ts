@@ -215,7 +215,7 @@ test("a returning Events view restores its scope before default results can pain
   await expect(dialog.getByRole("button", { name: "This weekend", exact: true })).toHaveAttribute("aria-pressed", "true");
   await dialog.getByRole("tab", { name: "Where", exact: true }).click();
   await expect(dialog.getByRole("button", { name: "Brunswick", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  await dialog.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }).click();
   await expect(filters).toBeFocused();
 });
 

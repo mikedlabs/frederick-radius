@@ -303,6 +303,8 @@ test.describe("critical surfaces under combined dependency failure", () => {
       .getByRole("group", { name: "Event interests" })
       .getByRole("button", { name: "Music", exact: true })
       .click();
+    await eventFilterDialog.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }).click();
+    await expect(eventFilterDialog).toBeHidden();
     const eventsWereComplete =
       await eventsExplorer.getAttribute("data-events-complete") === "true";
     if (!eventsWereComplete) {
