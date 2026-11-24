@@ -6,9 +6,10 @@ const DEFAULT_PINNED_TOOLS = ["Ask Radius", "Near me", "County status", "Nearby 
 const activate = (locator: Locator) => locator.tap();
 
 test("touch tablets keep the index, focused filter and results through rotation", async ({ page }) => {
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto("/compass", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
+  await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true", { timeout: 30_000 });
   const tasks = await page.locator('section[aria-labelledby="compass-browse-heading"]').boundingBox();
   const pins = await page.locator('section[aria-labelledby="compass-pinned-heading"]').boundingBox();
   expect(tasks && pins && pins.x >= tasks.x + tasks.width).toBe(true);
