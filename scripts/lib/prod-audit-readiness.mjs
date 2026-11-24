@@ -1,5 +1,5 @@
 const SURFACES = ["today", "ask", "map", "events"];
-const MIGRATIONS = ["hours", "search", "eventArchive", "sourceHealth"];
+const MIGRATIONS = ["hours", "search", "eventArchive", "sourceHealth", "dataTruth"];
 const HEARTBEATS = ["feeds", "eventArchive"];
 const SURFACE_STATES = new Set(["ready", "partial", "hold"]);
 const MIGRATION_STATES = new Set(["ready", "missing", "unknown"]);
@@ -176,6 +176,21 @@ export function publicReadinessGate(payload) {
     );
   }
 
+  // The HTTP health handler preserves an operational service when only
+  // optional paid hours are paused. Require the exact public contract so
+  // missing migrations, stalled workers and unrelated partials still fail.
+  const hoursSurfaces = ["today", "ask", "map"];
+  const hoursPolicyOnly =
+    object(object(root.products)?.hours)?.status === "policy_hold" &&
+    object(object(readiness.capabilities)?.currentHours)?.status === "policy_hold" &&
+    object(surfaces.events)?.status === "ready" &&
+    hoursSurfaces.every((name) => {
+      const surface = object(surfaces[name]);
+      return surface?.status === "partial" &&
+        Array.isArray(surface.reasons) && surface.reasons.length === 1 &&
+        surface.reasons[0] === "current_hours_policy_hold";
+    });
+
   if (dataStatus === "degraded") {
     const readySurface = SURFACES.find(
       (surface) => object(surfaces[surface])?.status === "ready",
@@ -199,6 +214,7 @@ export function publicReadinessGate(payload) {
     expectedMigrations === "ready" &&
     expectedHeartbeats === "current" &&
     object(root.database)?.status === "reachable" &&
+    !hoursPolicyOnly &&
     surfaceValues.some((state) => state !== "ready")
   ) {
     failures.push("current dependencies are inconsistent with partial surfaces");
@@ -207,7 +223,10 @@ export function publicReadinessGate(payload) {
   const expectedServiceStatus =
     object(root.database)?.status === "reachable" &&
     dataStatus === "current" &&
-    expectedReadiness === "ready"
+    expectedMigrations === "ready" &&
+    expectedHeartbeats === "current" &&
+    (expectedReadiness === "ready" || hoursPolicyOnly) &&
+    (!object(root.products)?.hours || ["current", "policy_hold"].includes(object(root.products.hours)?.status))
       ? "operational"
       : "degraded";
   if (root.status !== expectedServiceStatus) {

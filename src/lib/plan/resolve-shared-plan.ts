@@ -64,7 +64,9 @@ export async function resolvePlanEventEvidence(
   if (!requested.length) return {};
   const now = options.now ?? new Date();
   const readers = options.sources ?? sources;
-  const timeoutMs = Math.min(1_500, Math.max(1, options.timeoutMs ?? 1_000));
+  // Include time waiting for the pooled connection on a cold server. A
+  // confirmed deletion or a missed deadline must still leave the stop unscheduled.
+  const timeoutMs = Math.min(3_000, Math.max(1, options.timeoutMs ?? 2_500));
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
