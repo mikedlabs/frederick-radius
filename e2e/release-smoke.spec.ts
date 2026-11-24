@@ -1,5 +1,5 @@
 import { showHeaderTools } from "./today-controls";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Request } from "@playwright/test";
 import { findErrorBoundaryMarker } from "./error-boundary-markers";
 
 /**
@@ -58,13 +58,49 @@ const VIEWPORTS = [
   { label: "desktop", width: 1440, height: 900 },
 ] as const;
 
+function trackDepartingMapResources(page: Page, appOrigin: string) {
+  const pending = new Map<Request, string>();
+  const departing = new WeakSet<Request>();
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    const from = new URL(page.url()).pathname;
+    const fromMap = from === "/map";
+    const fromPlace = from.startsWith("/places/");
+    if (url.origin !== appOrigin || !(fromMap || fromPlace) || request.frame() !== page.mainFrame()) return;
+    const resource = `${request.method()} ${request.resourceType()} ${url.pathname}`;
+    const statusRead = resource === "GET fetch /api/pulse/status" || (fromMap && resource === "GET fetch /api/transit/alerts");
+    const placeAccessory = fromPlace && (
+      resource === "GET fetch /api/auth/me" ||
+      resource === "GET image /api/place-photo" ||
+      resource === "POST ping /api/track"
+    );
+    if (statusRead || placeAccessory) {
+      pending.set(request, from);
+      return;
+    }
+    if (!request.isNavigationRequest() || request.resourceType() !== "document") return;
+    // A full-document departure can cancel a mounted status/identity read,
+    // thumbnail or unsent analytics beacon. Match the actual outstanding
+    // request; identical failures on the new page must still surface.
+    const leavesMap = fromMap && url.pathname.startsWith("/places/");
+    const returnsToMap = fromPlace && url.pathname === "/map";
+    if (!(leavesMap || returnsToMap)) return;
+    for (const [read, owner] of pending) {
+      if (owner === from) departing.add(read);
+    }
+  });
+  page.on("requestfinished", (request) => pending.delete(request));
+  page.on("requestfailed", (request) => pending.delete(request));
+  return departing;
+}
+
 function installRuntimeGuards(
   page: Page,
   appOrigin: string,
   options: {
     allowBasemapNavigationAbort?: boolean;
     allowOptimizedImageNavigationAbort?: boolean;
-    allowPlaceHydrationNavigationAbort?: boolean;
+    allowMapDetailNavigationAbort?: boolean;
     verifyNearbyThumbnailFallback?: boolean;
   } = {},
 ) {
@@ -72,6 +108,9 @@ function installRuntimeGuards(
   const thumbnailRateLimits = new Map<string, string>();
   const verifiedThumbnailResponses = new Set<string>();
   const deferredResourceErrors: Array<{ source: string; text: string }> = [];
+  const departingMapResources = options.allowMapDetailNavigationAbort
+    ? trackDepartingMapResources(page, appOrigin)
+    : undefined;
 
   page.on("pageerror", (error) => {
     issues.push(`pageerror: ${error.message}`);
@@ -154,10 +193,12 @@ function installRuntimeGuards(
     // hydration GET is in flight. It writes no state; HTTP failures and the
     // exact selected-place return assertions still remain blocking.
     const placeHydrationNavigationAbort =
-      options.allowPlaceHydrationNavigationAbort === true &&
+      options.allowMapDetailNavigationAbort === true &&
       request.method() === "GET" &&
       url.pathname === "/api/places/by-slugs" &&
       /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
+    const departingMapResourceAbort =
+      departingMapResources?.has(request) && /ERR_ABORTED|NS_BINDING_ABORTED/i.test(failure);
     if (
       url.origin === appOrigin &&
       !canceledRscPrefetch &&
@@ -165,7 +206,8 @@ function installRuntimeGuards(
       !optimizedImageNavigationAbort &&
       !basemapNavigationAbort &&
       !staleChunkNavigationAbort &&
-      !placeHydrationNavigationAbort
+      !placeHydrationNavigationAbort &&
+      !departingMapResourceAbort
     ) {
       issues.push(`${failure} ${url.pathname}`);
     }
@@ -459,7 +501,7 @@ test("map search keeps its exact state through place details and Back", async ({
   const guard = installRuntimeGuards(page, appOrigin, {
     allowBasemapNavigationAbort: true,
     allowOptimizedImageNavigationAbort: true,
-    allowPlaceHydrationNavigationAbort: true,
+    allowMapDetailNavigationAbort: true,
   });
 
   await page.goto(
