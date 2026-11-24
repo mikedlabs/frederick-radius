@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:cb8a65b7687cdb66fb15f512d8f00b174e31be9ab3f41122ddb233c4afcdfb11",
+  "data_version": "sha256:2eb0044bf161d816040fc133bf13a7a7acba2d82e474b7e7e39ef812a8deb30c",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-24T18:55:52.165Z",
+      "promoted_at": "2026-11-24T19:19:30.921Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -174,9 +174,9 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "4307370de9afea109a0b900d64d2a0a3f8b07c4a2eb5eaa0418ae3f12d99e81c",
+          "sha256": "1571fe5d66a9cf6f44320249a628278a4c34ad74b52cbeb21e80d22d95d12c20",
           "records": null,
-          "bytes": 12818
+          "bytes": 12806
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
@@ -327,6 +327,18 @@
           "sha256": "47252f431893d172bba9684de27ebec43e2d66c58cca5caf4616bf4b708cf97c",
           "records": null,
           "bytes": 555332
+        },
+        {
+          "path": "src/data/roddy-road-archive-photo.ts",
+          "sha256": "b37b9984773a4af6f9b559d4470cec744322f1ac344e694b1d61fd54f338bea0",
+          "records": null,
+          "bytes": 1288
+        },
+        {
+          "path": "public/history-photos/roddy-road-covered-bridge.jpg",
+          "sha256": "0665d00fb90696ad15ff354ac1249b276310d653f2b1f4822124012f29c02daf",
+          "records": null,
+          "bytes": 487303
         },
         {
           "path": "public/history-photos/hessian-barracks.jpg",

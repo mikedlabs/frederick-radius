@@ -1,3 +1,4 @@
+import { RODDY_ROAD_ARCHIVE_PHOTO as roddy } from "@/data/roddy-road-archive-photo";
 import { CREDITED_LOCAL_PLACE_PHOTOS, creditedPhotoCapturedOn, creditedPhotoOriginalSource } from "@/data/credited-local-place-photos";
 
 /**
@@ -97,14 +98,11 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     verified: true,
   },
   "historic-roddy-road-covered-bridge-thurmont": {
-    file: "Roddy Road covered bridge near Thurmont in Frederick County, Maryland, built about 1850.jpg",
-    alt: "The 1850 Roddy Road Covered Bridge at Roddy Road Park near Thurmont.",
-    author: "Carol M. Highsmith",
-    license: "Public domain",
-    source_url:
-      "https://commons.wikimedia.org/wiki/File:Roddy_Road_covered_bridge_near_Thurmont_in_Frederick_County,_Maryland,_built_about_1850.jpg",
-    edited: false,
-    verified: true,
+    file: roddy.file, alt: roddy.image.alt, author: roddy.image.creator,
+    source_url: roddy.image.source_url, localSrc: roddy.image.src,
+    license: roddy.image.license.label, licenseUrl: roddy.image.license.url,
+    objectPosition: roddy.objectPosition, modifications: roddy.image.modifications,
+    edited: roddy.image.edited, verified: true,
   },
 
   // Added 2026-10-13 UTC: Commons subject/author/license metadata checked,
