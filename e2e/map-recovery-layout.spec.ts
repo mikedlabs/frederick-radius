@@ -402,4 +402,28 @@ test.describe("focused amenity recovery across orientation changes", () => {
       await assert44HitTarget(sheet.getByRole("button", { name: "Close place details", exact: true }));
     }
   });
+
+  test("opens a reduced-motion place sheet on screen from its first landscape frame", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1180, height: 820 });
+    await installRecoveryBoundary(page);
+    await page.goto(mapUrl);
+    await page.locator('[data-map-list-place="beans-in-the-belfry-brunswick"]').click();
+    const details = page.locator(".map-peek").getByRole("button", { name: "Details", exact: true });
+    const firstFrame = page.evaluate(() => new Promise<boolean>(resolve => {
+      const observer = new MutationObserver(() => {
+        const close = document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Close place details"]');
+        if (!close) return;
+        observer.disconnect();
+        requestAnimationFrame(() => {
+          const rect = close.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+          resolve(rect.top >= 0 && rect.bottom <= innerHeight && close.contains(hit));
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }));
+    await details.click();
+    expect(await firstFrame).toBe(true);
+  });
 });

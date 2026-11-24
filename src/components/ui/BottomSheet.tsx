@@ -422,7 +422,7 @@ export default function BottomSheet({
             ref={sheetRef}
             onClickCapture={onLinkCapture}
             tabIndex={-1}
-            initial={{ y: "100%" }}
+            initial={reduce ? false : { y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={reduce ? NO_MOTION : SHEET_SPRING}
