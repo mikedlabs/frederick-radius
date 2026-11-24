@@ -6,6 +6,10 @@ const OFFICIAL_LINKS = {
     ["City of Frederick alerts", "https://www.cityoffrederickmd.gov/AlertCenter.aspx"],
     ["County Health Department alerts", "https://health.frederickcountymd.gov/AlertCenter.aspx"],
   ],
+  newsrooms: [
+    ["City of Frederick news releases", "https://www.cityoffrederickmd.gov/CivicAlerts.aspx"],
+    ["Frederick County news releases", "https://www.frederickcountymd.gov/CivicAlerts.aspx"],
+  ],
   rivers: [
     ["Monocacy River gauge near Frederick", "https://water.noaa.gov/gauges/FDKM2"],
   ],

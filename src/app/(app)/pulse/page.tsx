@@ -75,6 +75,7 @@ import PulseBoard, {
   type PulseHero,
   type PulseHeroChip,
 } from "@/components/pulse/PulseBoard";
+import { pressBulletinCoverage } from "@/lib/pulse/press-coverage";
 import PulseOfficialLinks from "@/components/pulse/PulseOfficialLinks";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
@@ -531,8 +532,9 @@ export default async function PulsePage() {
   // One place decides what the civic feed could actually tell us, so the
   // police strip, the blotter, and the road-work tile cannot disagree.
   const press = pressResult.data.items;
-  const civicAvailable =
-    pressResult.available && !pressResult.data.sourceHealth.degraded;
+  const officialNews = officialCivicNews(pressResult.data, nowMs);
+  const pressCoverage = pressBulletinCoverage(officialNews, pressResult.data.sourceHealth);
+  const civicAvailable = pressCoverage.availability === "current";
   const policeItems = policeReleases(press);
   const breakingPolice = featuredPoliceRelease(policeItems, nowMs);
   const latestPolice = policeItems[0] ?? null;
@@ -916,19 +918,17 @@ export default async function PulsePage() {
   // These reference feeds used to stack as their own text-heavy sections below
   // the board; they now live INSIDE the dashboard as tap-to-open tiles, so the
   // whole page is one unified, visual grid. Built server-side like every tile.
-  const officialNews = officialCivicNews(pressResult.data);
   const newsBody = (
     <LocalNewsBriefView news={newsResult} headlineLimit={6} officialLimit={6} showHeading={false} official={officialNews} />
   );
 
   const policeBody = (
     <div className="space-y-3">
-      {!civicAvailable && (
-        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          The City and County newsrooms could not be reached, so recent releases
-          are unknown right now. The official calls-for-service map below is
-          unaffected.
-        </p>
+      {pressCoverage.note && (
+        <>
+          {emptyNote(pressCoverage.note)}
+          <PulseOfficialLinks topic="newsrooms" />
+        </>
       )}
       {breakingPolice && (
         <div className="space-y-1.5">
@@ -964,7 +964,7 @@ export default async function PulsePage() {
           className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)] active:scale-[0.99]"
           style={{ background: "var(--app-cool)" }}
         >
-          Open the official CFS map
+          View calls for service
           <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
         </a>
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
@@ -975,17 +975,18 @@ export default async function PulsePage() {
     </div>
   );
 
-  // The empty branch here was unreachable while the tile was gated on
-  // advisories.length, and it says "reported right now" — a claim only worth
-  // making when the newsrooms actually answered.
-  const roadworkBody = advisories.length > 0
-    ? <PoliceBlotter items={advisories} now={nowMs} />
-    : civicAvailable
-      ? emptyNote("No road work or closures are reported right now.")
-      : <>
-          {emptyNote("Radius could not check local road-work notices. Check the road agency before leaving.")}
+  const roadworkBody = (
+    <>
+      {advisories.length > 0 && <PoliceBlotter items={advisories} now={nowMs} />}
+      {civicAvailable && advisories.length === 0 && emptyNote("No recent road-work notices in the City or County newsroom.")}
+      {pressCoverage.note && (
+        <>
+          {emptyNote(pressCoverage.note)}
           <PulseOfficialLinks topic="roadwork" />
-        </>;
+        </>
+      )}
+    </>
+  );
 
   // MARC — the soonest upcoming departure across the county stations powers
   // the tile head (predicted time when the realtime feed has it, else
@@ -2091,12 +2092,10 @@ export default async function PulsePage() {
         ? "Breaking release"
         : blotter.length > 0
           ? `${blotter.length} ${blotter.length === 1 ? "release" : "releases"}`
-          : civicAvailable
-            ? "CFS map"
-            : "Feed unavailable",
+          : civicAvailable ? "Calls for service map" : "Check newsrooms",
       accent: "var(--app-cool)",
       active: Boolean(breakingPolice),
-      degraded: !civicAvailable,
+      availability: pressCoverage.availability,
       // The dedicated breaking strip already keeps this release prominent.
       // Do not duplicate it in the board's "Happening now" row when another
       // higher-priority signal owns the masthead.
@@ -2106,9 +2105,7 @@ export default async function PulsePage() {
       peek:
         breakingPolice?.title ??
         latestPolice?.title ??
-        (civicAvailable
-          ? undefined
-          : "The City and County newsrooms could not be reached."),
+        pressCoverage.note ?? undefined,
       body: policeBody,
     },
     // Road work is carried by the same feed, so it must not silently VANISH
@@ -2120,20 +2117,18 @@ export default async function PulsePage() {
           key: "roadwork",
           label: "Road work",
           iconName: "TrafficCone",
-          countLabel: civicAvailable
+          countLabel: advisories.length > 0 || civicAvailable
             ? `${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`
-            : "Feed unavailable",
+            : "Check road closures",
           accent: "var(--app-cool)",
           active: false,
           attention: false,
-          degraded: !civicAvailable,
+          availability: pressCoverage.availability,
           kind: "status",
           sourceLabel: "City + County advisories",
           peek:
             advisories[0]?.title ??
-            (civicAvailable
-              ? undefined
-              : "The City and County newsrooms could not be reached."),
+            pressCoverage.note ?? undefined,
           body: roadworkBody,
         } as PulseTile]
       : []),
