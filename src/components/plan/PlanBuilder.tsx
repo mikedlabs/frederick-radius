@@ -470,7 +470,7 @@ export default function PlanBuilder({
     <div className={styles.builder} data-plan-controls-ready={controlsReady ? "true" : "false"}>
       {!plan && (
         <div className={styles.startLayout}>
-        <PlanScene />
+        <PlanScene showCreek={area === "county" || area === "frederick"} areaLabel={areaLabel} hours={hours} />
         <section
           className="tactile rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 sm:p-5"
           style={{ borderColor: "var(--app-border)" }}
@@ -516,7 +516,6 @@ export default function PlanBuilder({
             </article>
           ) : (
           <div className={styles.resultHeader}>
-          <PlanScene compact />
           <article
             className={styles.overview}
             style={{ borderColor: "var(--app-border)" }}
@@ -1233,14 +1232,21 @@ function Stop({
   );
 }
 
-function PlanScene({ compact = false }: { compact?: boolean }) {
-  return <div className={styles.scene} data-plan-scene>
-    <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" alt="Carroll Creek in Frederick." fill priority={!compact} sizes="(min-width: 800px) 1080px, calc(100vw - 32px)" />
-    <div className={styles.sceneText}>
-      <p className="mb-2 text-[12px] font-semibold uppercase tracking-[.12em]">Frederick County</p>
-      {!compact && <><h1>Plan an outing.</h1><p>Choose where and when. Keep the places that matter to you.</p></>}
+function PlanScene({ showCreek, areaLabel, hours }: { showCreek: boolean; areaLabel: string; hours: number }) {
+  if (!showCreek) {
+    return <header className={styles.areaTitle}>
+      <p>{areaLabel}</p>
+      <h1>Plan an outing.</h1>
+      <p className={styles.timeBudget}>{hours} hours to explore</p>
+    </header>;
+  }
+  return <header className={styles.builderCover} data-plan-scene>
+    <div className={styles.scene}>
+      <Image src="/images/seasons/summer/SUMMER CARROL CREEK.jpg" alt="Carroll Creek in Frederick." fill priority sizes="(min-width: 800px) 550px, calc(100vw - 32px)" />
+      <div className={styles.sceneText}><h1>Plan an outing.</h1></div>
     </div>
-  </div>;
+    <p className={styles.sceneCredit}>Carroll Creek in summer · Frederick Radius photo archive</p>
+  </header>;
 }
 
 function VisitSource({ label, asOf, href }: { label: string; asOf?: string; href?: string }) {

@@ -125,7 +125,16 @@ for (const width of [320, 390, 430, 1440]) {
     await expect(page.getByRole("heading", { name: "Plan an outing.", exact: true })).toBeVisible();
     const photo = page.getByRole("img", { name: "Carroll Creek in Frederick." });
     await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 1)).toBe(true);
-    await expect(page.getByRole("combobox", { name: "Planning area" })).toHaveValue("county");
+    const area = page.getByRole("combobox", { name: "Planning area" });
+    await expect(area).toHaveValue("county");
+    await expect(page.getByText("Carroll Creek in summer · Frederick Radius photo archive")).toBeVisible();
+    if (width === 390) {
+      await area.selectOption("brunswick");
+      await expect(photo).toHaveCount(0);
+      await expect(page.getByText("3 hours to explore")).toBeVisible();
+      await area.selectOption("county");
+      await expect(photo).toBeVisible();
+    }
     const build = page.getByRole("button", { name: "Build my plan", exact: true });
     expect((await build.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -362,7 +371,8 @@ test("a visual outing keeps choices through a pre-trip check and map fallback", 
   await page.goto(beansPlanUrl(), { waitUntil: "domcontentloaded" });
   const stops = page.getByRole("list", { name: "Plan stops, in order" });
   await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
-  await expect(page.getByRole("img", { name: "Carroll Creek in Frederick." })).toBeVisible();
+  // This is a Brunswick plan. A Frederick City scene would misidentify its setting.
+  await expect(page.getByRole("img", { name: "Carroll Creek in Frederick." })).toHaveCount(0);
   await expectFirstStopClearOfNavigation(page);
   const before = new URL(page.url()).searchParams.get("p");
   await page.getByRole("button", { name: "Check this plan", exact: true }).click();
@@ -376,7 +386,7 @@ test("a visual outing keeps choices through a pre-trip check and map fallback", 
   await expect(page.getByText("Loading your stops map…", { exact: true })).toHaveCount(0, { timeout: 30_000 });
   const mapView = page.getByRole("region", { name: "Map of planned stop locations", exact: true });
   await expect.poll(async () => await mapView.locator("canvas").first().isVisible()
-    || await mapView.getByRole("heading", { name: /^(Map view unavailable|This browser cannot draw the map|The map is temporarily unavailable)$/ }).isVisible()
+    || await mapView.getByRole("heading", { name: "Frederick County map", exact: true }).isVisible()
     || await mapView.getByText("The map could not load. Your stops and their detail links are still here.", { exact: true }).isVisible(), { timeout: 30_000 }).toBe(true);
   await expect(page.getByRole("list", { name: "Stops shown on the map", exact: true }).getByRole("link", { name: /Beans in the Belfry/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -401,7 +411,7 @@ test("planner motion finishes quickly and reduced motion shows the same choices"
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(await stop.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
   await expect(stop.getByRole("button", { name: /^(Pin|Pinned)$/ })).toBeEnabled();
-  expect(await page.getByRole("img", { name: "Carroll Creek in Frederick." }).evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+  await expect(page.locator("[data-plan-scene]")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
