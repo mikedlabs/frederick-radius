@@ -1310,7 +1310,7 @@ export default async function PulsePage() {
         </>
       ) : <>
         {emptyNote(outageDisplay.quietDetail)}
-        {!powerAvailable && <PulseOfficialLinks topic="power" />}
+        <PulseOfficialLinks topic="power" />
       </>,
     },
     // ── The rest → compact status tiles ──
