@@ -17,16 +17,11 @@ export default function InstallPage() {
     <div data-install-page className="mx-auto w-full max-w-xl py-4 sm:py-8">
       <header>
         <RippleMark size={64} tile />
-        <p className="mt-5 text-[13px] font-semibold text-[var(--app-brand-text)]">
-          Frederick Radius
-        </p>
-        <h1 className="mt-2 text-[32px] font-semibold leading-[1.1] tracking-tight text-[var(--app-ink)] sm:text-[40px]">
+        <h1 className="mt-5 text-[32px] font-semibold leading-[1.1] tracking-tight text-[var(--app-ink)] sm:text-[40px]">
           Radius on your Home Screen
         </h1>
         <p className="mt-4 max-w-lg text-[16px] leading-relaxed text-[var(--app-ink-2)]">
-          Keep Frederick County places, local events, and your saved plans a tap
-          away. Radius is a website you can add to your Home Screen, not a
-          separate App Store download.
+          Add the website from your browser to get back to local events and places in one tap.
         </p>
       </header>
 
@@ -48,15 +43,17 @@ export default function InstallPage() {
         <div className="mt-4 flex items-start gap-3">
           <Wifi className="mt-0.5 h-5 w-5 shrink-0 text-[var(--app-ink-3)]" aria-hidden />
           <p className="text-[14px] leading-relaxed text-[var(--app-ink-2)]">
-            Live data needs an internet connection. Maps and some tools may not
-            be available offline.
+            <strong className="block text-[var(--app-ink)]">Offline access</strong>
+            See a recent Today summary and your saved count when available.
+            Reconnect to open saved addresses, maps, and live updates.
           </p>
         </div>
         <div className="mt-4 flex items-start gap-3">
           <Bookmark className="mt-0.5 h-5 w-5 shrink-0 text-[var(--app-ink-3)]" aria-hidden />
           <p className="text-[14px] leading-relaxed text-[var(--app-ink-2)]">
-            Saved places stay in the browser and device where you saved them. They do not sync through a cloud account.
-            Adding Radius or sharing this link does not transfer them.
+            <strong className="block text-[var(--app-ink)]">Your saved places</strong>
+            Sign in to sync saved places across devices.
+            Saved events and routes stay here unless you export a backup from Settings.
           </p>
         </div>
       </section>
