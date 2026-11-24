@@ -107,6 +107,7 @@ beforeEach(async () => {
   nativeReplace = window.history.replaceState;
   navigation.pathname = "/events";
   vi.clearAllMocks();
+  navigation.leaveTo.mockReset();
   fetchMock.mockReset().mockResolvedValue(response("Fresh fixture result"));
   vi.stubGlobal("fetch", fetchMock);
   vi.spyOn(window, "scrollTo").mockImplementation(() => {});
@@ -242,10 +243,10 @@ describe("Find continuity through the real lazy header and overlay", () => {
       if (method === "Enter") {
         input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       } else {
-        const link = [...container.querySelectorAll<HTMLAnchorElement>("a")]
-          .find((node) => node.textContent?.trim() === "Open");
-        if (!link) throw new Error("The result action is missing");
-        link.click();
+        const result = container.querySelector<HTMLAnchorElement>('#search-results a[href="/places/fixture"]');
+        if (!result) throw new Error("The place result link is missing");
+        expect(result.textContent).toContain("Fresh fixture result");
+        result.click();
       }
     });
     expect(navigation.leaveTo).toHaveBeenCalledOnce();
