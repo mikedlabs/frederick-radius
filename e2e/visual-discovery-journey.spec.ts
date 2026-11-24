@@ -307,10 +307,22 @@ if (!LIVE) {
       if (width === 390) {
         const tabs = page.getByRole("navigation", { name: "Primary", exact: true }).filter({ visible: true });
         const tabTop = await tabs.evaluate(node => node.getBoundingClientRect().top);
-        const firstLines = await upcoming.getByRole("heading", { level: 3 }).evaluateAll(nodes =>
-          nodes.map(node => node.getBoundingClientRect().top + parseFloat(getComputedStyle(node).lineHeight)));
-        expect(firstLines).toHaveLength(weekend.length);
-        expect(Math.max(...firstLines), "Each weekend pick needs a readable title above the tab bar").toBeLessThanOrEqual(tabTop);
+        const when = evening.locator("[data-event-row-when]");
+        await expect(when).toContainText(/6:00\s*PM/i);
+        const day = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "America/New_York" }).format(new Date(tonight.starts_at));
+        await expect(when).toContainText(day);
+        for (const fact of [pick, when]) {
+          const box = (await fact.boundingBox())!;
+          expect(box.y).toBeGreaterThanOrEqual(0);
+          expect(box.y + box.height).toBeLessThanOrEqual(tabTop);
+        }
+        const rows = await upcoming.locator("article").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().toJSON()));
+        expect(rows).toHaveLength(weekend.length);
+        expect(rows[0].width).toBeCloseTo((await upcoming.boundingBox())!.width, 0);
+        expect(rows[1].width).toBeCloseTo(rows[0].width, 0);
+        expect(rows[1].left).toBeCloseTo(rows[0].left, 0);
+        expect(rows[1].top).toBeGreaterThanOrEqual(rows[0].bottom);
+
       }
 
       await nativeTarget(pick);
@@ -327,6 +339,26 @@ if (!LIVE) {
       await expect(page).toHaveURL(browseUrl);
       await expect(pick).toBeFocused();
       await expect(upcoming.getByRole("link", { name: weekend[1].title })).toBeVisible();
+      if (width === 390) {
+        const tabs = page.getByRole("navigation", { name: "Primary", exact: true }).filter({ visible: true });
+        const tabTop = await tabs.evaluate(node => node.getBoundingClientRect().top);
+        await licensed.evaluate(node => node.scrollIntoView({ block: "center", behavior: "instant" }));
+        const rowBox = (await licensed.boundingBox())!;
+        expect(rowBox.y).toBeGreaterThanOrEqual(0);
+        expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(tabTop);
+        const rights = licensed.locator("details[data-overview-photo-rights]");
+        await rights.locator("summary").tap();
+        await expect(rights.getByRole("link", { name: /CC BY-SA/ })).toBeVisible();
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+        await rights.locator("summary").tap();
+        const second = licensed.getByRole("link", { name: weekend[1].title, exact: true });
+        await nativeTarget(second);
+        await second.tap();
+        await expect(page.getByRole("dialog", { name: weekend[1].title, exact: true })).toBeVisible();
+        await page.goBack();
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+        await expect(second).toBeFocused();
+      }
       const openTonight = width === 390;
       const section = openTonight ? evening : upcoming;
       await section.getByRole("button", { name: openTonight ? "See all events tonight" : "See all events this weekend" }).tap();
