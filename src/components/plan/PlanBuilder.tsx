@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, type CSSProperties } from "react";
 import {
   AlertCircle,
   CalendarDays,
@@ -144,7 +144,9 @@ export default function PlanBuilder({
   const [checkClock, setCheckClock] = useState(0);
   const [startedNew, setStartedNew] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const resultRef = useRef<HTMLElement>(null);
+  const resultHeadingRef = useRef<HTMLHeadingElement>(null);
+  const updatedHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const getUpdatedHeading = useCallback(() => updatedHeadingRef.current, []);
   const locationRequest = useRef(0);
   useEffect(() => () => { locationRequest.current += 1; }, []);
 
@@ -248,6 +250,11 @@ export default function PlanBuilder({
     }, inputContext), require_verified_hours: verifiedHoursOnly };
   };
 
+  const openAdjust = () => {
+    updatedHeadingRef.current = null;
+    setDrawerOpen(true);
+  };
+
   const onBuild = (includeUnconfirmed = false) => {
     const inputs = includeUnconfirmed && currentSpec
       ? { ...currentSpec.i, require_verified_hours: false, ...(planArea === "near" && near ? { start_near: near } : {}) }
@@ -284,7 +291,12 @@ export default function PlanBuilder({
               : "No stops fit those choices yet.");
           replacePlanUrl(result.share);
         });
-        window.setTimeout(() => resultRef.current?.focus(), 50);
+        const heading = resultHeadingRef.current;
+        if (heading) {
+          if (drawerOpen) updatedHeadingRef.current = heading;
+          else heading.focus({ preventScroll: true });
+          heading.closest("section")?.scrollIntoView({ block: "start", behavior: "instant" });
+        }
       } catch {
         setErrorMsg("Radius could not build this plan. Please try again.");
         setStatusMsg(null);
@@ -493,11 +505,11 @@ export default function PlanBuilder({
       )}
 
       {plan && (
-        <section ref={resultRef} tabIndex={-1} className={`${styles.results} outline-none`} style={{ outline: "none" }}>
+        <section className={styles.results}>
           {plan.stops.length === 0 ? (
             <article className={styles.recovery}>
               <p className="eyebrow" style={{ color: "var(--app-link)" }}>{planDateLabel(plan)} · {planAreaLabel}</p>
-              <h1>{plan.notices?.length ? "No stops are scheduled in this plan yet." : "Nothing reliable fits yet."}</h1>
+              <h1 ref={resultHeadingRef} tabIndex={-1}>{plan.notices?.length ? "No stops are scheduled in this plan yet." : "Nothing reliable fits yet."}</h1>
               {plan.notices?.length ? (
                 <>
                   <p>Your saved choices are still in the link. Review the updates below to see what changed.</p>
@@ -512,7 +524,7 @@ export default function PlanBuilder({
                 <p>Try another area, start time, or focus to find stops for this outing.</p>
               )}
               <Button variant={plan.notices?.length || strictResult ? "secondary" : "primary"}
-                onClick={() => setDrawerOpen(true)} disabled={pending || !controlsReady}>Adjust</Button>
+                onClick={openAdjust} disabled={pending || !controlsReady}>Adjust</Button>
             </article>
           ) : (
           <div className={styles.resultHeader}>
@@ -525,11 +537,11 @@ export default function PlanBuilder({
                 <p className={`${styles.overviewContext} eyebrow`} style={{ color: "var(--app-link)" }}>
                   {shared ? "Shared plan · " : ""}{planDateLabel(plan)} · {planAreaLabel}
                 </p>
-                <h1 className={`${styles.overviewTitle} mt-1 font-semibold`} style={{ color: "var(--app-ink)" }}>{plan.title}</h1>
+                <h1 ref={resultHeadingRef} tabIndex={-1} className={`${styles.overviewTitle} mt-1 font-semibold`} style={{ color: "var(--app-ink)" }}>{plan.title}</h1>
               </div>
               <button
                 type="button"
-                onClick={() => setDrawerOpen(true)}
+                onClick={openAdjust}
                 disabled={pending || !controlsReady}
                 className={`${styles.overviewAdjust} inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold`}
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
@@ -709,7 +721,7 @@ export default function PlanBuilder({
             {plan.stops.length > 0 && (
               <button
                 type="button"
-                onClick={() => setDrawerOpen(true)}
+                onClick={openAdjust}
                 disabled={pending || !controlsReady}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-semibold"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
@@ -736,6 +748,7 @@ export default function PlanBuilder({
       <BottomDrawer
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
+        getReturnFocusTarget={getUpdatedHeading}
         title="Adjust the plan"
         subtitle={activeEventAnchor
           ? scheduledEventStop

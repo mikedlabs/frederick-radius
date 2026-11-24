@@ -11,7 +11,8 @@
 .areaTitle p { color: var(--app-ink-2); font-size: .9375rem; }
 .areaTitle h1 { margin-block: .25rem .625rem; font-size: clamp(2rem, 5vw, 3.25rem); font-weight: 700; letter-spacing: -.035em; line-height: 1.05; }
 .areaTitle .timeBudget { font-variant-numeric: tabular-nums; }
-.results { display: grid; gap: 20px; }
+.results { display: grid; gap: 20px; scroll-margin-block-start: calc(var(--app-topbar-h) + env(safe-area-inset-top, 0px) + 8px); }
+.results h1:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 3px; }
 .resultHeader { display: grid; gap: 20px; }
 .overview { padding-block: 16px 20px; border-bottom: 1px solid var(--app-border); }
 .overview h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.08; letter-spacing: -.03em; }

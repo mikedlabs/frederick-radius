@@ -26,6 +26,17 @@ import PlanBuilder from "./PlanBuilder";
 const spec: PlanSpec = { v: 1, i: { audience: "friends", vibe: "easy", duration_hours: 4, start_at: "2026-10-06T23:00:00Z", event_anchor_slug: "runtime-concert" }, s: [{ e: "runtime-concert" }] };
 const unavailable = (): Plan => ({ title: "An evening with friends", summary: "Your choices are saved.", stops: [], share: encodeSpec(spec), notices: [{ spec_index: 0, code: "unavailable", message: "Radius could not confirm this event right now. Its place in your plan is saved. Try again shortly." }] });
 const recovered = (): Plan => ({ title: "An outing around Evening concert", summary: "A full published event visit.", share: encodeSpec(spec), stops: [{ order: 1, spec_index: 0, at: spec.i.start_at!, duration_min: 180, why: "The current published event time.", open: "open", event: { slug: "runtime-concert", title: "Evening concert", starts_at: spec.i.start_at!, ends_at: "2026-10-07T02:00:00Z", geom: { lng: -77.4126, lat: 39.4142 }, category: "music", venue_name: "Weinberg Center", source_url: "https://example.org/concert" } as NonNullable<Plan["stops"][number]["event"]> }] });
+const scrollIntoView = vi.fn();
+beforeEach(() => {
+  const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
+  scrollIntoView.mockClear();
+  return () => {
+    if (original) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", original);
+    else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+  };
+});
+
 describe("event outing recovery and edit presentation", () => {
   let root: Root; let host: HTMLDivElement;
   beforeEach(() => {
@@ -125,6 +136,8 @@ describe("event outing recovery and edit presentation", () => {
     expect(mocks.generate).toHaveBeenCalledTimes(1);
     expect(mocks.generate.mock.calls[0][0].event_anchor_slug).toBeUndefined();
     expect(host.querySelector("h1")?.textContent).toBe("Nothing reliable fits yet.");
+    expect(document.activeElement).toBe(host.querySelector("h1"));
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "instant" });
     expect(host.textContent).not.toContain("Evening concert");
   });
   it("rebuilds after removing the last pinned stop instead of retaining an empty pin", async () => {
