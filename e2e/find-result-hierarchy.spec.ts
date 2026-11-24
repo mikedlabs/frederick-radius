@@ -137,7 +137,7 @@ for (const width of [320, 375, 390, 430]) {
       expect(gap).toBeLessThanOrEqual(20);
       previous = box;
     }
-    const view = first.getByRole("link", { name: "View place", exact: true });
+    const view = first.getByRole("link", { name, exact: true });
     await expect(view).toHaveAttribute("href", `/places/${slug}`);
     for (const control of [view, first.getByRole("link", { name: "Map", exact: true })]) {
       const bounds = (await control.boundingBox())!;

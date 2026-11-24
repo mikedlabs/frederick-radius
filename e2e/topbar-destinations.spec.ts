@@ -217,7 +217,7 @@ for (const width of [375, 1366]) {
 
     await dialog.getByRole("listitem")
       .filter({ hasText: "Fresh search fixture 3" })
-      .getByRole("link", { name: "Open Fresh search fixture 3", exact: true }).click();
+      .getByRole("link", { name: "Fresh search fixture 3", exact: true }).click();
     await expect(page).toHaveURL(/\/places\/beans-in-the-belfry-brunswick/);
     await expect(page.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
     const detailOpener = page.getByRole("button", { name: "Ask or find across Frederick County", exact: true });
@@ -243,7 +243,7 @@ for (const width of [375, 1366]) {
     await expect(dialog).toBeVisible();
     await expect(townField).toHaveValue("coffee");
     const returnRead = nextQuery ? 6 : 5;
-    await expect(dialog.getByRole("link", { name: `Open Fresh search fixture ${returnRead}`, exact: true })).toBeFocused();
+    await expect(dialog.getByRole("link", { name: `Fresh search fixture ${returnRead}`, exact: true })).toBeFocused();
     expect(requests.at(-1)).toEqual({ query: "coffee", scope: "town:brunswick" });
     await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
     await expect(dialog).toHaveCount(0);

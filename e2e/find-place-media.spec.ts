@@ -128,7 +128,7 @@ for (const width of [320, 375, 390, 430]) {
     await expect.poll(() => owned.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(1);
     const ownedResult = dialog.locator("li").filter({ has: owned });
     await expect(ownedResult.locator(".place-card-photo-credit")).toHaveCount(0);
-    await expect(dialog.getByRole("link", { name: "View place", exact: true })).toHaveAttribute("href", new RegExp(`/places/${creek}`));
+    await expect(dialog.getByRole("link", { name: "Carroll Creek Linear Park", exact: true })).toHaveAttribute("href", new RegExp(`/places/${creek}`));
     await dialog.getByRole("searchbox").fill("Cunningham Falls");
     await expectDecodedBundledFalls(dialog);
     const source = dialog.locator('.place-card-photo-credit a[href^="https://commons.wikimedia.org/wiki/File:"]');
@@ -149,7 +149,7 @@ for (const width of [320, 375, 390, 430]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: testInfo.outputPath(`find-exact-source-${width}.png`) });
     observeFind = false;
-    await dialog.getByRole("link", { name: "View place", exact: true }).click();
+    await dialog.getByRole("link", { name: "Cunningham Falls State Park", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/places/${falls}`));
     await page.goBack();
     await expect(page).toHaveURL(/\/contacts/);
@@ -219,7 +219,7 @@ for (const { entry, query, slug, photoSource } of [
     });
     const first = dialog.locator("#search-opt-0");
     await expect(first.getByRole("heading", { name: query, exact: true })).toBeVisible();
-    await expect(first.getByRole("link", { name: "View place", exact: true })).toHaveAttribute("href", `/places/${slug}`);
+    await expect(first.getByRole("link", { name: query, exact: true })).toHaveAttribute("href", `/places/${slug}`);
     const photo = first.locator('[data-search-place-visual="owned"] img');
     await photo.scrollIntoViewIfNeeded();
     await expect.poll(() => photo.evaluate(async (node, expectedSource) => {

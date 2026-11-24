@@ -67,6 +67,26 @@ describe("Find retrieval-first interactions", () => {
     expect(navigation.leaveTo).toHaveBeenLastCalledWith(gravel.href);
   });
 
+  it("opens a named place from its identifying facts and distinguishes the map and same-name branches", async () => {
+    await render("Gravel & Grind"); await tick();
+    const street = "15 E 6th St";
+    const branch = { ...gravel, id: "place:second", href: "/places/second", address: "2 Example St" };
+    await respond(0, [{ ...gravel, address: street, lat: 39.42, lng: -77.4 }, branch]);
+    const first = host.querySelector<HTMLAnchorElement>(`#search-results a[href="${gravel.href}"]`)!;
+    const second = host.querySelector<HTMLAnchorElement>('a[href="/places/second"]')!;
+    const accessibleName = (link: HTMLAnchorElement) => link.getAttribute("aria-labelledby")?.split(" ")
+      .map(id => document.getElementById(id)?.textContent).join(" ");
+    expect(accessibleName(first)).toBe(`${gravel.title} ${street}`);
+    expect(accessibleName(second)).toBe(`${gravel.title} ${branch.address}`);
+    expect(first.contains(host.querySelector("#search-opt-0 h3"))).toBe(true);
+    const map = host.querySelector<HTMLAnchorElement>('#search-opt-0 a[href^="/map?"]')!;
+    expect(first.contains(map)).toBe(false);
+    await act(async () => map.click());
+    expect(navigation.leaveTo).toHaveBeenLastCalledWith("/map?at=39.42000,-77.40000&place=gravel-and-grind-frederick");
+    await act(async () => first.click());
+    expect(navigation.leaveTo).toHaveBeenLastCalledWith(gravel.href);
+  });
+
   it("uses the same category answer for a polite request's card and Enter", async () => {
     await render("I'm looking for pizza"); await tick();
     expect(new URL(requests[0].url, "https://test.local").searchParams.get("q")).toBe("pizza");

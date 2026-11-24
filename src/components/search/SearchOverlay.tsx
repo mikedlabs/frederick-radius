@@ -32,7 +32,7 @@ import { commandDestination } from "@/lib/command-routing";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { settleFindReturnScroll } from "./find-return-scroll";
-import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLead } from "./SearchPlaceVisual";
+import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLeadPhoto } from "./SearchPlaceVisual";
 import { searchEventCoverageMessage, searchEventRecoveryHref, searchEventRecoveryLabel, type SearchEventCoverage } from "@/lib/search/event-coverage";
 
 /**
@@ -53,7 +53,7 @@ const QUICK_ICON: Record<IntentIcon, typeof Clock> = {
 // AbortController so an out-of-order request can't overwrite a newer
 // result. Trust signals are populated server-side on each result so
 // the overlay doesn't need clientPlaceBySlug / EVENT_BY_SLUG either.
-import TrustChip from "@/components/ui/TrustChip";
+import resultStyles from "./FindResultRow.module.css";
 import Skeleton from "@/components/ui/Skeleton";
 import { TRUST_COLOR, type TrustSignal } from "@/lib/trust";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches, useRecentSearchStatus, type RecentSearchStatus } from "@/hooks/useRecentSearches";
@@ -69,14 +69,23 @@ const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   action: ArrowRight,
 };
 
-function SearchTrustLine({ signal }: { signal: TrustSignal }) {
-  const label = signal.checked ?? signal.label;
+const PLACE_HOURS_LABEL: Record<string, string> = {
+  Unconfirmed: "Hours not posted", Likely: "Estimated hours", "Checked at source": "Posted hours checked",
+};
+const RESULT_KIND: Record<SearchResultType, string> = {
+  place: "Place", event: "Event", category: "Category", municipality: "Town", action: "Tool",
+};
+
+function SearchTrustLine({ signal, place }: { signal: TrustSignal; place: boolean }) {
+  // A place signal describes its hours. Qualify labels that otherwise read
+  // like uncertainty about the place’s identity.
+  const label = signal.checked ?? (place ? PLACE_HOURS_LABEL[signal.label] ?? signal.label : signal.label);
   return (
     <span
-      className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-medium"
+      className={resultStyles.trust}
       style={{ color: "var(--app-ink-3)" }}
       title={signal.basis}
-      aria-label={`Source ${signal.label}. ${signal.basis}${signal.checked ? `. ${signal.checked}` : ""}`}
+      aria-label={`${label}. ${signal.basis}`}
     >
       <span
         aria-hidden
@@ -88,17 +97,9 @@ function SearchTrustLine({ signal }: { signal: TrustSignal }) {
   );
 }
 
-const LABEL_BY_TYPE: Record<SearchResultType, string> = {
-  place: "Place",
-  event: "Event",
-  category: "Category",
-  municipality: "Town",
-  action: "Tool",
-};
-
 /**
- * Keep the API's ranked order intact. The first result gets the stronger
- * decision card; everything after it stays in the exact order returned.
+ * Keep the API's ranked order intact. The first result leads the list.
+ * Everything after it stays in the exact order returned.
  * Grouping by type made a lower-ranked place leapfrog a better event or tool.
  */
 export function splitBestMatch(results: SearchResult[]): {
@@ -394,7 +395,6 @@ export default function SearchOverlay({
   const eventCoverage = searchMeta?.eventCoverage ?? (searchMeta?.liveEventsUnavailable ? "unavailable" : "complete");
   const eventCoverageMessage = searchEventCoverageMessage(eventCoverage);
   const [retryNonce, setRetryNonce] = useState(0);
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
   const searchedArea: Scope | null = area ?? (coords ? "nearme" : null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -461,7 +461,6 @@ export default function SearchOverlay({
     setResults([]);
     setSearchMeta(null);
     setStatus(next.trim() ? "loading" : "idle");
-    setHoverIdx(null);
   };
 
   // Debounced fetch against /api/search. 150ms feels instant on a fast
@@ -632,7 +631,6 @@ export default function SearchOverlay({
       setResults([]);
       setSearchMeta(null);
       setStatus("idle");
-      setHoverIdx(null);
     }
   }, [open]);
 
@@ -1084,159 +1082,59 @@ export default function SearchOverlay({
                   track("search_pick", { type: r.type });
                   navigateFromSearch(r.href);
                 };
-                // A row shows a thumbnail only when a real photo exists. A row
-                // without one keeps the same slot width and shows the glyph in
-                // ink-3 beside the title's first line, with no tile behind it.
-                const glyphOffset = idx === 0 ? "mt-5" : "mt-3.5";
-                const art = r.thumbnailSource ? (
-                  <SearchPlaceVisualImage size={idx === 0 ? 64 : 40}
-                    className={idx === 0 ? "" : "mt-0.5"}
-                    glyphClassName={glyphOffset}
-                    fallback={<Icon className="h-6 w-6" strokeWidth={1.8} aria-hidden />} />
-                ) : r.thumbnail ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={r.thumbnail}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    className={idx === 0
-                      ? "h-16 w-16 shrink-0 rounded-[var(--app-radius-md)] object-cover"
-                      : "mt-0.5 h-10 w-10 shrink-0 rounded-[var(--app-radius-sm)] object-cover"}
-                    style={{ boxShadow: "inset 0 0 0 1px var(--app-border)" }}
-                  />
-                ) : (
-                  <span
-                    aria-hidden
-                    data-search-result-glyph
-                    className={`${glyphOffset} grid h-6 shrink-0 place-items-center ${idx === 0 ? "w-16" : "w-10"}`}
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    <Icon className="h-6 w-6" strokeWidth={1.8} />
-                  </span>
-                );
-
-                if (idx === 0) {
-                  const mapHref = r.type === "place" && r.lat != null && r.lng != null
-                    ? `/map?at=${r.lat.toFixed(5)},${r.lng.toFixed(5)}&place=${encodeURIComponent(r.id.replace(/^place:/, ""))}`
-                    : null;
-                  if (r.type === "place" && r.thumbnailSource) {
-                    return <SearchPlaceVisual key={r.id} source={r.thumbnailSource} lead><li
-                      id="search-opt-0" data-idx={0}
-                      className="mx-4 mb-3 border-b pt-3 sm:mx-5"
-                      style={{ borderColor: "var(--app-border)" }}
-                    >
-                      <SearchPlaceLead fallback={<Icon className="h-6 w-6" strokeWidth={1.8} aria-hidden />} actions={<>
-                        <Link href={r.href} onClick={pick} aria-describedby="find-best-place-title"
-                          onMouseEnter={() => setHoverIdx(0)} onMouseLeave={() => setHoverIdx(null)}>
-                          View place <ArrowRight aria-hidden />
+                const lead = idx === 0;
+                const photoLead = lead && r.type === "place" && Boolean(r.thumbnailSource);
+                const mapHref = lead && r.type === "place" && r.lat != null && r.lng != null
+                  ? `/map?at=${r.lat.toFixed(5)},${r.lng.toFixed(5)}&place=${encodeURIComponent(r.id.replace(/^place:/, ""))}`
+                  : null;
+                // Different locations of a chain can have identical names,
+                // types and towns. Show the returned address when that matters.
+                const address = r.type === "place" && results.some(other =>
+                  other.id !== r.id && other.type === "place" && other.title.toLowerCase() === r.title.toLowerCase())
+                  ? r.address?.trim() : null;
+                const titleId = `search-title-${idx}`;
+                const addressId = `search-address-${idx}`;
+                const factsId = `search-facts-${idx}`;
+                const facts = [r.type !== "place" ? RESULT_KIND[r.type] : null, r.subtitle, distance].filter(Boolean).join(" · ");
+                const name = r.type === "action" ? r.title : highlight(r.title, query);
+                const glyph = <Icon aria-hidden strokeWidth={1.8} />;
+                return (
+                  <SearchPlaceVisual key={r.id} source={r.thumbnailSource ?? null} lead={photoLead}>
+                    <li id={`search-opt-${idx}`} data-idx={idx} className={resultStyles.result}
+                      data-find-lead={lead || undefined} data-search-place-lead={photoLead || undefined}>
+                      {lead && <p className={resultStyles.eyebrow}>Best match</p>}
+                      {photoLead && <SearchPlaceLeadPhoto />}
+                      <div className={resultStyles.row}>
+                        <Link href={r.href} onClick={pick} className={resultStyles.destination}
+                          aria-labelledby={address ? `${titleId} ${addressId}` : titleId}
+                          aria-describedby={facts ? factsId : undefined}>
+                          <span className={resultStyles.visual} aria-hidden>
+                            {!lead && r.thumbnailSource ? <SearchPlaceVisualImage size={40} fallback={glyph} />
+                              : r.thumbnail && !photoLead ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={r.thumbnail} alt="" loading="lazy" decoding="async" />
+                              ) : glyph}
+                          </span>
+                          <div className={resultStyles.summary}>
+                            <h3 id={titleId} className={resultStyles.name}>{name}</h3>
+                            {address && <p id={addressId} className={resultStyles.address}>{address}</p>}
+                            {facts && <p id={factsId} className={resultStyles.facts}>{facts}</p>}
+                            {trust && (lead || trust.level !== "unconfirmed") && <SearchTrustLine signal={trust} place={r.type === "place"} />}
+                          </div>
+                          <ArrowRight className={resultStyles.arrow} strokeWidth={2} aria-hidden />
                         </Link>
-                        {mapHref && <Link href={mapHref} aria-describedby="find-best-place-title" onClick={(event) => {
-                          if (!isPlainNavigationClick(event)) return;
-                          event.preventDefault();
-                          if (query.trim()) pushRecent(query.trim());
-                          track("search_map");
-                          navigateFromSearch(mapHref);
-                        }}><MapPin aria-hidden />Map</Link>}
-                      </>}>
-                        <p className="text-[0.6875rem] font-semibold leading-normal" style={{ color: "var(--app-ink-2)" }}>Best match · Place</p>
-                        <h3 id="find-best-place-title">{highlight(r.title, query)}</h3>
-                        <p className="mt-2 text-[0.875rem] leading-normal" style={{ color: "var(--app-ink-2)" }}>
-                          {r.subtitle}{distance ? ` · ${distance}` : ""}
-                        </p>
-                        {trust && <TrustChip signal={trust} className="mt-2 inline-block" />}
-                      </SearchPlaceLead>
-                    </li></SearchPlaceVisual>;
-                  }
-                  return (
-                    <SearchPlaceVisual key={r.id} source={r.thumbnailSource ?? null}><li
-                      id="search-opt-0"
-                      data-idx={0}
-                      className="mx-4 mb-2 border-b sm:mx-5"
-                      style={{ borderColor: "var(--app-border)" }}
-                    >
-                      <div className="flex items-start gap-3 py-3">
-                        {art}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-2)" }}>
-                            Best match · {LABEL_BY_TYPE[r.type]}
-                          </p>
-                          <p id="find-best-result-title" className="mt-1 line-clamp-2 font-sans text-[22px] font-bold leading-[1.1] tracking-[-0.025em]" style={{ color: "var(--app-ink)" }}>
-                            {r.type === "action" ? r.title : highlight(r.title, query)}
-                          </p>
-                          <p className="mt-1 line-clamp-2 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                            {r.subtitle}{distance ? ` · ${distance}` : ""}
-                          </p>
-                          {trust && <TrustChip signal={trust} className="mt-1.5" />}
-                        </div>
+                        {mapHref && <Link href={mapHref} className={resultStyles.map} aria-describedby={address ? `${titleId} ${addressId}` : titleId}
+                          onClick={(event) => {
+                            if (!isPlainNavigationClick(event)) return;
+                            event.preventDefault();
+                            if (query.trim()) pushRecent(query.trim());
+                            track("search_map");
+                            navigateFromSearch(mapHref);
+                          }}><MapPin aria-hidden strokeWidth={1.8} /> Map</Link>}
                       </div>
                       <SearchPlaceVisualCredit />
-                      <div className={`grid border-t ${mapHref ? "grid-cols-2" : "grid-cols-1"}`} style={{ borderColor: "var(--app-border)" }}>
-                        <Link
-                          href={r.href}
-                          aria-label={`Open ${r.title}`}
-                          onClick={pick}
-                          onMouseEnter={() => setHoverIdx(0)}
-                          onMouseLeave={() => setHoverIdx(null)}
-                          className="flex min-h-11 items-center justify-center gap-1.5 px-3 text-[12px] font-semibold"
-                          style={{ color: "var(--app-ink)", background: hoverIdx === 0 ? "var(--app-bg-sunken)" : "transparent" }}
-                        >
-                          Open
-                          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                        </Link>
-                        {mapHref ? (
-                          <Link
-                            href={mapHref}
-                            aria-describedby="find-best-result-title"
-                            onClick={(event) => {
-                              if (!isPlainNavigationClick(event)) return;
-                              event.preventDefault();
-                              if (query.trim()) pushRecent(query.trim());
-                              track("search_map");
-                              navigateFromSearch(mapHref);
-                            }}
-                            className="flex min-h-11 items-center justify-center gap-1.5 border-l px-3 text-[12px] font-semibold"
-                            style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
-                          >
-                            <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-                            Map
-                          </Link>
-                        ) : null}
-                      </div>
-                    </li></SearchPlaceVisual>
-                  );
-                }
-
-                return (
-                  <SearchPlaceVisual key={r.id} source={r.thumbnailSource ?? null}><li id={`search-opt-${idx}`} data-idx={idx}>
-                    <Link
-                      href={r.href}
-                      onClick={pick}
-                      onMouseEnter={() => setHoverIdx(idx)}
-                      onMouseLeave={() => setHoverIdx(null)}
-                      className="flex min-h-[62px] items-start gap-3 border-b px-4 py-2.5 sm:px-5"
-                      style={{
-                        borderColor: "var(--app-border)",
-                        background: hoverIdx === idx ? "var(--app-bg-sunken)" : "transparent",
-                      }}
-                    >
-                      {art}
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-mono text-[9px] font-semibold uppercase tracking-[0.11em]" style={{ color: "var(--app-ink-3)" }}>
-                          {LABEL_BY_TYPE[r.type]}
-                        </span>
-                        <span className="mt-0.5 block truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                          {r.type === "action" ? r.title : highlight(r.title, query)}
-                        </span>
-                        <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                          {r.subtitle}{distance ? ` · ${distance}` : ""}
-                        </span>
-                        {trust && <SearchTrustLine signal={trust} />}
-                      </span>
-                      <ArrowRight className="mt-4 h-3.5 w-3.5 shrink-0 opacity-35" strokeWidth={2.25} aria-hidden />
-                    </Link>
-                    <SearchPlaceVisualCredit />
-                  </li></SearchPlaceVisual>
+                    </li>
+                  </SearchPlaceVisual>
                 );
               })}
             </ul>
