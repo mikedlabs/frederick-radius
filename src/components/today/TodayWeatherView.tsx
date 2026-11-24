@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import AppTransitionLink from "@/components/nav/AppTransitionLink";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
+import DaylightScale from "./DaylightScale";
 import styles from "./TodayCard.module.css";
 
 export type TodayWeatherViewProps = {
@@ -15,6 +16,7 @@ export type TodayWeatherViewProps = {
   retainedHighIssuedAt?: string | null;
   sunriseTime?: string | null;
   sunsetTime?: string | null;
+  daylightAsOf?: number;
   actionableHeadline?: boolean;
   sun: { label: string; time: string } | null;
   variant: SkyVariant | null;
@@ -68,21 +70,25 @@ export function WeatherPending() {
   );
 }
 
-type DailyWeatherFacts = Pick<TodayWeatherViewProps, "lowF" | "sunriseTime" | "sunsetTime" | "retainedHighIssuedAt"> & { highF?: number | null };
+type DailyWeatherFacts = Pick<TodayWeatherViewProps, "lowF" | "sunriseTime" | "sunsetTime" | "daylightAsOf" | "retainedHighIssuedAt"> & { highF?: number | null };
 
-function DailyFacts({ highF, lowF, sunriseTime, sunsetTime, retainedHighIssuedAt, knownOnly = false }: DailyWeatherFacts & { knownOnly?: boolean }) {
+function DailyFacts({ highF, lowF, sunriseTime, sunsetTime, daylightAsOf, retainedHighIssuedAt, knownOnly = false }: DailyWeatherFacts & { knownOnly?: boolean }) {
   const facts = [
     [retainedHighIssuedAt ? "Earlier high" : "High", highF == null ? null : `${highF}°`],
     ["Low", lowF == null ? null : `${lowF}°`],
     ["Sunrise", sunriseTime],
     ["Sunset", sunsetTime],
   ] as const;
-  const visible = knownOnly ? facts.filter(([, value]) => value != null) : facts;
-  if (!visible.length) return null;
-  return <p data-weather-stats className={styles.dailyFacts}>
-    {visible.map(([label, value]) => <span key={label}>
+  const visible = facts.filter(([label, value]) => {
+    if (daylightAsOf !== undefined && (label === "Sunrise" || label === "Sunset")) return false;
+    return !knownOnly || value != null;
+  });
+  if (!visible.length && daylightAsOf === undefined) return null;
+  return <p data-weather-stats className={styles.dailyFacts} data-has-scale={daylightAsOf !== undefined || undefined}>
+    {visible.map(([label, value]) => <span key={label} data-weather-fact>
       {value ? `${label} ${value}` : <>{label} <span aria-hidden>–</span><span className="sr-only">unavailable</span></>}
     </span>)}
+    {daylightAsOf !== undefined && <DaylightScale initialNow={daylightAsOf} />}
   </p>;
 }
 
@@ -106,7 +112,7 @@ export function WeatherUnavailable({ density = "standard", ...facts }: DailyWeat
 /** Shared factual presentation. Provider reads, verdicts, sun calculations,
  * live daylight, and offline capture remain owned by the server composition. */
 export default function TodayWeatherView({
-  headline, condition, temperatureF, highF, lowF, sunriseTime, sunsetTime, retainedHighIssuedAt, actionableHeadline, sun, variant,
+  headline, condition, temperatureF, highF, lowF, sunriseTime, sunsetTime, daylightAsOf, retainedHighIssuedAt, actionableHeadline, sun, variant,
   forecastAvailable, issuedAt, safetyNote, safetyNoteRoutine = false, daylight, children, density = "standard",
 }: TodayWeatherViewProps) {
   const issuance = forecastIssuance(issuedAt);
@@ -174,7 +180,7 @@ export default function TodayWeatherView({
         {hasDistinctRead && (actionableHeadline || !forecastAvailable) &&
           <h2 data-weather-headline className={styles.headline}>{headline}</h2>}
         {!noteInDetails && safetyLine}
-        <DailyFacts knownOnly={!forecastAvailable} highF={highF} lowF={lowF} sunriseTime={sunriseTime} sunsetTime={sunsetTime} retainedHighIssuedAt={retainedHighIssuedAt} />
+        <DailyFacts knownOnly={!forecastAvailable} highF={highF} lowF={lowF} sunriseTime={sunriseTime} sunsetTime={sunsetTime} daylightAsOf={daylightAsOf} retainedHighIssuedAt={retainedHighIssuedAt} />
         {!forecastAvailable && <EarlierHighSource issuedAt={retainedHighIssuedAt} />}
       </section>
     );

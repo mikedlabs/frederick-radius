@@ -190,7 +190,7 @@ for (const appearance of ["light", "dark"] as const) {
           expect(Math.round(entryBox.height * 100) / 100).toBeGreaterThanOrEqual(44);
           expect(entryBox.width).toBeGreaterThanOrEqual(44);
           await expect.poll(() => fivePointForecastProbe(entryControl)).toEqual([true, true, true, true, true]);
-          const dailyFacts = renderedWeather.locator("[data-weather-stats] > span");
+          const dailyFacts = renderedWeather.locator("[data-weather-stats] [data-weather-fact]");
           if (weatherState === "available") await expect(dailyFacts).toHaveCount(4);
           const readings = [
             /^(?:(?:Earlier high|High)\s+[−-]?\d+°|High\s+–\s*unavailable)$/i,
