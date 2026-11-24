@@ -124,7 +124,7 @@ describe("event outing recovery and edit presentation", () => {
     await act(async () => button("Build my plan").click());
     expect(mocks.generate).toHaveBeenCalledTimes(1);
     expect(mocks.generate.mock.calls[0][0].event_anchor_slug).toBeUndefined();
-    expect(host.textContent).toContain("New outing");
+    expect(host.querySelector("h1")?.textContent).toBe("Nothing reliable fits yet.");
     expect(host.textContent).not.toContain("Evening concert");
   });
   it("rebuilds after removing the last pinned stop instead of retaining an empty pin", async () => {
@@ -375,7 +375,7 @@ describe("explicit confirmed-hours planning preference", () => {
     await act(async () => button("Build my plan").click());
     expect(mocks.generate).toHaveBeenLastCalledWith(expect.objectContaining({ require_verified_hours: true }));
     expect(host.textContent).toContain("Radius could not confirm venue hours for this outing.");
-    expect(host.textContent).toContain("Choose Adjust, open Fine-tune the outing");
+    expect(button("Include stops with unconfirmed hours")).toBeDefined();
     expect(host.textContent).not.toContain("longer drive");
     expect(host.querySelector('a[href*="google.com/maps"]')).toBeNull();
     await act(async () => button("Adjust").click());
@@ -385,6 +385,20 @@ describe("explicit confirmed-hours planning preference", () => {
     expect(host.textContent).toContain(draftIntro);
     await act(async () => button("Update this plan").click());
     expect(mocks.generate).toHaveBeenLastCalledWith(expect.objectContaining({ require_verified_hours: false }));
+    expect(host.textContent).toContain(draftResult);
+  });
+
+  it("leads with zero-stop recovery and changes only the confirmed-hours setting when building a draft", async () => {
+    const input = ordinaryInputs({ require_verified_hours: true, start_at: "2026-11-25T17:00:00.000Z" });
+    const emptyPlan = ordinaryPlan(input, true);
+    render(input, emptyPlan);
+    expect(host.querySelector("h1")?.textContent).toBe("Nothing reliable fits yet.");
+    expect(host.querySelector('[aria-label="Share this plan"]')).toBeNull();
+    expect(host.querySelector('[aria-label="Save outing"]')).toBeNull();
+    await act(async () => button("Include stops with unconfirmed hours").click());
+    const rebuilt = mocks.generate.mock.calls[0][0];
+    expect(rebuilt.require_verified_hours).toBe(false);
+    expect(rebuilt).toMatchObject({ municipality: input.municipality, audience: input.audience, vibe: input.vibe, duration_hours: input.duration_hours, start_at: input.start_at });
     expect(host.textContent).toContain(draftResult);
   });
 

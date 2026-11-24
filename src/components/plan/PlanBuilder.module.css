@@ -95,3 +95,9 @@
 @keyframes photoSettle { from { transform: scale(1.025); } to { transform: scale(1); } }
 @keyframes stopArrive { from { opacity: .72; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes routeWorking { to { stroke-dashoffset: -42; } }
+
+.recovery { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-block: 8px; }
+.recovery h1, .recovery p { flex-basis: 100%; margin: 0; }
+.recovery h1 { color: var(--app-ink); font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 750; line-height: 1.15; }
+.recovery p { color: var(--app-ink-2); }
+.recovery button { max-width: 100%; height: auto; min-height: 44px; padding-block: 8px; white-space: normal; }

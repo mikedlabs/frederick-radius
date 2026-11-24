@@ -1,6 +1,6 @@
 /** Catalog-free plan types and token encoding shared by the planner and Saved. */
 import type { LngLat } from "@/lib/geo";
-import { MUNICIPALITIES } from "@/data/municipalities";
+import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { isResolvableEventSlug } from "@/lib/events/resolvable-event-slug";
 
 export type PlanInputs = {
@@ -43,6 +43,10 @@ export type PlanInputs = {
    */
   seed?: number;
 };
+
+export function planAreaName(input: Pick<PlanInputs, "municipality">): string {
+  return (input.municipality && MUNICIPALITY_BY_SLUG[input.municipality]?.name) || "Frederick County";
+}
 
 /** The minimum needed to rebuild a plan deterministically. */
 export type PlanSpec = {

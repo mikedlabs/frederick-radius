@@ -27,6 +27,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/Button";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -229,6 +230,7 @@ export default function PlanBuilder({
   const currentSpec = plan ? decodeSpec(plan.share) : null;
   const inputContext = { currentSpec, initialInputs: startedNew ? { ...initialInputs, anchor_slug: undefined, event_anchor_slug: undefined } : initialInputs };
   const constraintLabels = planConstraintLabels(inputContext);
+  const strictResult = currentSpec?.i.require_verified_hours ?? Boolean(currentSpec?.i.start_at);
   const activeEventAnchor = currentSpec?.i.event_anchor_slug;
   const scheduledEventStop = plan?.stops.find((stop) => stop.event);
 
@@ -246,8 +248,10 @@ export default function PlanBuilder({
     }, inputContext), require_verified_hours: verifiedHoursOnly };
   };
 
-  const onBuild = () => {
-    const inputs = buildInputs();
+  const onBuild = (includeUnconfirmed = false) => {
+    const inputs = includeUnconfirmed && currentSpec
+      ? { ...currentSpec.i, require_verified_hours: false, ...(planArea === "near" && near ? { start_near: near } : {}) }
+      : buildInputs();
     if (!inputs) return;
     setErrorMsg(null);
     setStatusMsg("Building a route that fits those choices…");
@@ -260,18 +264,21 @@ export default function PlanBuilder({
         if (!result) throw new Error("No plan returned");
         await revealPlan(() => {
           setPlan(result);
+          if (includeUnconfirmed) setVerifiedHoursOnly(false);
           setPinned((previous) => pinsInPlan(previous, result));
           setVisitCheck(null);
           if (inputs.event_anchor_slug) {
             const resolved = decodeSpec(result.share)?.i;
             if (resolved) { setHours(resolved.duration_hours); setCustomStart(toLocalInput(resolved.start_at)); setStartMode("custom"); }
           }
-          setPlanArea(area);
-          setPlanMunicipality(inputs.municipality);
-          setPlanAreaLabel(areaLabel);
+          if (!includeUnconfirmed) {
+            setPlanArea(area);
+            setPlanMunicipality(inputs.municipality);
+            setPlanAreaLabel(areaLabel);
+          }
           setDrawerOpen(false);
           setStatusMsg(result.stops.length > 0
-            ? `Built a ${result.stops.length}-stop plan ${areaPhrase}.`
+            ? `Built a ${result.stops.length}-stop plan ${includeUnconfirmed ? `for ${planAreaLabel}` : areaPhrase}.`
             : inputs.require_verified_hours
               ? "Radius could not confirm venue hours for this outing."
               : "No stops fit those choices yet.");
@@ -472,7 +479,7 @@ export default function PlanBuilder({
           {controls}
           <button
             type="button"
-            onClick={onBuild}
+            onClick={() => onBuild()}
             disabled={pending || !controlsReady}
             className={`${styles.buildAction} mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold text-white transition sm:mt-6 active:scale-[0.99] disabled:opacity-65`}
             style={{ background: "var(--app-brand-press)", boxShadow: "var(--app-brand-glow)" }}
@@ -487,6 +494,27 @@ export default function PlanBuilder({
 
       {plan && (
         <section ref={resultRef} tabIndex={-1} className={`${styles.results} outline-none`} style={{ outline: "none" }}>
+          {plan.stops.length === 0 ? (
+            <article className={styles.recovery}>
+              <p className="eyebrow" style={{ color: "var(--app-link)" }}>{planDateLabel(plan)} · {planAreaLabel}</p>
+              <h1>{plan.notices?.length ? "No stops are scheduled in this plan yet." : "Nothing reliable fits yet."}</h1>
+              {plan.notices?.length ? (
+                <>
+                  <p>Your saved choices are still in the link. Review the updates below to see what changed.</p>
+                  <Button href="#plan-choice-updates">Review saved choices</Button>
+                </>
+              ) : strictResult ? (
+                <>
+                  <p>Radius could not confirm hours for these stops. You can build a draft and check venue hours before leaving.</p>
+                  <Button onClick={() => onBuild(true)} disabled={pending || !controlsReady}>Include stops with unconfirmed hours</Button>
+                </>
+              ) : (
+                <p>Try another area, start time, or focus to find stops for this outing.</p>
+              )}
+              <Button variant={plan.notices?.length || strictResult ? "secondary" : "primary"}
+                onClick={() => setDrawerOpen(true)} disabled={pending || !controlsReady}>Adjust</Button>
+            </article>
+          ) : (
           <div className={styles.resultHeader}>
           <PlanScene compact />
           <article
@@ -577,10 +605,11 @@ export default function PlanBuilder({
               </div>
           </article>
           </div>
+          )}
 
 
           {Boolean(plan.notices?.length) && (
-            <section data-event-plan-controls-ready={controlsReady ? "true" : "false"} aria-busy={!controlsReady || pending} className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Plan updates" style={{ borderColor: "var(--app-border)" }}>
+            <section id="plan-choice-updates" data-event-plan-controls-ready={controlsReady ? "true" : "false"} aria-busy={!controlsReady || pending} className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4" aria-label="Plan updates" style={{ borderColor: "var(--app-border)" }}>
               <h2 className="text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>Review your saved choices</h2>
               {plan.notices!.map((notice) => (
                 <div key={`${notice.spec_index}-${notice.code}`} className="space-y-2">
@@ -619,31 +648,13 @@ export default function PlanBuilder({
             </section>
           )}
 
-          {plan.stops.length === 0 ? (
-            <div className="rounded-[var(--app-radius-lg)] border border-dashed p-6 text-center" style={{ borderColor: "var(--app-border)" }}>
-              <AlertCircle className="mx-auto h-6 w-6" style={{ color: "var(--app-brand)" }} aria-hidden />
-              <h3 className="mt-2 font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                {plan.notices?.length ? "No stops are scheduled in this plan yet." : "Nothing reliable fits yet."}
-              </h3>
-              <p className="mx-auto mt-1 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                {plan.notices?.length
-                  ? "Review the updates above or check the saved choices again. Your shared link still keeps the choices you made."
-                  : (currentSpec?.i.require_verified_hours ?? Boolean(currentSpec?.i.start_at))
-                    ? "Radius could not confirm venue hours for this outing. Choose Adjust, open Fine-tune the outing, and turn off confirmed hours only to build a draft. Check venue hours before setting out."
-                    : "No stops fit this outing yet. Try another area, start time, or focus."}
-              </p>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(true)}
-                disabled={pending || !controlsReady}
-                className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-              >
-                <SlidersHorizontal className="h-4 w-4" aria-hidden />
-                Change the plan
-              </button>
+          {plan.stops.length === 0 && Boolean(currentSpec?.s.length) && (
+            <div className="flex flex-wrap items-start gap-2">
+              <SaveOutingButton key={plan.share} token={plan.share} title={plan.title} disabled={pending || !controlsReady} />
+              <Button variant="quiet" aria-label="Share this plan" onClick={onShare} disabled={!controlsReady}>Share saved choices</Button>
             </div>
-          ) : (
+          )}
+          {plan.stops.length > 0 && (
             <div className="relative">
               <ol className={`${styles.stopList} pl-10`} style={plan.stops.length === 1 ? { gridTemplateColumns: "minmax(0, 1fr)" } : undefined} aria-label="Plan stops, in order">
                 {plan.stops.map((stop, index) => (
@@ -678,7 +689,7 @@ export default function PlanBuilder({
             </div>
           )}
 
-          <section className={styles.visitCheck} aria-label="Check before you go">
+          {plan.stops.length > 0 && <section className={styles.visitCheck} aria-label="Check before you go">
             <div className={styles.visitHeader}>
               <div><h2>Check before you go</h2><p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>Review saved times, posted hours, and the forecast for this outing.</p></div>
               <button type="button" onClick={checkBeforeVisit} disabled={pending || !controlsReady} className="inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold disabled:opacity-50" style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}><RefreshCw className="h-4 w-4" aria-hidden />{pending ? "Checking…" : "Check this plan"}</button>
@@ -691,7 +702,7 @@ export default function PlanBuilder({
                 <li><strong>Weather for this outing</strong><p>{visitCheck.weather.message}</p>{visitCheck.weather.periods.length > 0 && <ul className={styles.forecast} aria-label="Hourly forecast for this outing">{visitCheck.weather.periods.map((period) => <li key={period.startTime}><time dateTime={period.startTime}>{new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric" }).format(new Date(period.startTime))}</time><strong>{period.temperature}°{period.temperatureUnit}</strong><span>{period.shortForecast}</span>{period.probabilityOfPrecipitation != null && <span>{period.probabilityOfPrecipitation}% chance of precipitation</span>}</li>)}</ul>}<VisitSource label={visitCheck.weather.sourceLabel} asOf={visitCheck.weather.sourceAsOf} href={visitCheck.weather.sourceHref} /></li>
               </ul>
             </div>}
-          </section>
+          </section>}
 
           <PlanStopsMap plan={plan} returnTo={planReturnTo} disabled={!controlsReady} />
 
@@ -737,7 +748,7 @@ export default function PlanBuilder({
           {controls}
           <button
             type="button"
-            onClick={onBuild}
+            onClick={() => onBuild()}
             disabled={pending || !controlsReady}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 text-[15px] font-semibold text-white disabled:opacity-65"
             style={{ background: "var(--app-brand-press)" }}

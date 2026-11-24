@@ -455,7 +455,7 @@ test("ordinary builder creates an honest real-catalog draft and preserves its ho
   await expect(adjust.getByRole("checkbox", { name: "Only include stops with confirmed hours", exact: true })).not.toBeChecked();
 });
 
-test("confirmed-hours opt-in stays strict and Adjust can recover a real-catalog draft", async ({ page }) => {
+test("confirmed-hours opt-in stays strict until the visitor chooses the one-step draft recovery", async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/plan", { waitUntil: "domcontentloaded" });
@@ -466,7 +466,7 @@ test("confirmed-hours opt-in stays strict and Adjust can recover a real-catalog 
   await page.getByRole("button", { name: "Build my plan", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Nothing reliable fits yet.", exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("Radius could not confirm venue hours for this outing. Choose Adjust, open Fine-tune the outing, and turn off confirmed hours only to build a draft. Check venue hours before setting out.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Radius could not confirm hours for these stops. You can build a draft and check venue hours before leaving.", { exact: true })).toBeVisible();
   await expect(page.getByRole("list", { name: "Plan stops, in order", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Open full route", exact: true })).toHaveCount(0);
   await expect.poll(() => new URL(page.url()).searchParams.get("p")).toBeTruthy();
@@ -476,14 +476,11 @@ test("confirmed-hours opt-in stays strict and Adjust can recover a real-catalog 
   expect(strictSpec.s).toEqual([]);
   await page.screenshot({ path: "output/playwright/plan-confirmed-hours-empty-mobile.png", fullPage: true });
 
-  await page.getByRole("button", { name: "Adjust", exact: true }).click();
-  const adjust = page.getByRole("dialog", { name: "Adjust the plan", exact: true });
-  await adjust.getByText("Fine-tune the outing", { exact: true }).click();
-  const confirmedHours = adjust.getByRole("checkbox", { name: "Only include stops with confirmed hours", exact: true });
-  await expect(confirmedHours).toBeChecked();
-  await confirmedHours.uncheck();
-  await adjust.getByRole("button", { name: "Update this plan", exact: true }).click();
-  await expect(adjust).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Save outing", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Share this plan" })).toHaveCount(0);
+  const recovery = page.getByRole("button", { name: "Include stops with unconfirmed hours" });
+  await expect(recovery).toBeInViewport();
+  await recovery.click();
   const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });
   await expect(stops).toBeVisible();
   await expect(stops.getByText("Hours unconfirmed", { exact: true }).first()).toBeVisible();
