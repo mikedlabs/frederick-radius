@@ -591,7 +591,16 @@ export default function PlanBuilder({
                   </div>
                 </div>
               ))}
-              {plan.notices!.some((notice) => notice.code === "unavailable") && <button type="button" disabled={!controlsReady || pending} onClick={() => mutate(() => planFromToken(plan.share), null, "Your saved choices have been checked again.")} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-link)" }}><RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />Check saved choices again</button>}
+              {plan.notices!.some((notice) => notice.code === "unavailable") && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" disabled={!controlsReady || pending} onClick={() => mutate(() => planFromToken(plan.share), null, "Your saved choices have been checked again.")} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--app-bg-sunken)] px-3 text-[13px] font-semibold disabled:opacity-50" style={{ color: "var(--app-link)" }}>
+                    <RefreshCw className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} aria-hidden />Check saved choices again
+                  </button>
+                  {plan.notices!.some((notice) => notice.code === "unavailable" && !notice.event_href) && (
+                    <Link href="/events?in=county" className="inline-flex min-h-11 items-center px-2 text-[13px] font-semibold underline underline-offset-2" style={{ color: "var(--app-link)" }}>Browse public events</Link>
+                  )}
+                </div>
+              )}
             </section>
           )}
 

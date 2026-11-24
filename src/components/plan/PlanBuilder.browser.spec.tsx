@@ -41,6 +41,8 @@ describe("event outing recovery and edit presentation", () => {
   it("preserves a missing event for share and removes its actual saved reference without directions", async () => {
     const plan = unavailable(); render(plan);
     expect(host.textContent).toContain("Its place in your plan is saved");
+    expect(host.querySelector('a[href="/events?in=county"]')?.textContent).toBe("Browse public events");
+    expect(host.querySelector('a[href^="/events/"]')).toBeNull();
     expect(host.textContent).not.toContain("The event keeps its published start and full duration.");
     expect(host.querySelector('a[href*="google.com/maps"]')).toBeNull();
     await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Share this plan"]')!.click());
