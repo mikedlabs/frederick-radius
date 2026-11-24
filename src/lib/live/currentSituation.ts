@@ -38,6 +38,7 @@ import { createVerifiedSourceReader } from "./verifiedSourceReader";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import {
   buildCurrentSituationSnapshot,
+  FCPS_CHECK_MAX_AGE_SECONDS,
   sourceEnvelope,
   type CurrentSituationSnapshot,
 } from "@/lib/live/currentSituationModel";
@@ -48,7 +49,7 @@ import { NWS_ALERTS_FUTURE_TOLERANCE_MS, NWS_ALERTS_MAX_CHECK_AGE_MS } from "@/l
 const EMPTY_OUTAGES = { total_out: 0, total_served: 0, munis: [] };
 const LIVE_SOURCE_DEADLINE_MS = 1_700;
 const PULSE_DETAIL_SOURCE_DEADLINE_MS = 4_500;
-const SCHOOL_CHECK_MAX_AGE_MS = 20 * 60_000;
+const SCHOOL_CHECK_MAX_AGE_MS = FCPS_CHECK_MAX_AGE_SECONDS * 1_000;
 const TRAFFIC_CHECK_MAX_AGE_MS = 5 * 60_000;
 const POWER_REPORT_MAX_AGE_MS = 15 * 60_000;
 
