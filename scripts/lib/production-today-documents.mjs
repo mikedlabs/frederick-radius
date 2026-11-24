@@ -71,11 +71,24 @@ function readHtml(port, { area, path, cookie }, signal) {
   });
 }
 
+// Next clears the stored deploymentId when it expects the public identity at
+// runtime. The application configuration uses Vercel's equivalent build ID.
+export function todayDeploymentId(config, env) {
+  if (!config.experimental?.runtimeServerDeploymentId) return config.deploymentId;
+  const id = env.NEXT_DEPLOYMENT_ID || env.VERCEL_DEPLOYMENT_ID;
+  if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) {
+    throw new Error("The runtime Today build requires its public NEXT_DEPLOYMENT_ID or VERCEL_DEPLOYMENT_ID");
+  }
+  return id;
+}
+
 export async function readProductionTodayDocuments(root, env) {
   if (env.RADIUS_DATA_MODE !== "promoted" || !env.RADIUS_DATA_VERSION ||
       env.RADIUS_DATA_VERSION !== env.NEXT_PUBLIC_RADIUS_DATA_VERSION) {
     throw new Error("Today document checks require the matching promoted build version");
   }
+  const { config } = JSON.parse(readFileSync(resolve(root, ".next/required-server-files.json"), "utf8"));
+  const id = todayDeploymentId(config, env);
   const guard = pathToFileURL(resolve(root, "scripts/promoted-build-network-guard.mjs"));
   const child = fork(fileURLToPath(import.meta.url), ["--serve-today"], {
     cwd: root,
@@ -83,6 +96,7 @@ export async function readProductionTodayDocuments(root, env) {
     stdio: ["ignore", "ignore", "inherit", "ipc"],
     env: {
       NODE_ENV: "production", NEXT_TELEMETRY_DISABLED: "1",
+      ...(config.experimental?.runtimeServerDeploymentId && { NEXT_DEPLOYMENT_ID: id }),
       NODE_OPTIONS: `--import=${guard.href}`,
       RADIUS_DATA_MODE: "promoted", RADIUS_DATA_VERSION: env.RADIUS_DATA_VERSION,
       NEXT_PUBLIC_RADIUS_DATA_VERSION: env.NEXT_PUBLIC_RADIUS_DATA_VERSION,

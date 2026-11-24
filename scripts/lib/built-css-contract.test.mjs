@@ -220,6 +220,21 @@ test("only the exact emitted deployment token is allowed on local assets", t => 
   for (const suffix of ["?dpl=dpl_stale", "?x=1&dpl=dpl_test123", "?dpl=dpl_test123&v=1", "#dpl_test123"]) assert.ok(response(suffix).errors.length);
 });
 
+test("checks the actual runtime deployment token even after Next strips it from the build manifest", t => {
+  const { root, json } = fixture(t);
+  const config = { deploymentId: "", experimental: { runtimeServerDeploymentId: true } };
+  const css = token => documents(STYLE_LINK.replace("current.css", `current.css?dpl=${token}`));
+  json(".next/required-server-files.json", { config });
+  for (const env of [{ NEXT_DEPLOYMENT_ID: "dpl_test" }, { VERCEL_DEPLOYMENT_ID: "dpl_test" }]) {
+    assert.deepEqual(validateBuiltCssContract(root, css("dpl_test"), fixtureSubjects, env).errors, []);
+    assert.ok(validateBuiltCssContract(root, css("dpl_stale"), fixtureSubjects, env).errors.length);
+    assert.ok(validateBuiltCssContract(root, css("dpl_test&v=1"), fixtureSubjects, env).errors.length);
+  }
+  json(".next/required-server-files.json", { config: { ...config, supportsImmutableAssets: true } });
+  assert.ok(validateBuiltCssContract(root, css("dpl_test"), fixtureSubjects, { NEXT_DEPLOYMENT_ID: "dpl_test" }).errors.length);
+  assert.deepEqual(validateBuiltCssContract(root, documents(STYLE_LINK), fixtureSubjects, { NEXT_DEPLOYMENT_ID: "dpl_test" }).errors, []);
+});
+
 test("rejects stale, hidden, incomplete and cross-area page responses", t => {
   const { root } = fixture(t);
   const docs = documents(STYLE_LINK);

@@ -4,7 +4,7 @@ import { isAbsolute, relative, resolve } from "node:path";
 import postcss from "postcss";
 import { JSDOM } from "jsdom";
 import { require as loadTypeScript } from "tsx/cjs/api";
-import { readProductionTodayDocuments } from "./production-today-documents.mjs";
+import { readProductionTodayDocuments, todayDeploymentId } from "./production-today-documents.mjs";
 
 const LABEL = ".content-chapter--plain .content-chapter__label";
 const RULE = ".content-chapter--plain .content-chapter__rule";
@@ -241,7 +241,7 @@ function builtJson(buildRoot, path, label) {
   return value;
 }
 
-function todayOwner(buildRoot) {
+function todayOwner(buildRoot, env) {
   const required = builtJson(buildRoot, "required-server-files.json", "required-server-files manifest");
   const config = required.config;
   if (!config || typeof config !== "object" || Array.isArray(config)) throw new Error("Built required-server-files manifest has no config object");
@@ -261,7 +261,8 @@ function todayOwner(buildRoot) {
     throw new Error("Built /today must have one APP_PAGE owner shared by app-path-routes and app-paths manifests");
   }
   builtArtifactPath(buildRoot, `server/${appPaths[sourceRoute]}`, "Today page bundle");
-  return { owner: { kind: "APP_PAGE", sourceRoute }, deploymentId: config.deploymentId };
+  const id = todayDeploymentId(config, env);
+  return { owner: { kind: "APP_PAGE", sourceRoute }, deploymentId: config.supportsImmutableAssets ? undefined : id };
 }
 
 const expectedPaths = { county: "/today", brunswick: "/today", "mount-airy": "/today?in=mount-airy", nearme: "/today?in=nearme" };
@@ -310,11 +311,11 @@ function checkArea(document, area, subjects) {
 
 /** Check only assets linked, in cascade order, by actual documents from this
  * build. CSS and page bundles must resolve under its emitted artifact root. */
-export function validateBuiltCssContract(root, documents, subjects) {
+export function validateBuiltCssContract(root, documents, subjects, env = {}) {
   const result = { layout: "request-rendered", owner: null, documents: [], stylesheets: [], errors: [] };
   try {
     const buildRoot = realpathSync(resolve(root, ".next"));
-    const { owner, deploymentId } = todayOwner(buildRoot);
+    const { owner, deploymentId } = todayOwner(buildRoot, env);
     result.owner = owner;
     if (!Array.isArray(documents) || documents.length !== Object.keys(expectedPaths).length
         || new Set(documents.map(doc => doc.area)).size !== documents.length) throw new Error("Missing or duplicate Today request area");
@@ -351,7 +352,7 @@ export function validateBuiltCssContract(root, documents, subjects) {
 export async function verifyProductionToday(root, buildEnv) {
   try {
     // Validate the owner and emitted config before booting any code from the build.
-    todayOwner(realpathSync(resolve(root, ".next")));
+    todayOwner(realpathSync(resolve(root, ".next")), buildEnv);
     const { downtownFeatureForToday } = loadTypeScript(resolve(root, "src/lib/today/local-outing-guides.ts"), import.meta.url);
     const { localDiscoveryPlaces } = loadTypeScript(resolve(root, "src/lib/today/discovery-places.ts"), import.meta.url);
     const started = new Date();
@@ -363,7 +364,7 @@ export async function verifyProductionToday(root, buildEnv) {
       const [place] = localDiscoveryPlaces(`town:${town}`);
       if (place) places[town] = { slug: place.slug, src: place.photoPlan.sources[0].src };
     }
-    return validateBuiltCssContract(root, documents, { walks, places });
+    return validateBuiltCssContract(root, documents, { walks, places }, buildEnv);
   } catch (error) {
     return { errors: [`Cannot verify production Today documents: ${error.message}`] };
   }
