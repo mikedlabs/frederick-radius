@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { TodayGeographicDoorwayPending, TodayGeographicDoorwayView } from "./TodayGeographicDoorway";
+import { TodayGeographicDoorwayView } from "./TodayGeographicDoorway";
 import { localDiscoveryPlaces, type LocalDiscoveryPlace } from "@/lib/today/discovery-places";
 
 const subjects = localDiscoveryPlaces("county");
@@ -14,6 +14,7 @@ const meta = {
     returnTo: origin,
     guidePhotos: {
       downtownTitle: "Two Hours Downtown",
+      routePreview: { stops: [{ title: "Visitor Center", minutes: 20 }, { title: "Delaplaine", minutes: 40 }, { title: "Carroll Creek", minutes: 45 }], allowanceMinutes: 15 },
       downtownWhen: "Daytime walk",
       downtownHref: "/today/two-hours-downtown",
       downtownTeaser: "See free galleries and walk Carroll Creek. Start at East All Saints garage.",
@@ -80,7 +81,8 @@ async function checkDiscovery({ canvasElement }: Parameters<NonNullable<Story["p
   await expect(canvas.getByRole("heading", { name: "Explore local", level: 2 })).toHaveClass("sr-only");
   const links = subjects.map(place => canvas.getByRole("link", { name: `View ${place.name} in ${place.town}` }));
   await expect(canvasElement.querySelectorAll("[data-today-geographic-place]")).toHaveLength(2);
-  await expect(canvas.getAllByRole("img")).toHaveLength(3);
+  await expect(canvasElement.querySelectorAll("img")).toHaveLength(3);
+  await expect(canvas.getByRole("img", { name: /Suggested time, 120 minutes total/ })).toBeVisible();
   for (const [index, place] of subjects.entries()) {
     const link = links[index]; await decoded(link, place);
     await expect(within(link).getByRole("heading", { name: place.shortName ?? place.name, level: 3 })).toBeVisible();
@@ -226,6 +228,10 @@ export const ThurmontEnlargedCredits320: Story = {
 async function checkTasksOnly({ canvasElement }: Parameters<NonNullable<Story["play"]>>[0], scope: string, returnTo: string) {
   const canvas = within(canvasElement);
   await expect(canvasElement.querySelector("[data-today-discovery-grid], [data-today-geographic-place], img, .place-card-photo-credit")).toBeNull();
+  const locator = canvasElement.querySelector<HTMLElement>("[data-today-map-link]")!;
+  await expect(within(locator).getByRole("img", { name: /Frederick County reference map/ })).toBeVisible();
+  await expect(new URL(locator.getAttribute("href")!, "https://radius.test").searchParams.get("in")).toBe(scope);
+  await expect(locator.querySelectorAll("[data-locator-selection]")).toHaveLength(scope === "nearme" ? 0 : 1);
   await expect(canvasElement.querySelectorAll("[data-today-discovery-action]")).toHaveLength(2);
   for (const [name, category] of [["Eat & drink", "food"], ["Get outside", "outside"]]) {
     const link = canvas.getByRole("link", { name }); await physicalLink(link, true);
@@ -249,10 +255,6 @@ export const NearbyLens: Story = {
   args: { scope: "nearme", returnTo: "/today?in=nearme#today-discovery" },
   play: context => checkTasksOnly(context, "nearme", "/today?in=nearme#today-discovery"),
 };
-export const ScopePending: Story = { render: () => <TodayGeographicDoorwayPending />, play: async ({ canvasElement }) => {
-  const canvas = within(canvasElement); await expect(canvas.queryByRole("link")).not.toBeInTheDocument(); await expect(canvas.queryByRole("img")).not.toBeInTheDocument(); await expect(canvas.queryByRole("heading")).not.toBeInTheDocument();
-  await expect(canvasElement.querySelector("[data-today-geographic-pending]")).toHaveAttribute("aria-hidden", "true");
-} };
 export const FailedPhotoKeepsExactDestination: Story = {
   args: { guidePhotos: undefined },
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },

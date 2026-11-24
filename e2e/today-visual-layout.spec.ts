@@ -23,7 +23,7 @@ const townSubjects = {
   thurmont: ["historic-utica-covered-bridge-thurmont", "catoctin-mountain-park"],
 } as const;
 const geographicPhotoPaths = new Set<string>([
-  ...diningSubjects.map(subject => subject.src), ...businessPhotoPaths,
+  "/images/seasons/summer/SUMMER CARROL CREEK.jpg", ...diningSubjects.map(subject => subject.src), ...businessPhotoPaths,
   ...Object.values(townSubjects).flat().map(slug => CREDITED_LOCAL_PLACE_PHOTOS[slug].image.src),
 ]);
 
@@ -272,7 +272,8 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
     await expect(cover).toHaveAttribute("alt", /Carroll Creek/);
     await expect(outings).toContainText("Frederick Radius summer archive");
-    await expect(diningGrid.getByRole("img")).toHaveCount(3);
+    await expect(diningGrid.locator("img")).toHaveCount(3);
+    await expect(outings.getByRole("img", { name: /Suggested time, (60|120) minutes total/ })).toBeVisible();
     for (const subject of diningSubjects) {
       const link = diningGrid.locator(`[data-today-geographic-place="${subject.slug}"]`);
       const href = new URL((await link.getAttribute("href"))!, page.url());
@@ -634,7 +635,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
 }
 
 for (const town of ["brunswick", "thurmont"]) {
-  test(`Today keeps the first ${town} paint neutral and hydrates only exact local photography`, async ({ page }, testInfo) => {
+  test(`Today paints the selected ${town} photograph before bootstrap and keeps it through hydration`, async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 375, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -670,22 +671,26 @@ for (const town of ["brunswick", "thurmont"]) {
       const response = await page.goto(`/today?in=${town}`, { waitUntil: "commit" });
       expect(response?.status()).toBe(200);
       try {
-        const pending = page.locator("[data-today-geographic-pending]");
-        await expect(pending).toBeAttached();
-        await expect(pending).toHaveAttribute("aria-hidden", "true");
-        await expect(pending.locator("a, img, h2, h3, button")).toHaveCount(0);
-        await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
+        const expectedSlugs = townSubjects[town as keyof typeof townSubjects];
+        const expected = CREDITED_LOCAL_PLACE_PHOTOS[expectedSlugs[0]].image;
+        const lead = page.locator(`[data-today-geographic-place="${expectedSlugs[0]}"]`);
+        await expect(lead).toBeVisible();
+        await expect(lead.locator("img")).toHaveAttribute("alt", expected.alt);
+        await expect.poll(() => lead.locator("img").evaluate(async (img: HTMLImageElement, src) => {
+          await img.decode().catch(() => undefined);
+          return img.naturalWidth > 1 && getComputedStyle(img).opacity === "1"
+            && decodeURIComponent(img.currentSrc || img.src).includes(src);
+        }, expected.src)).toBe(true);
+        const credit = page.locator(`[data-today-discovery-credit="${expectedSlugs[0]}"]`);
+        await expect(credit.locator("a").first()).toBeVisible();
         await expect.poll(() => heldBootstrapRequests.length).toBeGreaterThan(0);
-        expect(geographicPhotoRequests).toEqual([]);
+        expect(geographicPhotoRequests.length).toBeGreaterThan(0);
         initialTimeOrigin = await page.evaluate(() => performance.timeOrigin);
-        // WebKit screenshot capture waits for font readiness, which cannot
-        // settle while bootstrap is deliberately held. Preserve the actual
-        // pre-bootstrap DOM/layout here, then photograph the hydrated page.
         await testInfo.attach("town-before-bootstrap", {
           contentType: "application/json",
-          body: JSON.stringify(await pending.evaluate((element) => {
+          body: JSON.stringify(await lead.evaluate((element) => {
             const rect = element.getBoundingClientRect();
-            return { markup: element.outerHTML, x: rect.x, y: rect.y,
+            return { subject: element.getAttribute("data-today-geographic-place"),
               width: rect.width, height: rect.height, timeOrigin: performance.timeOrigin };
           })),
         });
@@ -723,10 +728,11 @@ for (const town of ["brunswick", "thurmont"]) {
       await expect(page.getByTestId("today-scope-status")).toContainText(`${town === "brunswick" ? "Brunswick" : "Thurmont"} picks · Weather for the whole county`);
       await expect(page.locator('[aria-label="Places for your area"] > section:not([data-today-saved])')).toHaveCount(1);
       expect(geographicPhotoRequests.length).toBeGreaterThan(0);
-      expect(geographicPhotoRequests.some(request => {
+      const allowed = expectedSlugs.map(slug => CREDITED_LOCAL_PLACE_PHOTOS[slug].image.src);
+      for (const request of geographicPhotoRequests) {
         const url = new URL(request);
-        return businessPhotoPaths.has(decodeURIComponent(url.pathname === "/_next/image" ? url.searchParams.get("url")! : url.pathname));
-      })).toBe(false);
+        expect(allowed).toContain(decodeURIComponent(url.pathname === "/_next/image" ? url.searchParams.get("url")! : url.pathname));
+      }
       expect(await page.evaluate(() => performance.timeOrigin)).toBe(initialTimeOrigin);
       await page.screenshot({ path: testInfo.outputPath(`today-${town}-hydrated-viewport.png`), fullPage: false });
     } finally {
@@ -736,11 +742,43 @@ for (const town of ["brunswick", "thurmont"]) {
         contentType: "application/json", body: JSON.stringify({ town, geographicPhotoRequests, guardedPhotoPaths: [...geographicPhotoPaths], heldBootstrapRequests,
           scriptFailures, pageErrors, initialTimeOrigin,
           finalTimeOrigin: await page.evaluate(() => performance.timeOrigin).catch(() => null),
-          serverPaint: "Bootstrap scripts gated; actual scope-neutral paint and same-document hydration checked." }),
+          serverPaint: "Bootstrap scripts gated; selected local image and attribution visible before hydration in the same document." }),
       });
     }
   });
 }
+
+test.describe("Today without client scripts", () => {
+  test.use({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+
+  test("renders the first-visit creek, a saved town and the explicit area directly in the document", async ({ page, context, baseURL }) => {
+    test.setTimeout(90_000);
+    await page.goto("/today", { waitUntil: "commit" });
+    const hero = page.locator("[data-today-feature-photo]");
+    await expect(hero).toContainText("Frederick Radius summer archive");
+    await expect(hero.locator("img")).toBeVisible();
+
+    await expect.poll(() => hero.locator("img").evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(1);
+
+    await context.addCookies([{ name: "fr_scope", value: encodeURIComponent("town:brunswick"), url: baseURL! }]);
+    await page.reload({ waitUntil: "commit" });
+    await expect(page.locator('[data-today-geographic-place="co-canal-lock-30-brunswick"] img')).toBeVisible();
+    await expect(hero).toHaveCount(0);
+
+    for (const area of ["mount-airy", "nearme", "county"]) {
+      await page.goto(`/today?in=${area}`, { waitUntil: "commit" });
+      if (area === "county") {
+        await expect(hero.locator("img")).toBeVisible();
+      } else {
+        const link = page.locator("[data-today-map-link]");
+        await expect(link.getByRole("img", { name: /Frederick County reference map/ })).toBeVisible();
+        await expect(link.locator("[data-locator-selection]")).toHaveCount(area === "nearme" ? 0 : 1);
+        await expect(link).toHaveAttribute("href", `/map?in=${area}&returnTo=${encodeURIComponent(`/today?in=${area}`)}`);
+        await expect(hero).toHaveCount(0);
+      }
+    }
+  });
+});
 
 test.describe("Today compiled event heading and compact weather at enlarged root text", () => {
   test.use({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true, permissions: [] });

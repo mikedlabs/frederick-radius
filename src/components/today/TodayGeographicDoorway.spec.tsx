@@ -3,7 +3,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import TodayGeographicDoorway, { TodayGeographicDoorwayPending, TodayGeographicDoorwayView, todayDiscoveryTaskHref } from "./TodayGeographicDoorway";
+import TodayGeographicDoorway, { TodayGeographicDoorwayView, todayDiscoveryTaskHref } from "./TodayGeographicDoorway";
 import { setScope, type Scope } from "@/lib/scope";
 import { localDiscoveryPlaces } from "@/lib/today/discovery-places";
 import * as photos from "@/lib/place-card-photo";
@@ -47,13 +47,17 @@ describe("Today local discovery", () => {
     await act(async () => image.dispatchEvent(new Event("load")));
   };
 
-  it("keeps server and Suspense fallbacks inert and scope-neutral", () => {
-    for (const Component of [TodayGeographicDoorwayPending, TodayGeographicDoorway]) {
-      const html = renderToStaticMarkup(createElement(Component));
-      expect(html).toContain('data-today-geographic-pending'); expect(html).toContain('aria-hidden="true"');
-      expect(html).not.toMatch(/<(?:a|img|h2|h3|button)\b/);
-      expect(html).not.toMatch(/Frederick|Zoe|Sabor|pizza|\/places\/|\/images\//i);
-    }
+  it("renders the request's scoped visual before JavaScript starts", () => {
+    const brunswick = renderToStaticMarkup(<TodayGeographicDoorway initialScope="town:brunswick" />);
+    expect(brunswick).toContain('data-today-geographic-place="co-canal-lock-30-brunswick"');
+    expect(brunswick).toContain('Lock 30');
+    expect(brunswick).not.toContain(carillon);
+    window.history.replaceState(null, "", "/today?in=mount-airy");
+    const shared = renderToStaticMarkup(<TodayGeographicDoorway initialScope="town:brunswick" />);
+    expect(shared).toContain("Town center: Mount Airy");
+    expect(shared).not.toContain("Lock 30");
+    const county = renderToStaticMarkup(<TodayGeographicDoorwayView scope="county" />);
+    expect(county).toContain(carillon);
   });
 
   it("keeps one dated, credited walking feature above two independently savable local rows", async () => {
@@ -144,6 +148,10 @@ describe("Today local discovery", () => {
       expect(url.searchParams.get("in")).toBe(scope === "nearme" ? "nearme" : scope.slice(5));
       expect(url.searchParams.has("facet")).toBe(false);
     }
+    const map = container.querySelector<HTMLAnchorElement>("[data-today-map-link]")!;
+    expect(new URL(map.href).pathname).toBe("/map");
+    expect(new URL(map.href).searchParams.get("in")).toBe(scope === "nearme" ? "nearme" : scope.slice(5));
+    expect(map.querySelector("[data-locator-selection]")?.getAttribute("data-locator-selection") ?? null).toBe(scope === "nearme" ? null : "Town center");
     expect(request).not.toHaveBeenCalled();
   });
 

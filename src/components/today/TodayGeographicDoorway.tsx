@@ -7,9 +7,12 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight, CalendarDays, Footprints, MapPin, Trees, Utensils } from "lucide-react";
 import PlaceCardPhoto, { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
 import SaveButton from "@/components/saved/SaveButton";
+import CountyLocator from "@/components/map/CountyLocator";
+import RouteTimeStrip from "./RouteTimeStrip";
+import type { RouteTimePreview } from "@/lib/today/local-outing-guides";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import { recordPlaceCardPhotoResult, selectedPlaceCardPhoto, type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
-import { getScope, parseScope, scopeToParam, subscribeScopeChange, type Scope } from "@/lib/scope";
+import { getScope, parseScope, scopeLabel, scopeToParam, scopeTownSlug, subscribeScopeChange, type Scope } from "@/lib/scope";
 import { localDiscoveryPlaces, type LocalDiscoveryPlace } from "@/lib/today/discovery-places";
 import styles from "./TodayLayout.module.css";
 
@@ -21,6 +24,7 @@ export type TodayGuidePhotos = {
   downtownWhen: string;
   downtownHref: string;
   weekendLabel?: string;
+  routePreview?: RouteTimePreview;
 };
 
 function OutingLink({ href, title, scope, Icon }: {
@@ -55,10 +59,15 @@ function FeaturedWalk({ guide, href, scope }: { guide: TodayGuidePhotos; href: s
           <span className={styles.outingCredit}>Carroll Creek · Frederick Radius summer archive</span>
         </span>
       )}
-      <div className={styles.featuredCopy}>
-        <small className={styles.featuredScope}>{scope}</small>
+      <div className={styles.featuredCopy} data-time-preview={guide.routePreview ? "" : undefined}>
+        {!guide.routePreview && <small className={styles.featuredScope}>{scope}</small>}
         <h3 className={styles.featuredTitle}>{guide.downtownTitle}</h3>
-        <span className={styles.outingReason}>{guide.downtownTeaser}</span>
+        {guide.routePreview ? (
+          <div className={styles.walkTimes}>
+            <div className={styles.walkContext}><small>{scope}</small><span>Suggested times</span></div>
+            <RouteTimeStrip preview={guide.routePreview} />
+          </div>
+        ) : <span className={styles.outingReason}>{guide.downtownTeaser}</span>}
         <span className={styles.outingAction}>See the walk <ArrowRight aria-hidden size={20} /></span>
       </div>
     </Link>
@@ -71,12 +80,6 @@ export function todayDiscoveryTaskHref(task: TodayDiscoveryTask, scope: Scope | 
   const active = parseScope(scope) ?? "county";
   const params = new URLSearchParams({ c: task, in: scopeToParam(active) });
   return withBrowseReturnTo(`/nearby?${params}`, returnTo);
-}
-
-/** No named place or photograph flashes before the actual browser lens is
- * resolved. This fallback cannot request location, metadata or image bytes. */
-export function TodayGeographicDoorwayPending() {
-  return <div data-today-geographic-pending aria-hidden="true" className={`${styles.geographicMosaic} ${styles.geographicPending}`} />;
 }
 
 function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscoveryPlace; scope: Scope; returnTo: string; lead: boolean }) {
@@ -95,7 +98,7 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
         data-photo-state={loaded ? "loaded" : source ? "pending" : "failed"}
         className={styles.discoveryPlaceLink}>
         {source ? <span className={styles.discoveryPhoto} data-today-photo-lead={lead || undefined}>
-          <PlaceCardPhoto key={source.src} source={source} onResult={onResult}
+          <PlaceCardPhoto key={source.src} source={source} onResult={onResult} eager={lead}
             sizes={lead ? "(min-width: 640px) 520px, 100vw" : "72px"} />
         </span> : !lead && <MapPin aria-hidden data-today-discovery-glyph className={styles.discoveryGlyph} strokeWidth={1.75} />}
         <div data-today-geographic-caption data-today-name-plate={lead || undefined} className={styles.discoveryCaption}>
@@ -111,7 +114,8 @@ function DiscoveryPlace({ place, scope, returnTo, lead }: { place: LocalDiscover
       </div>
       </div>
       {source?.kind === "curated" && <div className={styles.discoveryCredit} data-today-discovery-credit={place.slug}>
-        <PlaceCardPhotoCredit source={source} loaded={loaded} touchTarget />
+        {/* Match the bundled photo in the first document, including before hydration. */}
+        <PlaceCardPhotoCredit source={source} loaded touchTarget />
       </div>}
     </article>
   );
@@ -127,6 +131,7 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo, guidePhotos
   const origin = returnTo ?? `/today?in=${scopeToParam(active)}`;
   const places = localDiscoveryPlaces(active);
   const [lead, ...secondary] = places;
+  const mapLabel = active === "nearme" || active === "county" ? "Open the county map" : `See ${scopeLabel(active)} on the map`;
   const localRoute = active === "county" || active === "town:frederick";
   const featured = localRoute && Boolean(guidePhotos);
   const outingOrigin = `${origin.split("#", 1)[0]}#local-outings`;
@@ -145,7 +150,13 @@ export function TodayGeographicDoorwayView({ scope = null, returnTo, guidePhotos
   return (
     <section id="today-discovery" data-today-local-discovery data-today-geographic-mosaic aria-labelledby="today-discovery-heading" className={styles.geographicMosaic}>
       <h2 id="today-discovery-heading" className="sr-only">Explore local</h2>
-      <div className={styles.discoveryLayout} data-featured-route={featured || undefined}>
+      <div className={styles.discoveryLayout} data-featured-route={featured || undefined} data-locator-route={!lead || undefined}>
+      {!lead && <Link className={styles.locatorWalk} data-today-map-link
+        href={withBrowseReturnTo(`/map?in=${scopeToParam(active)}`, origin)} prefetch={false}
+        aria-label={mapLabel}>
+        <CountyLocator town={scopeTownSlug(active)} />
+        <span className={styles.locatorAction}>{mapLabel} <ArrowRight aria-hidden size={18} /></span>
+      </Link>}
       {lead ? <div data-today-discovery-grid className={styles.discoveryPlaceGrid}>
         {featured && outings}
         <DiscoveryPlace key={`${active}:${lead.photoPlan.key}`} place={lead} scope={active} returnTo={origin} lead={!featured} />
@@ -179,10 +190,11 @@ const snapshot = () => JSON.stringify([getScope() ?? "county", window.location.s
 
 /** The URL lens wins even when present but invalid; a saved town must not
  * replace that explicit county fallback. Back retains intent and section. */
-export default function TodayGeographicDoorway({ guidePhotos }: { guidePhotos?: TodayGuidePhotos }) {
-  const stored = useSyncExternalStore(subscribe, snapshot, () => null);
+export default function TodayGeographicDoorway({ guidePhotos, initialScope = "county" }: {
+  guidePhotos?: TodayGuidePhotos; initialScope?: Scope;
+}) {
+  const stored = useSyncExternalStore(subscribe, snapshot, () => JSON.stringify([initialScope, "", ""]));
   const params = useSearchParams();
-  if (stored === null) return <TodayGeographicDoorwayPending />;
   const [storedScope, , hash] = JSON.parse(stored) as [Scope, string, string];
   const scope = params.has("in") ? parseScope(params.get("in")) ?? "county" : storedScope;
   const returnParams = new URLSearchParams(params.toString());

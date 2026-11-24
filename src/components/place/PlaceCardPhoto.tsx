@@ -11,7 +11,7 @@ import { useVisibleGooglePhoto } from "./useVisibleGooglePhoto";
 
 /** A photograph of the selected place, supplied by the canonical loader.
  * A missing or failed photo leaves the card's real name and facts intact. */
-export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero", sizes, deferGoogleBytes = false, decodeIdentity }: {
+export default function PlaceCardPhoto({ source, onResult, width = 360, frame = "hero", sizes, deferGoogleBytes = false, decodeIdentity, eager = false }: {
   source: PlaceCardPhotoSource | null;
   onResult: (src: string, result: PlaceCardPhotoResult) => void;
   width?: number;
@@ -20,6 +20,8 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
   sizes?: string;
   /** Wait for the visible list frame before requesting Google bytes. */
   deferGoogleBytes?: boolean;
+  /** Bundled cover subjects are immediately visible, including before hydration. */
+  eager?: boolean;
   /** Re-decode changed source credit without replacing the settled byte owner. */
   decodeIdentity?: string | null;
 }) {
@@ -62,7 +64,9 @@ export default function PlaceCardPhoto({ source, onResult, width = 360, frame = 
           fill
           sizes={sizes ?? (width === 180 ? "(max-width: 640px) 50vw, 180px" : `${width}px`)}
           unoptimized={source.kind === "google"}
-          placeholder="blur"
+          loading={eager ? "eager" : undefined}
+          fetchPriority={eager ? "high" : undefined}
+          placeholder={eager ? "empty" : "blur"}
           blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover"
           style={source.kind !== "google" ? { objectPosition: source.objectPosition } : undefined}

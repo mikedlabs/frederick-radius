@@ -116,8 +116,8 @@ describe("Today decision hierarchy", () => {
     expect(geographicDoorway).not.toContain("useTodayPlacePhoto");
     expect(todayMasthead).not.toContain("<Image");
     expect(renderedPage.match(/\{decisionLead\}/g)).toHaveLength(1);
-    expect(renderedPage).toContain("fallback={<TodayGeographicDoorwayPending />}");
-    expect(renderedPage).not.toContain("fallback={<TodayGeographicDoorwayView");
+    expect(renderedPage).toContain("initialScope={initialScope}");
+    expect(renderedPage).not.toContain("TodayGeographicDoorwayPending");
     expect(renderedPage.indexOf("<TodayGeographicDoorway guidePhotos=")).toBeLessThan(renderedPage.indexOf("{decisionLead}"));
     const placeAnswer = renderedPage.slice(
       renderedPage.indexOf('<div aria-label="Places for your area"'),

@@ -277,20 +277,49 @@
   text-wrap: balance;
 }
 
+.walkTimes {
+  width: 100%;
+  max-width: 25rem;
+  margin-block: .65rem .2rem;
+}
+.walkContext {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .15rem .35rem;
+  color: var(--app-ink-2);
+  margin-bottom: .32rem;
+  font-size: .8125rem;
+  line-height: 1.25;
+}
+.walkContext small { font-size: inherit; font-weight: 650; }
+@container today-discovery (max-width: 35.999rem) {
+  .outingPhoto + .featuredCopy[data-time-preview] { padding-bottom: .45rem; }
+  .outingPhoto + .featuredCopy[data-time-preview] .outingAction {
+    position: absolute;
+    inset-inline-end: 1rem;
+    inset-block-end: calc(100% + 1.65rem);
+    margin: 0;
+    padding-inline: .75rem;
+    border-radius: var(--app-radius-sm);
+    color: var(--app-link);
+    background: var(--outing-paper);
+  }
+  .featuredCopy[data-time-preview] .featuredTitle { margin-top: .1rem; }
+  .walkTimes { margin-top: .4rem; }
+}
+.walkTimes ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container today-discovery (max-width: 17rem) {
+  .walkTimes ol { grid-template-columns: 1fr; }
+}
+
 .outingReason {
   max-width: 35ch;
   margin-top: 0.65rem;
   color: var(--app-ink-2);
   font-size: clamp(0.96rem, 2.5cqi, 1.12rem);
   line-height: 1.45;
-}
-
-.outingFallback {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--app-link);
-  text-decoration: underline;
 }
 
 .outingAction {
@@ -375,15 +404,6 @@
   width: 100%;
   height: 100%;
   aspect-ratio: auto;
-}
-
-.discoveryPhoto img {
-  opacity: 0;
-  transition: opacity var(--app-dur-med) var(--app-ease-out);
-}
-
-.discoveryPlaceLink[data-photo-state="loaded"] .discoveryPhoto img {
-  opacity: 1;
 }
 
 .discoveryCaption {
@@ -776,15 +796,7 @@
   }
 }
 
-/* No foreign town or photo claims before the browser's area is resolved. */
-.geographicPending {
-  min-height: 180px;
-  border-radius: var(--app-radius-md);
-  background: var(--app-bg-sunken);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .discoveryPhoto img,
   .discoveryCard,
   .discoveryPlaceLink,
   .discoveryTask {
@@ -881,4 +893,36 @@
   font-size: clamp(1.375rem, 2.8vw, 1.9rem);
   line-height: 1.06;
   letter-spacing: -0.04em;
+}
+
+.locatorWalk {
+  display: block;
+  min-width: 0;
+  color: var(--app-link);
+}
+.locatorWalk:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
+}
+.locatorWalk:hover .locatorAction { text-decoration: underline; }
+.locatorAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  min-height: 44px;
+  padding-inline: .85rem;
+  border-bottom: 1px solid var(--app-border);
+  font-size: 1rem;
+  font-weight: 600;
+}
+@container today-discovery (min-width: 36rem) {
+  .discoveryLayout[data-locator-route] {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    align-items: start;
+  }
+  .discoveryLayout[data-locator-route] > .locatorWalk { grid-column: 1; grid-row: 1 / 3; }
+  .discoveryLayout[data-locator-route] > .discoveryOutings { grid-column: 2; grid-row: 1; }
+  .discoveryLayout[data-locator-route] > .discoveryTasks { grid-column: 2; grid-row: 2; }
 }
