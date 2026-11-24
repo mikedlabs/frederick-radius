@@ -7,6 +7,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Ban, Calendar, Captions, ChevronDown, ExternalLink, MapPin, Navigation, Ticket, Utensils, Wine } from "lucide-react";
 import { EVENTS } from "@/data/events";
+import { isJojosWineSpecial, JOJOS_WINE_SPECIAL } from "@/data/jojos-wine-special";
 import { formatEventWhen, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
 import {
   isOperationalEventResolutionError,
@@ -186,6 +187,13 @@ export async function generateMetadata(
     };
   }
   const event = resolution.event;
+  if (isJojosWineSpecial(event)) {
+    return {
+      title: JOJOS_WINE_SPECIAL.title,
+      description: JOJOS_WINE_SPECIAL.terms,
+      robots: { index: false, follow: true },
+    };
+  }
   const blurb = eventBlurb(event).slice(0, 160);
   const canonicalSlug =
     resolution.kind === "seed" ? slug : event.slug;
@@ -251,6 +259,20 @@ export default async function EventPage({
   // the event it points at. Seed events keep their hand-authored slug.
   if (resolution.kind !== "seed" && event.slug !== slug) {
     redirect(withBrowseReturnTo(`/events/${event.slug}`, returnTo));
+  }
+  if (isJojosWineSpecial(event)) {
+    return (
+      <article className="mx-auto max-w-2xl space-y-4 px-4 py-8">
+        <Suspense fallback={null}><MapReturnLink /></Suspense>
+        <h1 className="font-serif text-3xl font-semibold">{JOJOS_WINE_SPECIAL.title}</h1>
+        <p>{JOJOS_WINE_SPECIAL.terms}</p>
+        <p>{JOJOS_WINE_SPECIAL.dateNote}</p>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          <a className="inline-flex min-h-11 items-center underline" href={JOJOS_WINE_SPECIAL.termsUrl}>Check JoJo’s specials</a>
+          <Link className="inline-flex min-h-11 items-center underline" href={`/places/${JOJOS_WINE_SPECIAL.venueSlug}`}>JoJo’s address and phone</Link>
+        </div>
+      </article>
+    );
   }
   // Reliable live-vs-seed signal: whether the static seed resolved it.
   // event.source is NOT usable here (hand-authored seed events also use

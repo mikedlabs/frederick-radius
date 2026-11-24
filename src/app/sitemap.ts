@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { JOJOS_WINE_SPECIAL } from "@/data/jojos-wine-special";
 import { publicPlaces } from "@/lib/loaders/places";
 import { allUpcoming } from "@/lib/loaders/events";
 import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
@@ -98,6 +99,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: event.lastModifiedAt,
     });
   }
+  // Its historical event URL now explains a weekly venue special and is noindex.
+  eventRoutes.delete(JOJOS_WINE_SPECIAL.slug);
   const events = [...eventRoutes.values()].map((event) => ({
     url: `${BASE}/events/${event.slug}`,
     lastModified: new Date(event.lastModified),

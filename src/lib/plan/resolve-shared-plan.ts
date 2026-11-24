@@ -1,4 +1,5 @@
 import "server-only";
+import { isJojosWineSpecial, JOJOS_WINE_SPECIAL } from "@/data/jojos-wine-special";
 import { EVENT_BY_SLUG, type Event } from "@/data/events";
 import { archivedEventsBySlugs, type ArchivedEventBatchResolution } from "@/lib/events/event-identity";
 import { servedEventBySlug } from "@/lib/events/served-event-snapshot";
@@ -27,6 +28,13 @@ const UNAVAILABLE = {
 
 function evidenceFor(current: Event, now: Date): PlanEventEvidence[string] {
   const event = applyEventNotices([current], now)[0];
+  if (isJojosWineSpecial(event)) {
+    return { notice: {
+      code: "does_not_fit",
+      message: `This saved listing is a weekly restaurant special. ${JOJOS_WINE_SPECIAL.dateNote}`,
+      event_href: `/events/${event.slug}`,
+    } };
+  }
   // A cancelled private booking must not leak its name or detail route. Strip
   // only lifecycle markers before checking the normal public eligibility.
   if (!isPublicEvent({ ...event, status: "scheduled", title: stripStatusMarker(event.title) })) {
