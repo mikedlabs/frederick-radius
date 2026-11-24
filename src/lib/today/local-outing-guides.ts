@@ -1,6 +1,6 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CITY_HOLIDAY_PARKING_URL } from "@/data/parking-garages";
-import { FROSTY_FRIDAY, TENTH_WARD_CONCERT, isTenthWardConcert } from "@/data/thanksgiving-events";
+import { FROSTY_FRIDAY, TENTH_WARD_CONCERT, isTenthWardConcert, type HolidayGuideStatus } from "@/data/thanksgiving-events";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import { HISTORY_BY_SLUG, type HistoryImage } from "@/data/history";
 import { buildHorizonBounds, isRangeListing } from "@/lib/eventHorizon";
@@ -34,6 +34,7 @@ export type GuideStop = {
   source: GuideAction;
   detail?: string;
   visitTip?: string;
+  statusNote?: string;
   tipSource?: GuideAction;
   price?: string;
   icon?: "parking" | "info" | "art" | "water";
@@ -325,7 +326,7 @@ export function weekendGuideDateLabel(now: Date): string {
   );
 }
 
-export function weekendGuide(now: Date, verifiedEvents: readonly EventWithMeta[] = []): LocalOutingGuide {
+export function weekendGuide(now: Date, verifiedEvents: readonly EventWithMeta[] = [], holidayStatus: HolidayGuideStatus = {}): LocalOutingGuide {
   const bounds = buildHorizonBounds(now);
   const isFirstEdition = bounds.weekendStart === firstFriday;
   let stops: GuideStop[];
@@ -337,7 +338,12 @@ export function weekendGuide(now: Date, verifiedEvents: readonly EventWithMeta[]
     }
   } else {
     const holidayWeekend = bounds.weekendStart === thanksgivingFriday;
-    stops = holidayWeekend ? editionStops(thanksgivingEdition, bounds.now, verifiedEvents) : [];
+    stops = holidayWeekend ? editionStops(thanksgivingEdition, bounds.now, verifiedEvents).flatMap((stop) => {
+      const status = holidayStatus[stop.source.href];
+      if (status === "withdrawn") return [];
+      if (status === "scheduled") return [stop];
+      return [{ ...stop, statusNote: "Schedule checked Nov 24. Confirm with the organizer before leaving." }];
+    }) : [];
     const seen = new Set(stops.map((stop) => stop.title.toLowerCase()));
     const choices = rankRecommendations(verifiedEvents.filter((event) => {
       if (holidayWeekend && (isTenthWardConcert(event) || event.source_url === FROSTY_FRIDAY.url || event.title.trim().toLowerCase() === FROSTY_FRIDAY.title.toLowerCase())) return false;

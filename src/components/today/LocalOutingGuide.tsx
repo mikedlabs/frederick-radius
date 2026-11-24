@@ -67,6 +67,7 @@ function OutingStop({ stop, primary }: { stop: GuideStop; primary: boolean }) {
           <p><MapPin size={16} aria-hidden="true" /><span>{stop.where}</span></p>
           {stop.price && <p><Ticket size={16} aria-hidden="true" /><span>{stop.price}</span></p>}
         </div>
+        {stop.statusNote && <p className="mb-2 text-sm" style={{ color: "var(--app-ink-2)" }}>{stop.statusNote}</p>}
         <GuideLink action={stop.action} context={stop.title} primary={primary} />
         {stop.visitTip && <p className={styles.visitTip}>{stop.visitTip}</p>}
         <details className={styles.details}>

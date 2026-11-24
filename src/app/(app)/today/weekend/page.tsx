@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import LocalOutingGuide from "@/components/today/LocalOutingGuide";
-import { loadWeekendEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
+import { loadHolidayGuideStatus, loadWeekendEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { weekendGuide } from "@/lib/today/local-outing-guides";
 
 export const metadata: Metadata = {
@@ -17,7 +17,7 @@ export default async function WeekendGuidePage({
   searchParams: Promise<{ returnTo?: string | string[] }>;
 }) {
   const now = new Date();
-  const [{ returnTo }, snapshot] = await Promise.all([searchParams, loadWeekendEventSnapshot(now)]);
+  const [{ returnTo }, status, snapshot] = await Promise.all([searchParams, loadHolidayGuideStatus(now), loadWeekendEventSnapshot(now)]);
 
-  return <LocalOutingGuide guide={weekendGuide(now, snapshot.unified)} returnTo={returnTo} />;
+  return <LocalOutingGuide guide={weekendGuide(now, snapshot.unified, status)} returnTo={returnTo} />;
 }
