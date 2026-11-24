@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { projectWalkSite, walkSites, WALK_VIEW } from "@/data/downtown-walk-map";
 import { FROSTY_FRIDAY, TENTH_WARD_CONCERT } from "@/data/thanksgiving-events";
 import { downtownFeatureForToday, downtownGuide, downtownGuideForDate, downtownGuideForVisit, weekendGuide } from "./local-outing-guides";
 
@@ -51,7 +52,7 @@ describe("local outing guides", () => {
     expect(downtownGuide.note).toContain("Sunday, 11 AM–1 PM");
     expect(downtownGuide.stops.map(stop => stop.suggestedMinutes)).toEqual([undefined, 20, 40, 45]);
     expect(downtownGuide.route.durationLabel).toBe("About 2 hours");
-    expect(downtownGuide.route.allowance).toContain("15 minutes");
+    expect(downtownGuide.route.allowanceMinutes).toBe(15);
     expect(downtownGuide.route.firstAction.label).toContain("East All Saints");
     expect(downtownGuide.route.firstAction.href).toContain("destination=39.4118117,-77.4072907");
     expect(downtownGuide.stops[0].price).toContain("Free Sundays, 8 AM–2 PM");
@@ -79,7 +80,7 @@ describe("local outing guides", () => {
       expect(holiday.notice?.sources).toHaveLength(3);
       expect(holiday.stops.map(stop => stop.title)).toEqual([downtownGuide.stops[0].title, downtownGuide.stops[3].title]);
       expect(holiday.route.durationLabel).toBe("About 1 hour");
-      expect(holiday.route.allowance).toContain("15 minutes");
+      expect(holiday.route.allowanceMinutes).toBe(15);
       expect(holiday.stops[1].suggestedMinutes).toBe(45);
       expect(holiday.route.firstAction.href).toContain("travelmode=driving");
       expect(holiday.stops[1].detail).not.toContain("Visitor Center");
@@ -101,6 +102,30 @@ describe("local outing guides", () => {
     for (const invalid of ["yesterday", "2026-11-24", "2027-01-01", ["2026-11-26", "2026-11-25"]]) {
       expect(downtownGuideForVisit(afternoon, invalid).title).toBe("Two Hours Downtown");
     }
+  });
+
+  it("pins the reviewed garage and building footprints and the bridge itself", () => {
+    expect(Object.entries(walkSites).map(([anchor, site]) => [anchor, site.osmWay])).toEqual([
+      ["east-all-saints-garage", "151766247"], ["visitor-center", "177916159"],
+      ["delaplaine", "178348790"], ["carroll-creek", "486999837"],
+    ]);
+    expect(downtownGuide.stops.map(stop => stop.anchor)).toEqual(Object.keys(walkSites));
+    for (const site of Object.values(walkSites)) {
+      const { x, y } = projectWalkSite(site.lng, site.lat);
+      expect(x).toBeGreaterThan(0);
+      expect(x).toBeLessThan(WALK_VIEW.width);
+      expect(y).toBeGreaterThan(0);
+      expect(y).toBeLessThan(WALK_VIEW.height);
+    }
+  });
+
+  it("adds up only the visits in the selected route and shares its numeric preview with Today", () => {
+    const standard = downtownFeatureForToday(new Date("2026-11-24T15:00:00Z")).routePreview;
+    expect(standard).toEqual({ allowanceMinutes: 15, stops: [
+      { title: "Visitor Center", minutes: 20 }, { title: "Delaplaine", minutes: 40 }, { title: "Carroll Creek", minutes: 45 },
+    ] });
+    const holiday = downtownFeatureForToday(new Date("2026-11-25T21:00:00Z")).routePreview;
+    expect(holiday).toEqual({ allowanceMinutes: 15, stops: [{ title: "Carroll Creek", minutes: 45 }] });
   });
 
   it("publishes the three Sunday and Saturday picks with their source and checked date", () => {

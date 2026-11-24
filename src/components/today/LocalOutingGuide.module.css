@@ -436,10 +436,8 @@
   line-height: 1.42;
 }
 
-.routeAllowance { margin: 0.35rem 0 0; color: var(--app-ink-2); font-size: 0.8125rem; line-height: 1.4; }
-
 .indexTitle {
-  margin: 0;
+  margin: 0 0 0.45rem;
   color: var(--app-ink-2);
   font-size: 0.75rem;
   font-weight: 700;
@@ -447,52 +445,7 @@
   text-transform: uppercase;
 }
 
-.index {
-  margin: 0.2rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.index li { position: relative; }
-.index li:not(:last-child)::before {
-  position: absolute;
-  inset: 50% auto auto calc(0.75rem - 1px);
-  width: 2px;
-  height: 100%;
-  background: var(--app-border);
-  content: "";
-}
-
-.index a {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.6rem;
-  min-height: 44px;
-  min-width: 0;
-  padding-block: 0.25rem;
-  line-height: 1.24;
-}
-
-.indexNumber {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 1px solid var(--app-brand-text);
-  border-radius: 50%;
-  background: var(--app-bg);
-  color: var(--app-brand-text);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.indexName { font-size: 1rem; font-weight: 650; }
-.indexTime { color: var(--app-ink-2); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
-.index a:hover .indexName, .coverCredit summary:hover { text-decoration: underline; text-underline-offset: 0.18em; }
+.coverCredit summary:hover { text-decoration: underline; text-underline-offset: 0.18em; }
 .walkActions { min-width: 0; }
 .walkActions .action { justify-content: flex-start; }
 
@@ -500,13 +453,14 @@
 .notice .details summary { color: var(--app-cool-text); }
 .noticeBody { max-width: 65ch; }
 .noticeLink { min-width: 44px; }
-.stop:focus-visible, .coverCredit summary:focus-visible, .index a:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 2px; }
+.stop:focus-visible, .coverCredit summary:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 2px; }
 
 @container (min-width: 40rem) {
   .guide[data-walking] .photo { max-height: 15rem; }
   .walkIntro {
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.87fr);
     grid-template-areas: "intro route" "actions route";
+    grid-template-rows: min-content 1fr;
     gap: 1rem clamp(1.5rem, 5cqi, 3.2rem);
     align-items: start;
     margin-block: 1rem 1.75rem;

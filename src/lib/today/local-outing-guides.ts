@@ -20,6 +20,7 @@ export type GuidePhoto = Omit<OwnedPlacePhoto, "kind" | "referenceContext"> & {
   credit?: Omit<HistoryImage, "src" | "alt">;
 };
 export type GuideAction = { label: string; href: string };
+export type RouteTimePreview = { stops: { title: string; minutes: number }[]; allowanceMinutes: number };
 
 type StopPhoto = GuidePhoto & {
   caption: string;
@@ -29,6 +30,7 @@ export type GuideStop = {
   title: string;
   anchor?: string;
   routeName?: string;
+  timeLabel?: string;
   when: string;
   suggestedMinutes?: number;
   where: string;
@@ -52,7 +54,7 @@ export type LocalOutingGuide = {
   photoCaption: string;
   stops: GuideStop[];
   stopLayout?: "choices";
-  route?: { firstAction: GuideAction; durationLabel: string; allowance: string; teaser: string };
+  route?: { firstAction: GuideAction; durationLabel: string; allowanceMinutes: number; teaser: string };
   note?: string;
   secondaryAction?: GuideAction;
   notice?: { heading: string; text: string; sources: GuideAction[]; active?: boolean };
@@ -72,7 +74,7 @@ export const downtownGuide: DowntownGuide = {
   route: {
     firstAction: garageDirections,
     durationLabel: "About 2 hours",
-    allowance: "Includes 15 minutes for parking and walks between stops.",
+    allowanceMinutes: 15,
     teaser: "See free galleries and walk Carroll Creek. Start at East All Saints garage.",
   },
   scopeLabel: "Downtown Frederick",
@@ -103,6 +105,7 @@ export const downtownGuide: DowntownGuide = {
       title: "Frederick Visitor Center",
       anchor: "visitor-center",
       routeName: "Frederick Visitor Center",
+      timeLabel: "Visitor Center",
       suggestedMinutes: 20,
       when: "Daily, 9 AM–5 PM",
       where: "151 S East St, Frederick",
@@ -116,6 +119,7 @@ export const downtownGuide: DowntownGuide = {
       title: "The Delaplaine Arts Center",
       anchor: "delaplaine",
       routeName: "The Delaplaine Arts Center",
+      timeLabel: "Delaplaine",
       suggestedMinutes: 40,
       when: "Mon–Sat, 9 AM–5 PM · Sun, 11 AM–5 PM",
       where: "40 S Carroll St, Frederick",
@@ -131,6 +135,7 @@ export const downtownGuide: DowntownGuide = {
       title: "Carroll Creek and Community Bridge",
       anchor: "carroll-creek",
       routeName: "Carroll Creek & Community Bridge",
+      timeLabel: "Carroll Creek",
       suggestedMinutes: 45,
       when: "Dawn–10 PM",
       where: "From S Carroll St toward S Market St and back",
@@ -170,7 +175,7 @@ export function downtownGuideForDate(now: Date): DowntownGuide {
     route: {
       firstAction: garageDirections,
       durationLabel: "About 1 hour",
-      allowance: "Includes 15 minutes for parking and the walk to the creek.",
+      allowanceMinutes: 15,
       teaser: "Park free at East All Saints garage for an hour outdoors along Carroll Creek.",
     },
     notice: { ...notice, active: true },
@@ -190,6 +195,13 @@ function nextFrederickDay(now: Date): Date {
   return noon;
 }
 
+export function routeTimePreview(stops: GuideStop[], allowanceMinutes: number): RouteTimePreview {
+  return {
+    allowanceMinutes,
+    stops: stops.flatMap(stop => stop.suggestedMinutes ? [{ title: stop.timeLabel ?? stop.title, minutes: stop.suggestedMinutes }] : []),
+  };
+}
+
 export function downtownFeatureForToday(now: Date) {
   const tomorrow = easternParts(now).hour >= 15;
   const visit = tomorrow ? nextFrederickDay(now) : now;
@@ -197,6 +209,7 @@ export function downtownFeatureForToday(now: Date) {
   return {
     downtown: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
     downtownTitle: guide.title,
+    routePreview: routeTimePreview(guide.stops, guide.route.allowanceMinutes),
     downtownTeaser: guide.route.teaser,
     downtownWhen: tomorrow ? "Tomorrow" : "Daytime walk",
     downtownHref: tomorrow ? `/today/two-hours-downtown?day=${easternDayKey(visit)}` : "/today/two-hours-downtown",

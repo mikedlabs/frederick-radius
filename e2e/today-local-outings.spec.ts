@@ -36,6 +36,18 @@ test("opens either Today guide and returns to the same town and section", async 
   }
 });
 
+test("selecting a downtown map marker moves keyboard focus to that stop", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/today/two-hours-downtown");
+  const overview = page.getByRole("navigation", { name: "Route overview" });
+  const creek = overview.getByRole("link", { name: /Stop \d+, Carroll Creek & Community Bridge/ });
+  await expectTouchTarget(creek);
+  await creek.focus();
+  await creek.press("Enter");
+  await expect(page).toHaveURL(/#carroll-creek$/);
+  await expect(page.locator("#carroll-creek")).toBeFocused();
+});
+
 for (const { width, height, enlarged } of [
   { width: 320, height: 568, enlarged: true },
   { width: 375, height: 667, enlarged: false },

@@ -3,7 +3,9 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, ChevronDown, Clock, Info, MapPin, Navigation, Palette, SquareParking, Ticket, Waves } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { normalizeBrowseReturnTo } from "@/lib/browse-return";
-import type { GuideAction, GuideStop, LocalOutingGuide as Guide } from "@/lib/today/local-outing-guides";
+import { routeTimePreview, type GuideAction, type GuideStop, type LocalOutingGuide as Guide } from "@/lib/today/local-outing-guides";
+import RouteTimeStrip from "./RouteTimeStrip";
+import WalkStopMap from "./WalkStopMap";
 import styles from "./LocalOutingGuide.module.css";
 
 const STOP_ICONS = { parking: SquareParking, info: Info, art: Palette, water: Waves };
@@ -136,22 +138,13 @@ function GuideCover({ guide }: { guide: Guide }) {
   );
 }
 
-function RouteOverview({ stops, allowance, note }: { stops: GuideStop[]; allowance: string; note?: string }) {
+function RouteOverview({ stops, allowanceMinutes, note }: { stops: GuideStop[]; allowanceMinutes: number; note?: string }) {
   return (
     <nav aria-label="Route overview" className={styles.overview}>
       <h2 className={styles.indexTitle}>Your route</h2>
-      <ol role="list" className={styles.index}>
-        {stops.map((stop, index) => (
-          <li key={stop.anchor}>
-            <a href={`#${stop.anchor}`}>
-              <span className={styles.indexNumber} aria-hidden="true">{index + 1}</span>
-              <span className={styles.indexName}>{stop.routeName ?? stop.title}</span>
-              <span className={styles.indexTime}>{stop.suggestedMinutes ? `${stop.suggestedMinutes} min` : "Start"}</span>
-            </a>
-          </li>
-        ))}
-      </ol>
-      <p className={styles.routeAllowance}>{allowance}</p>
+      <WalkStopMap stops={stops} />
+      <h3 className={styles.indexTitle}>Suggested time</h3>
+      <RouteTimeStrip preview={routeTimePreview(stops, allowanceMinutes)} />
       {note && (
         <details className={styles.details}>
           <summary>Before you go <ChevronDown aria-hidden="true" size={16} /></summary>
@@ -214,7 +207,7 @@ export default function LocalOutingGuide({
               {guide.notice?.active && <HolidayNotice notice={guide.notice} />}
             </div>
             <div className={styles.walkActions}><GuideLink action={guide.route.firstAction} primary /></div>
-            <RouteOverview stops={guide.stops} allowance={guide.route.allowance} note={guide.note} />
+            <RouteOverview stops={guide.stops} allowanceMinutes={guide.route.allowanceMinutes} note={guide.note} />
           </header>
         </>
       ) : (

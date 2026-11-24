@@ -34,9 +34,24 @@ const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement, us
     for (const stop of args.guide.stops) {
       const link = overview.getByRole("link", { name: new RegExp(stop.routeName!) });
       await expect(link).toHaveAttribute("href", `#${stop.anchor}`);
-      await expect(link).toHaveTextContent(stop.suggestedMinutes ? `${stop.suggestedMinutes} min` : "Start");
+      await expect(link).toHaveAccessibleName(new RegExp(stop.suggestedMinutes ? `${stop.suggestedMinutes} minutes` : "start here"));
+      const box = link.getBoundingClientRect();
+      await expect(box.width).toBeGreaterThanOrEqual(44);
+      await expect(box.height).toBeGreaterThanOrEqual(44);
       await expect(canvasElement.querySelector(`[id="${stop.anchor}"]`)).toBeTruthy();
     }
+    const markers = overview.getAllByRole("link", { name: /^Stop [0-9]/ });
+    await expect(markers).toHaveLength(args.guide.stops.length);
+    for (let i = 0; i < markers.length; i++) {
+      const a = markers[i].getBoundingClientRect();
+      for (const sibling of markers.slice(i + 1)) {
+        const b = sibling.getBoundingClientRect();
+        await expect(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top).toBe(true);
+      }
+    }
+    const minutes = args.guide.stops.reduce((sum, stop) => sum + (stop.suggestedMinutes ?? 0), args.guide.route.allowanceMinutes);
+    await expect(overview.getByRole("img", { name: new RegExp(`${minutes} minutes total`) })).toBeVisible();
+    await expect(overview.getByRole("link", { name: /OpenStreetMap contributors/ })).toHaveAttribute("href", "https://www.openstreetmap.org/copyright");
     const notice = args.guide.notice;
     if (notice) {
       const aside = within(canvas.getByRole("complementary", { name: notice.heading }));
