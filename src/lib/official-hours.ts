@@ -43,7 +43,7 @@ export function validateOfficialHoursArtifact(value: unknown): asserts value is 
   if (!isCalendarDate(a.closures.coverage_from) || !isCalendarDate(a.closures.coverage_through) || a.closures.coverage_from > a.closures.coverage_through || !Array.isArray(a.closures.exceptions) || !a.closures.exceptions.length || a.closures.exceptions.length > 80) throw new Error("Missing or invalid closure coverage.");
   const dates = new Set<string>();
   for (const e of a.closures.exceptions) {
-    if (!isCalendarDate(e.date) || dates.has(e.date) || !e.reason?.trim() || e.reason.length > 160 || (e.closed === true) === Boolean(e.closes_at) || (e.closes_at !== undefined && !clock(e.closes_at))) throw new Error("Invalid or ambiguous dated closure.");
+    if (e.opens_at !== undefined || !isCalendarDate(e.date) || dates.has(e.date) || !e.reason?.trim() || e.reason.length > 160 || (e.closed === true) === Boolean(e.closes_at) || (e.closes_at !== undefined && !clock(e.closes_at))) throw new Error("Invalid or ambiguous dated closure.");
     dates.add(e.date);
   }
   const slugs = new Set<string>();
