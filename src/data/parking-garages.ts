@@ -5,7 +5,7 @@
  *   https://www.cityoffrederickmd.gov/1342/Garage-Parking
  *
  * Rates and payment procedures were rechecked against the City's published
- * garage page in July 2026. ParkMobile belongs to ON-STREET parking; it is not
+ * garage page November 24, 2026. ParkMobile belongs to ON-STREET parking; it is not
  * listed as a garage payment method. Garage patrons take their ticket with
  * them, pay at a first-level pay station, and use the validated ticket at the
  * exit. Pay stations accept cash, coin, and cards; exit stations accept cards
@@ -37,9 +37,13 @@ export type ParkingGarage = {
   notes?: string;
 };
 
+export const CITY_GARAGE_URL = "https://www.cityoffrederickmd.gov/1342/Garage-Parking";
+export const CITY_STREET_URL = "https://www.cityoffrederickmd.gov/1341/Street-Parking";
+export const CITY_GARAGE_HOURLY_DOLLARS = 1;
+
 /** Uniform rate schedule for all five City garages. */
 export const PARKING_RATE_SCHEDULE = {
-  hourly: "$1 / hour",
+  hourly: `$${CITY_GARAGE_HOURLY_DOLLARS} / hour`,
   dailyMax: "$12 weekday maximum",
   daytimeMax: "$12 max",
   nighttimeMax: "$5 max",
