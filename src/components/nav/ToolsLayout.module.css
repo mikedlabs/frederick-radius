@@ -37,14 +37,12 @@
   container: tools-index / inline-size;
 }
 
+.categoryPicker {
+  display: block;
+}
+
 .categoryStrip {
-  display: flex;
-  gap: 0.375rem;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  scroll-snap-type: x proximity;
-  padding-bottom: 0.125rem;
+  display: none;
 }
 
 @container tools-index (min-width: 37rem) {
@@ -63,7 +61,12 @@
     overflow-y: auto;
   }
 
+  .categoryPicker {
+    display: none;
+  }
+
   .categoryStrip {
+    display: flex;
     flex-direction: column;
     gap: 0;
     overflow: visible;

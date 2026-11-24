@@ -105,6 +105,10 @@ function indexSheetAt(width: number, height: number, viewport: string): Story {
           await expect(Math.round(box.left)).toBe(0);
           await expect(Math.round(box.width)).toBe(document.documentElement.clientWidth);
           await expect(box.top).toBeGreaterThanOrEqual(window.innerHeight * 0.1 - 1);
+          const picker = index.getByRole("combobox", { name: "Jump to a tool category" });
+          await expect(within(picker).getAllByRole("option")).toHaveLength(10);
+          await userEvent.selectOptions(picker, "decide");
+          await expect(index.getByRole("heading", { name: "Find something" })).toHaveFocus();
         } else {
           const categories = index.getByRole("navigation", { name: "Tool categories" });
           const heading = index.getByRole("heading", { name: "Find something" });

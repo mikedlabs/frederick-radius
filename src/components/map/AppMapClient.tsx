@@ -168,13 +168,25 @@ export function MapLoadFailure({
   extraAmenities?: OsmPlace[];
   town?: string | null;
 }) {
+  if (groups.length && !trailLineOnly) {
+    return (
+      <div className="w-full overflow-y-auto bg-[var(--app-bg)]" style={{ height }} data-map-chunk-failure>
+        <AmenityFallbackList
+          groups={groups}
+          amenities={amenities}
+          extraAmenities={extraAmenities}
+          town={town}
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
   const hasRows = places.length > 0 || events.length > 0;
   const title = trailLineOnly
     ? "The interactive trail map did not load."
     : "The map did not finish loading.";
   const detail = trailLineOnly
     ? "The trail guide on this page still works. Reload to try the interactive lines again."
-    : groups.length ? "Use the list below or choose a town."
     : hasRows
       ? "You can still open the places and events here, or reload the map."
       : "The rest of this page still works. Reload to try the map again.";
@@ -208,7 +220,7 @@ export function MapLoadFailure({
           Reload map
         </button>
       </div>
-      {groups.length && !trailLineOnly ? <AmenityFallbackList groups={groups} amenities={amenities} extraAmenities={extraAmenities} town={town} /> : hasRows && !trailLineOnly && (
+      {hasRows && !trailLineOnly && (
         <MapList
           places={places}
           events={events}

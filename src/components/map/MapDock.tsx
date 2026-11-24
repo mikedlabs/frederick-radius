@@ -1,5 +1,6 @@
 "use client";
 
+import { reachModeHref } from "@/components/radius/reach";
 import {
   useCallback,
   useEffect,
@@ -2590,7 +2591,7 @@ export default function MapDock(props: MapDockProps) {
                     // drops the browse query. This is a same-route client mode
                     // switch: update History, then notify the URL subscriber
                     // so MapModeGate swaps the UI without a document reload.
-                    window.history.pushState(null, "", "/map?mode=radius");
+                    window.history.pushState(null, "", reachModeHref(parseScope(sp.get(SCOPE_PARAM)) ?? getScope()));
                     window.dispatchEvent(new PopStateEvent("popstate"));
                   }}
                 >

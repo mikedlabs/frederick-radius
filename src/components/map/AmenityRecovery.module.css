@@ -1,0 +1,7 @@
+/* The desktop dock sits above the map. Reserve its lane when the list itself
+   provides the recovery heading. The mobile dock already reserves its bottom lane. */
+@media (min-width: 1024px) {
+  :global(.dock-host[data-map-error] .map-error-fallback) .list {
+    padding-top: calc(var(--map-dock-height, 0px) + var(--app-space-4));
+  }
+}

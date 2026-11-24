@@ -1,5 +1,6 @@
 "use client";
 
+import { reachModeHref } from "@/components/radius/reach";
 import {
   useCallback,
   useEffect,
@@ -61,6 +62,7 @@ import {
 } from "@/lib/scope";
 import { normalizeMapReturnTo } from "@/lib/map-return";
 import AmenityFallbackList from "./AmenityFallbackList";
+import recoveryLayout from "./AmenityRecovery.module.css";
 import { mapFallbackResults } from "./mapFallbackResults";
 import { getIntentByKey } from "@/data/intents";
 import { TIME_WINDOW_LABEL } from "./dockCaption";
@@ -2681,7 +2683,7 @@ export default function AppMap({
     if (id === "within-15-minutes") {
       haptic("light");
       track("map_scene", { scene: id });
-      window.history.pushState(null, "", "/map?mode=radius&minutes=15");
+      window.history.pushState(null, "", reachModeHref(explicitSearchScope ?? getScope(), 15));
       window.dispatchEvent(new PopStateEvent("popstate"));
       return;
     }
@@ -4794,7 +4796,23 @@ export default function AppMap({
         <TimeScrubber floating hour={scrubHour} onChange={setScrubHour} />
       )}
 
-        {mapError && (
+        {mapError && (amenityGroups.size > 0 && !q.trim() ? (
+          <div className="map-error-fallback">
+            <div className={`map-list ${recoveryLayout.list}`}>
+              <AmenityFallbackList
+                key={`${[...amenityGroups].join(",")}:${resultScope}`}
+                groups={[...amenityGroups]}
+                amenities={amenities}
+                osmPlaces={osmPlaces}
+                extraAmenities={extraAmenities}
+                origin={userLoc}
+                town={scopeTownSlug(resultScope)}
+                sourceStatus={osmLoading ? "Checking for additional OpenStreetMap locations…" : osmError ? "Additional OpenStreetMap locations are unavailable." : undefined}
+                onRetry={MAP_RENDERER_CONFIGURED && !mapUnsupported ? () => window.location.reload() : undefined}
+              />
+            </div>
+          </div>
+        ) : (
           <section
             className="map-error-fallback"
             aria-labelledby="map-error-title"
@@ -4843,23 +4861,15 @@ export default function AppMap({
                   </button>
                 )}
                 <Link
-                  href={amenityGroups.size > 0 && !q.trim() ? "/amenities" : "/places"}
+                  href="/places"
                   className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
                   style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
                 >
-                  {amenityGroups.size > 0 && !q.trim() ? "All amenities" : "All places"}
+                  All places
                 </Link>
               </div>
             </div>
-            {amenityGroups.size > 0 && !q.trim() ? <div className="map-list"><AmenityFallbackList
-              key={`${[...amenityGroups].join(",")}:${resultScope}`}
-              groups={[...amenityGroups]}
-              amenities={amenities}
-              osmPlaces={osmPlaces}
-              extraAmenities={extraAmenities}
-              origin={userLoc}
-              town={scopeTownSlug(resultScope)}
-            /></div> : taskList ? <div className="map-list" role="region" aria-label="Available results without the map">
+            {taskList ? <div className="map-list" role="region" aria-label="Available results without the map">
               <MapListPeek
                 list={taskList}
                 expanded
@@ -4891,7 +4901,7 @@ export default function AppMap({
               onPickEvent={(event) => void pickSearch({ id: `event:${event.slug}`, type: "event", title: event.title, href: `/events/${event.slug}` } as SearchResult)}
             />}
           </section>
-        )}
+        ))}
         {/* A geolocation denial or failure has to be visible where the user
             just tapped locate. On the dock surface it anchors above the locate
             FAB (bottom-right); dock-less embeds keep the centered toast. Before,

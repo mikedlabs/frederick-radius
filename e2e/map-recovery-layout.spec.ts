@@ -370,12 +370,12 @@ test.describe("focused amenity recovery across orientation changes", () => {
     for (const viewport of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
       await page.setViewportSize(viewport);
       await expect(town).toHaveValue("Myersville");
-      const status = page.locator(".map-error-fallback-head [data-map-recovery-source-status]");
+      const status = list.locator("[data-map-recovery-source-status]");
       await expect(status).toBeVisible();
       const heading = list.getByRole("heading", { name: "Restrooms" });
       await expect.poll(async () => {
         const [message, title] = await Promise.all([status.boundingBox(), heading.boundingBox()]);
-        return Boolean(message && title && message.y + message.height <= title.y);
+        return Boolean(message && title && title.y + title.height <= message.y);
       }).toBe(true);
       await assert44HitTarget(town);
       await assert44HitTarget(list.getByRole("link", { name: /walking directions/i }).first());
@@ -394,7 +394,7 @@ test.describe("focused amenity recovery across orientation changes", () => {
     for (const viewport of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
       await page.setViewportSize(viewport);
       await expect(sheet.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
-      const full = sheet.getByRole("link", { name: "See full page", exact: true });
+      const full = sheet.getByRole("link", { name: "Place details in Radius", exact: true });
       await full.scrollIntoViewIfNeeded();
       await assert44HitTarget(full);
       await assert44HitTarget(sheet.getByRole("button", { name: "Share Beans in the Belfry", exact: true }));

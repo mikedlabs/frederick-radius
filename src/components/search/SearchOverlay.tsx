@@ -1131,7 +1131,7 @@ export default function SearchOverlay({
                           onMouseEnter={() => setHoverIdx(0)} onMouseLeave={() => setHoverIdx(null)}>
                           View place <ArrowRight aria-hidden />
                         </Link>
-                        {mapHref && <Link href={mapHref} onClick={(event) => {
+                        {mapHref && <Link href={mapHref} aria-describedby="find-best-place-title" onClick={(event) => {
                           if (!isPlainNavigationClick(event)) return;
                           event.preventDefault();
                           if (query.trim()) pushRecent(query.trim());
@@ -1161,7 +1161,7 @@ export default function SearchOverlay({
                           <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-2)" }}>
                             Best match · {LABEL_BY_TYPE[r.type]}
                           </p>
-                          <p className="mt-1 line-clamp-2 font-sans text-[22px] font-bold leading-[1.1] tracking-[-0.025em]" style={{ color: "var(--app-ink)" }}>
+                          <p id="find-best-result-title" className="mt-1 line-clamp-2 font-sans text-[22px] font-bold leading-[1.1] tracking-[-0.025em]" style={{ color: "var(--app-ink)" }}>
                             {r.type === "action" ? r.title : highlight(r.title, query)}
                           </p>
                           <p className="mt-1 line-clamp-2 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
@@ -1187,6 +1187,7 @@ export default function SearchOverlay({
                         {mapHref ? (
                           <Link
                             href={mapHref}
+                            aria-describedby="find-best-result-title"
                             onClick={(event) => {
                               if (!isPlainNavigationClick(event)) return;
                               event.preventDefault();

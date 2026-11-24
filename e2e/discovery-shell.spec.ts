@@ -325,7 +325,7 @@ test.describe("mobile discovery shell", () => {
     });
     await withinReach.click();
     await expect(placesPane).toBeHidden();
-    await expect(page).toHaveURL(/\/map\?mode=radius(?:&c=[^&]+)?$/);
+    await expect.poll(() => new URL(page.url()).searchParams.get("mode")).toBe("radius");
     const countyMap = page.getByRole("link", { name: "Back to county map" });
     await expect(countyMap).toBeVisible();
     await countyMap.click();

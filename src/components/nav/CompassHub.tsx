@@ -1486,6 +1486,12 @@ function DeckToolBrowser({
   const total = groups.reduce((count, group) => count + group.items.length, 0);
   const showGroupHeadings = groups.length > 1;
   const browserRef = useRef<HTMLDivElement>(null);
+  const jumpToCategory = (id: string) => {
+    const heading = browserRef.current?.querySelector<HTMLElement>(`#compass-tools-${id} h3`);
+    if (!heading) return;
+    heading.focus({ preventScroll: true });
+    heading.scrollIntoView({ block: "start", behavior: "instant" });
+  };
   // Enter runs a filter that has narrowed to one tool by clicking its real
   // link, so recents, the native-request return and external-tab attributes
   // behave exactly as a tap would. With several matches, and always in the
@@ -1562,6 +1568,17 @@ function DeckToolBrowser({
             className={`sticky top-0 z-10 -mx-1 border-b bg-[var(--app-bg-elevated-solid)] px-1 pb-2 pt-0.5 ${styles.categoryNav}`}
             style={{ borderColor: "var(--app-border)" }}
           >
+            <label className={styles.categoryPicker}>
+              <span className="sr-only">Jump to a tool category</span>
+              <select
+                value=""
+                onChange={(event) => jumpToCategory(event.target.value)}
+                className="min-h-11 w-full rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-3 text-base"
+              >
+                <option value="" disabled>Jump to a category</option>
+                {groups.map((group) => <option key={group.id} value={group.id}>{group.label} ({group.items.length})</option>)}
+              </select>
+            </label>
             <div className={styles.categoryStrip}>
               {groups.map((group) => {
                 const Icon = GROUP_META[group.id].icon;
@@ -1569,22 +1586,7 @@ function DeckToolBrowser({
                   <button
                     key={group.id}
                     type="button"
-                    onClick={() => {
-                      document
-                        .getElementById(`compass-tools-${group.id}`)
-                        ?.scrollIntoView({
-                          behavior: window.matchMedia(
-                            "(prefers-reduced-motion: reduce)",
-                          ).matches
-                            ? "auto"
-                            : "smooth",
-                          block: "start",
-                        });
-                    }}
-                    // tap-44: the chip PAINTS 40px tall (min-h-10, deliberate
-                    // density for a nine-chip rail) but must HIT 44, per the
-                    // repo's own tap-target rule. The invisible extender adds
-                    // the missing 4px of touch without changing the paint.
+                    onClick={() => jumpToCategory(group.id)}
                     className="tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-2.5 text-[12px] font-semibold text-[var(--app-ink)] outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
                   >
                     <Icon
@@ -1615,7 +1617,7 @@ function DeckToolBrowser({
                 className="scroll-mt-14 space-y-2.5"
               >
                 {showGroupHeadings ? (
-                  <h3 className="text-[15px] font-semibold">{group.label}</h3>
+                  <h3 tabIndex={-1} className="scroll-mt-16 text-[15px] font-semibold focus-visible:outline-2 focus-visible:outline-[var(--app-ink)]">{group.label}</h3>
                 ) : null}
                 <ToolLedger
                   items={group.items}

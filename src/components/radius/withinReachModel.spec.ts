@@ -30,6 +30,16 @@ describe("Within reach routed-time model", () => {
     expect(formatReachMinutes(6, 8)).toBe("8m");
   });
 
+  it("removes results beyond the chosen budget when street times arrive", () => {
+    const items = [
+      { matrixId: "coffee", minutes: 3 },
+      { matrixId: "restroom", minutes: 5 },
+      { matrixId: "water", minutes: 12 },
+    ];
+    expect(sortReachByTravelTime(items, { coffee: 14, restroom: 10 }, 10)).toEqual([items[1]]);
+    expect(sortReachByTravelTime(items, {}, 10)).toEqual(items.slice(0, 2));
+  });
+
   it("ranks with routed minutes and falls back per missing cell", () => {
     const ranked = sortReachByTravelTime(
       [

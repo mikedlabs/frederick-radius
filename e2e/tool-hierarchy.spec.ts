@@ -51,6 +51,12 @@ test.describe("Tools on a keyboard and mouse", () => {
     const dialog = page.getByRole("dialog", { name: "All tools" });
     const lastCategory = dialog.getByRole("navigation", { name: "Tool categories" }).getByRole("button").last();
     await expect(lastCategory).toBeInViewport();
+    await lastCategory.focus();
+    await lastCategory.press("Enter");
+    const lastGroup = dialog.locator('[id^="compass-tools-"]').last();
+    await expect(lastGroup.getByRole("heading")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(lastGroup.locator("[data-tool-link]").first()).toBeFocused();
     await expect.poll(() => dialog.evaluate(node =>
       Math.abs(node.getBoundingClientRect().right - window.innerWidth),
     )).toBeLessThanOrEqual(2);
@@ -135,6 +141,15 @@ test("Tools keeps the full index secondary, filters tools and returns to the sel
   await expect(dialog.getByRole("button", { name: /^Pin / })).toHaveCount(0);
   await activate(dialog.getByRole("button", { name: "All tools", exact: true }));
   dialog = page.getByRole("dialog", { name: "All tools", exact: true });
+  const picker = dialog.getByRole("combobox", { name: "Jump to a tool category" });
+  await expect(picker).toBeVisible();
+  const lastOption = picker.getByRole("option").last();
+  await expect(picker.getByRole("option")).toHaveCount(10);
+  await picker.selectOption((await lastOption.getAttribute("value"))!);
+  const lastGroup = dialog.locator('[id^="compass-tools-"]').last();
+  await expect(lastGroup.getByRole("heading")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(lastGroup.locator("[data-tool-link]").first()).toBeFocused();
   const filter = dialog.getByRole("searchbox", { name: "Search tools in this section" });
   await expect(filter).toBeVisible(); await filter.fill("GasBuddy");
   const outside = dialog.getByRole("link", { name: /Gas prices/ });

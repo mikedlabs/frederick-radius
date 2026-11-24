@@ -522,11 +522,23 @@ export default function BrowseMapClient({
   }
 
   if (placeLoad.status === "error") {
+    const retryPlaces = () => {
+      resetMapPlacesRequest();
+      setPlaceLoad({ status: "loading", places: [] });
+      setPlaceAttempt((attempt) => attempt + 1);
+    };
     if (initialAmenityGroups?.length) {
-      return <div className="h-full overflow-y-auto bg-[var(--app-bg)] pb-24">
-        <p role="alert" className="mx-auto max-w-2xl px-4 pt-5 text-sm">The map is unavailable. You can still browse mapped amenities.</p>
-        <AmenityFallbackList groups={initialAmenityGroups} amenities={amenities} extraAmenities={extraAmenities} town={scopeTownSlug(explicitScope ?? activeScope)} />
-      </div>;
+      return (
+        <div className="h-full overflow-y-auto bg-[var(--app-bg)] pb-24">
+          <AmenityFallbackList
+            groups={initialAmenityGroups}
+            amenities={amenities}
+            extraAmenities={extraAmenities}
+            town={scopeTownSlug(explicitScope ?? activeScope)}
+            onRetry={retryPlaces}
+          />
+        </div>
+      );
     }
     return (
       <div
@@ -552,11 +564,7 @@ export default function BrowseMapClient({
               background: "var(--app-bg-elevated-solid)",
               color: "var(--app-ink)",
             }}
-            onClick={() => {
-              resetMapPlacesRequest();
-              setPlaceLoad({ status: "loading", places: [] });
-              setPlaceAttempt((attempt) => attempt + 1);
-            }}
+            onClick={retryPlaces}
           >
             Try again
           </button>
