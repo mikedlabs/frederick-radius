@@ -1,4 +1,6 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { CITY_HOLIDAY_PARKING_URL } from "@/data/parking-garages";
+import { FROSTY_FRIDAY, TENTH_WARD_CONCERT, isTenthWardConcert } from "@/data/thanksgiving-events";
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import { HISTORY_BY_SLUG, type HistoryImage } from "@/data/history";
 import { buildHorizonBounds, isRangeListing } from "@/lib/eventHorizon";
@@ -24,6 +26,7 @@ type StopPhoto = GuidePhoto & {
 
 export type GuideStop = {
   title: string;
+  anchor?: string;
   when: string;
   where: string;
   description: string;
@@ -46,6 +49,7 @@ export type LocalOutingGuide = {
   stops: GuideStop[];
   note?: string;
   secondaryAction?: GuideAction;
+  notice?: { heading: string; text: string; action: GuideAction };
 };
 
 const delaplainePhoto = CREDITED_LOCAL_PLACE_PHOTOS["delaplaine-arts-center-frederick"].image;
@@ -68,7 +72,7 @@ export const downtownGuide: LocalOutingGuide = {
       price: "Free Sundays, 8 AM–2 PM",
       description: "The garage is beside the Delaplaine. Start here and return after the creek walk.",
       detail: "The city lists accessible spaces on every level. If the garage is full, try Carroll Creek Garage at 44 E Patrick St.",
-      action: { label: "Directions to parking", href: directionsHref(39.4118117, -77.4072907) },
+      action: { label: "Directions to parking", href: directionsHref(39.4118117, -77.4072907, "driving") },
       source: { label: "City parking information", href: "https://www.cityoffrederickmd.gov/1873/Parking-FAQs" },
       tipSource: { label: "City garage rates", href: "https://cityoffrederickmd.gov/1342/Garage-Parking" },
     },
@@ -113,6 +117,36 @@ export const downtownGuide: LocalOutingGuide = {
     },
   ],
 };
+
+export function downtownGuideForDate(now: Date): LocalOutingGuide {
+  const day = easternDayKey(now);
+  if (day < "2026-11-23" || day > "2026-11-29") return downtownGuide;
+  const [garage, visitorCenter, galleries, creek] = downtownGuide.stops;
+  const holidayGarage: GuideStop = {
+    ...garage,
+    price: "Free Thu, Nov 26 through Sun, Nov 29",
+    tipSource: { label: "City holiday parking schedule", href: CITY_HOLIDAY_PARKING_URL },
+  };
+  if (day > "2026-11-26") {
+    return { ...downtownGuide, stops: [holidayGarage, visitorCenter, galleries, creek] };
+  }
+  return {
+    ...downtownGuide,
+    summary: undefined,
+    notice: {
+      heading: "Thanksgiving · Thu, Nov 26",
+      text: "The Visitor Center and Delaplaine galleries are closed. Park free at East All Saints for a self-guided creek walk.",
+      action: { label: "See the outdoor route", href: "#thanksgiving-creek-walk" },
+    },
+    note: "For the outdoor route, allow about an hour including parking. In poor weather, save the full indoor itinerary for another day. Check each venue’s hours before leaving.",
+    stops: [
+      holidayGarage,
+      { ...creek, anchor: "thanksgiving-creek-walk", detail: "Follow the paved creek path toward South Market Street and return to the garage the same way. The City lists benches along the path." },
+      { ...visitorCenter, action: { label: "Visitor Center holiday hours", href: visitorCenter.source.href }, when: "Closed Thanksgiving, Thu, Nov 26", detail: "The exhibits and visitor restrooms are closed for the holiday. On other days, check Visit Frederick for hours." },
+      { ...galleries, action: { label: "Delaplaine holiday hours", href: galleries.source.href }, when: "Closed Thanksgiving, Thu, Nov 26", detail: "Plan your gallery visit for another day. See the Delaplaine’s visitor information for regular hours and accessibility." },
+    ],
+  };
+}
 
 type EditionPick = Omit<GuideStop, "when"> & {
   sessions: { through: number; when: string }[];
@@ -237,22 +271,45 @@ function stopForEvent(event: EventWithMeta): GuideStop {
   };
 }
 
+const thanksgivingFriday = Date.parse(easternWallToUtcISO(2026, 11, 27, 17, 0));
+const thanksgivingEdition: EditionPick[] = [
+  {
+    title: FROSTY_FRIDAY.title,
+    where: "Downtown Frederick",
+    description: "Browse downtown shops and hear live holiday music. Check the organizer’s schedule to choose a time and meeting spot.",
+    visitTip: "City garages and on-street parking are free on Frosty Friday.",
+    tipSource: { label: "City holiday parking schedule", href: CITY_HOLIDAY_PARKING_URL },
+    action: { label: "See the Frosty Friday schedule", href: FROSTY_FRIDAY.url },
+    source: { label: "Downtown Frederick Partnership", href: FROSTY_FRIDAY.url },
+    sessions: [{ when: "Fri, Nov 27 · 9 AM–9 PM", through: Date.parse(FROSTY_FRIDAY.endsAt) }],
+  },
+  {
+    title: TENTH_WARD_CONCERT.title,
+    where: "Tenth Ward Distilling Company, 55 E Patrick St, Frederick",
+    description: "Hear the Brahman Noodles play live at Tenth Ward on Friday evening.",
+    action: { label: "See the performance details", href: TENTH_WARD_CONCERT.url },
+    source: { label: "Tenth Ward Distilling Company", href: TENTH_WARD_CONCERT.url },
+    sessions: [{ when: "Fri, Nov 27 · 8–10 PM", through: Date.parse(TENTH_WARD_CONCERT.endsAt) }],
+  },
+];
+
 const weekendDate = new Intl.DateTimeFormat("en-US", {
   timeZone: EVENT_TZ,
   month: "short",
   day: "numeric",
 });
 
-function firstEditionStops(now: number, events: readonly EventWithMeta[]): GuideStop[] {
+function editionStops(picks: EditionPick[], now: number, events: readonly EventWithMeta[]): GuideStop[] {
   const notices = events.filter((event) => (
     (event.status === "cancelled" || event.status === "postponed") &&
     Number.isFinite(Date.parse(event.starts_at))
   ));
 
-  return firstEdition.flatMap(({ sessions, ...stop }) => {
+  return picks.flatMap(({ sessions, ...stop }) => {
     const remaining = sessions.filter((session) => (
       session.through > now && !notices.some((event) => (
-        (event.title.toLowerCase() === stop.title.toLowerCase() || event.source_url === stop.source.href) &&
+        (event.title.toLowerCase() === stop.title.toLowerCase() || event.source_url === stop.source.href ||
+          (stop.source.href === TENTH_WARD_CONCERT.url && isTenthWardConcert(event))) &&
         easternDayKey(new Date(event.starts_at)) === easternDayKey(new Date(session.through))
       ))
     ));
@@ -274,14 +331,18 @@ export function weekendGuide(now: Date, verifiedEvents: readonly EventWithMeta[]
   let stops: GuideStop[];
 
   if (isFirstEdition) {
-    stops = firstEditionStops(bounds.now, verifiedEvents);
+    stops = editionStops(firstEdition, bounds.now, verifiedEvents);
     if (bounds.now >= boatLaunchEnd && bounds.now < boatSundayVisitEnd) {
       stops.unshift(eveningBoatVisit(bounds.now));
     }
   } else {
-    const seen = new Set<string>();
-    const choices = rankRecommendations(verifiedEvents.filter((event) => usableWeekendEvent(event, bounds, now)), { limit: 3 });
-    stops = [];
+    const holidayWeekend = bounds.weekendStart === thanksgivingFriday;
+    stops = holidayWeekend ? editionStops(thanksgivingEdition, bounds.now, verifiedEvents) : [];
+    const seen = new Set(stops.map((stop) => stop.title.toLowerCase()));
+    const choices = rankRecommendations(verifiedEvents.filter((event) => {
+      if (holidayWeekend && (isTenthWardConcert(event) || event.source_url === FROSTY_FRIDAY.url || event.title.trim().toLowerCase() === FROSTY_FRIDAY.title.toLowerCase())) return false;
+      return usableWeekendEvent(event, bounds, now);
+    }), { limit: 3 });
     for (const event of choices) {
       const titleKey = event.title.trim().toLowerCase();
       if (seen.has(titleKey)) continue;

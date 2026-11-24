@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { downtownGuide, weekendGuide } from "./local-outing-guides";
+import { FROSTY_FRIDAY, TENTH_WARD_CONCERT } from "@/data/thanksgiving-events";
+import { downtownGuide, downtownGuideForDate, weekendGuide } from "./local-outing-guides";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
@@ -49,6 +50,19 @@ describe("local outing guides", () => {
     expect(downtownGuide.stops[2].when).toContain("Sun, 11 AM–5 PM");
     expect(downtownGuide.note).toContain("Nov 16, 2026");
     expect(downtownGuide.stops.every((stop) => new URL(stop.source.href).protocol === "https:")).toBe(true);
+  });
+
+  it("shows both indoor closures and a usable outdoor route until Thanksgiving ends in Frederick", () => {
+    const holiday = downtownGuideForDate(new Date("2026-11-27T04:59:59Z"));
+    expect(holiday.notice?.text).toContain("Visitor Center and Delaplaine galleries are closed");
+    expect(holiday.stops.filter(stop => stop.when.includes("Closed Thanksgiving")).map(stop => stop.title))
+      .toEqual(["Frederick Visitor Center", "The Delaplaine Arts Center"]);
+    expect(holiday.stops.find(stop => `#${stop.anchor}` === holiday.notice?.action.href)?.where).toContain("S Market St");
+    expect(holiday.stops[0].action.href).toContain("travelmode=driving");
+    const nextDay = downtownGuideForDate(new Date("2026-11-27T05:00:00Z"));
+    expect(nextDay.notice).toBeUndefined();
+    expect(nextDay.stops[0].price).toContain("Free Thu, Nov 26 through Sun, Nov 29");
+    expect(downtownGuideForDate(new Date("2026-11-30T05:00:00Z"))).toBe(downtownGuide);
   });
 
   it("publishes the three Sunday and Saturday picks with their source and checked date", () => {
@@ -106,8 +120,11 @@ describe("local outing guides", () => {
     expect(before.scopeLabel).toMatch(/Nov 21\s*–\s*22/);
     expect(after.scopeLabel).toMatch(/Nov 27\s*–\s*29/);
     expect(after.photo.src).toBe("/images/places/church-street-sunset.jpg");
-    expect(after.stops).toEqual([]);
-    expect(after.summary).toContain("any confirmed guide picks");
+    expect(after.stops.map(stop => [stop.title, stop.when])).toEqual([
+      [FROSTY_FRIDAY.title, "Fri, Nov 27 · 9 AM–9 PM"],
+      [TENTH_WARD_CONCERT.title, "Fri, Nov 27 · 8–10 PM"],
+    ]);
+    expect(weekendGuide(new Date("2026-11-30T05:00:00Z")).summary).toContain("any confirmed guide picks");
     expect(after.secondaryAction?.href).toBe("/events?in=county&lens=weekend");
   });
 
@@ -124,14 +141,14 @@ describe("local outing guides", () => {
       event({ slug: "invalid", title: "Concert with no date", starts_at: "invalid" }),
     ]);
 
-    expect(guide.stops).toHaveLength(1);
-    expect(guide.stops[0]).toMatchObject({
+    expect(guide.stops).toHaveLength(3);
+    expect(guide.stops[2]).toMatchObject({
       title: "Frosty Friday Concert",
       when: "Fri, Nov 27 · 8:00 PM–9:00 PM",
       source: { label: "Weinberg Center for the Arts", href: "https://example.com/event" },
       action: { href: "https://example.com/event" },
     });
-    expect(guide.stops[0].detail).toBeUndefined();
+    expect(guide.stops[2].detail).toBeUndefined();
   });
 
   it("does not recommend a started timed event with an unknown end", () => {
@@ -147,6 +164,14 @@ describe("local outing guides", () => {
       }),
     ]);
 
-    expect(guide.stops.map((stop) => stop.title)).toEqual(["Frosty Friday Concert"]);
+    expect(guide.stops.map((stop) => stop.title)).toEqual([FROSTY_FRIDAY.title, TENTH_WARD_CONCERT.title, "Frosty Friday Concert"]);
+  });
+
+  it("retires holiday picks at their published ends and honors a notice under the syndicated URL", () => {
+    const duplicate = event({ title: "Live Music at Tenth Ward", source_url: TENTH_WARD_CONCERT.syndicatedUrl });
+    expect(weekendGuide(new Date("2026-11-27T20:00:00Z"), [duplicate]).stops).toHaveLength(2);
+    expect(weekendGuide(new Date("2026-11-28T02:00:00Z")).stops.map(stop => stop.title)).toEqual([TENTH_WARD_CONCERT.title]);
+    expect(weekendGuide(new Date("2026-11-28T03:00:00Z")).stops).toEqual([]);
+    expect(weekendGuide(new Date("2026-11-27T20:00:00Z"), [{ ...duplicate, status: "postponed" }]).stops.map(stop => stop.title)).toEqual([FROSTY_FRIDAY.title]);
   });
 });

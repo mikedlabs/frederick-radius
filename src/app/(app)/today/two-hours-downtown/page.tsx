@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import LocalOutingGuide from "@/components/today/LocalOutingGuide";
-import { downtownGuide } from "@/lib/today/local-outing-guides";
+import { downtownGuideForDate } from "@/lib/today/local-outing-guides";
 
 export const metadata: Metadata = {
   title: "Two Hours Downtown Frederick",
@@ -14,5 +14,5 @@ export default async function DowntownGuidePage({
   searchParams: Promise<{ returnTo?: string | string[] }>;
 }) {
   const { returnTo } = await searchParams;
-  return <LocalOutingGuide guide={downtownGuide} returnTo={returnTo} />;
+  return <LocalOutingGuide guide={downtownGuideForDate(new Date())} returnTo={returnTo} />;
 }

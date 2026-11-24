@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TENTH_WARD_CONCERT } from "@/data/thanksgiving-events";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 const mocks = vi.hoisted(() => ({
@@ -60,6 +61,15 @@ describe("event identity archive", () => {
         "renamed-event-2026-07-30",
       )?.slug,
     ).toBe("renamed-event-2026-07-30");
+  });
+
+  it("uses the venue end for the syndicated Nov 27 concert without changing a reschedule or cancellation", () => {
+    const old = { ...snapshot(), starts_at: TENTH_WARD_CONCERT.startsAt, ends_at: "2026-11-28T02:00:00Z", source_url: TENTH_WARD_CONCERT.syndicatedUrl, status: "cancelled" };
+    expect(archivedEventFromSnapshot(old)).toMatchObject({
+      slug: old.slug, title: TENTH_WARD_CONCERT.title, ends_at: TENTH_WARD_CONCERT.endsAt, source_url: TENTH_WARD_CONCERT.url, status: "cancelled",
+    });
+    const rescheduled = { ...old, starts_at: "2026-11-29T01:00:00Z", ends_at: "2026-11-29T02:00:00Z" };
+    expect(archivedEventFromSnapshot(rescheduled)).toMatchObject(rescheduled);
   });
 
   it("rejects malformed snapshots before an event page can render them", () => {

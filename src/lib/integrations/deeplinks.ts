@@ -4,11 +4,12 @@
  * Empty/undefined input → null → caller skips the button entirely.
  */
 
+import { isCityGarage } from "@/data/parking-garages";
 import type { Place } from "@/data/places";
 
 // ─── Maps / Directions ──────────────────────────────────────────────────
 
-export function googleMapsDirections(lat: number, lng: number): string {
+export function googleMapsDirections(lat: number, lng: number, mode?: "driving"): string {
   // destination=lat,lng is the canonical, always-resolves form. We do NOT
   // pass destination_place_id — that param requires a real Google Place ID
   // (e.g. "ChIJ..."), and feeding it a place name (as this used to) is
@@ -18,6 +19,7 @@ export function googleMapsDirections(lat: number, lng: number): string {
     api: "1",
     destination: `${lat},${lng}`,
   });
+  if (mode) params.set("travelmode", mode);
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
@@ -31,9 +33,9 @@ export function googleMapsDirectionsToAddress(address: string): string {
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
-export function appleMapsDirections(lat: number, lng: number, name?: string): string {
+export function appleMapsDirections(lat: number, lng: number, name?: string, mode?: "driving"): string {
   // Apple's Maps URL scheme: https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html
-  const params = new URLSearchParams({ daddr: `${lat},${lng}`, dirflg: "w" });
+  const params = new URLSearchParams({ daddr: `${lat},${lng}`, dirflg: mode ? "d" : "w" });
   if (name) params.set("q", name);
   return `https://maps.apple.com/?${params.toString()}`;
 }
@@ -61,14 +63,6 @@ export function resyUrl(resy_slug: string): string {
 // parkmobile.io/{zone} used before was not a valid start-session URL).
 export function parkMobileWebUrl(zone: string): string {
   return `https://app.parkmobile.io/zone/${encodeURIComponent(zone)}`;
-}
-
-// Generic ParkMobile entry for a parking place whose exact zone is not
-// verified yet: the user reads the zone off the on-site sign. Always a
-// working ParkMobile link, never a fabricated zone (a wrong zone would
-// charge the user for the wrong location).
-export function parkMobileFindUrl(): string {
-  return "https://app.parkmobile.io/";
 }
 
 export function parkMobileAppUrl(zone: string): string {
@@ -194,24 +188,20 @@ export function actionsForPlace(place: Place): IntegrationAction[] {
     });
   }
 
-  // Parking. A verified zone deep-links straight to that ParkMobile
-  // session. For a parking place without a verified zone we still show
-  // a working ParkMobile action (read the zone off the sign) rather
-  // than hiding it entirely, which is why parking pages had no link.
-  if (place.parkmobile_zone && place.parkmobile_zone !== "needs_verification") {
+  if (isCityGarage(place.slug)) {
+    out.push({
+      key: "garage-rates",
+      label: "Garage rates and payment",
+      href: "/parking#garage-basics-heading",
+      external: false,
+      category: "park",
+      priority: 10,
+    });
+  } else if (place.parkmobile_zone && place.parkmobile_zone !== "needs_verification") {
     out.push({
       key: "parkmobile",
       label: `Pay with ParkMobile · zone ${place.parkmobile_zone}`,
       href: parkMobileWebUrl(place.parkmobile_zone),
-      external: true,
-      category: "park",
-      priority: 10,
-    });
-  } else if (place.category === "parking") {
-    out.push({
-      key: "parkmobile",
-      label: "Find parking · ParkMobile",
-      href: parkMobileFindUrl(),
       external: true,
       category: "park",
       priority: 10,

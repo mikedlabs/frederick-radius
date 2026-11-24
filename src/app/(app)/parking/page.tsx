@@ -9,7 +9,6 @@ import {
   CreditCard,
   ExternalLink,
   KeyRound,
-  MapPin,
   Music,
   Receipt,
   ShoppingBag,
@@ -19,6 +18,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
+  CITY_HOLIDAY_PARKING_URL,
+  HOLIDAY_WEEKEND_PARKING,
+  thanksgivingParkingWeek,
+  showHolidayParking,
   PARKING_ACCESSIBILITY,
   PARKING_GARAGES,
   PARKING_OFFICE,
@@ -28,6 +31,8 @@ import {
 const CITY_GARAGE_URL = "https://www.cityoffrederickmd.gov/1342/Garage-Parking";
 const CITY_STREET_URL = "https://www.cityoffrederickmd.gov/1341/Street-Parking";
 const CITY_TICKET_URL = "https://www.cityoffrederickmd.gov/1347/Parking-ViolationFine-Payment";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/parking" },
@@ -47,27 +52,21 @@ type ParkingIntent = {
 const INTENTS: ParkingIntent[] = [
   {
     label: "Carroll Creek",
-    hint: "Start with Carroll Creek Garage",
+    hint: "Carroll Creek Garage",
     href: "/places/carroll-creek-parking-garage-frederick",
     icon: Music,
   },
   {
     label: "Weinberg Center",
-    hint: "Start with Church Street Garage",
+    hint: "Church Street Garage",
     href: "/places/church-street-garage",
     icon: Theater,
   },
   {
     label: "Market Street",
-    hint: "Court Street is a central option",
+    hint: "Court Street Garage",
     href: "/places/court-street-parking-garage-frederick",
     icon: ShoppingBag,
-  },
-  {
-    label: "See every garage",
-    hint: "Compare locations on the map",
-    href: "/map?mode=browse&intent=parking",
-    icon: MapPin,
   },
 ];
 
@@ -102,33 +101,53 @@ function FactBadge({ children }: { children: ReactNode }) {
 }
 
 export default function ParkingPage() {
+  const now = new Date();
   return (
     <div className="relative mx-auto w-full max-w-screen-md space-y-8 py-6">
 
       <header className="space-y-3">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Downtown Frederick
+          Frederick, Maryland
         </p>
         <h1
           className="font-serif text-[34px] font-semibold leading-[1.02] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Park without guessing.
+          Downtown parking
         </h1>
         <p
           className="max-w-2xl text-[15px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Five City garages are open 24/7. ParkMobile is for on-street spaces;
-          garages use tickets, first-level pay stations, and exit stations.
+          Five City garages, open 24/7. Pay at a garage station.
+          ParkMobile is for on-street spaces.
         </p>
+        {showHolidayParking(now) && (
+          <aside aria-labelledby="holiday-parking-heading" className="rounded-[var(--app-radius-lg)] border-l-4 px-4 py-3" style={{ borderColor: "var(--app-cool-text)", background: "var(--app-bg-sunken)" }}>
+            <p className="text-xs font-semibold" style={{ color: "var(--app-cool-text)" }}>
+              {thanksgivingParkingWeek(now) ? "Thanksgiving · Nov 26–29, 2026" : "Holiday weekends · through New Year’s Day"}
+            </p>
+            <h2 id="holiday-parking-heading" className="mt-1 font-serif text-xl font-semibold leading-tight">
+              {thanksgivingParkingWeek(now) ? "City garages and street parking are free" : "Free weekend garage parking"}
+            </h2>
+            {thanksgivingParkingWeek(now) ? (
+              <details className="mt-1 text-sm">
+                <summary className="min-h-11 cursor-pointer content-center font-semibold">More holiday dates</summary>
+                <p>{HOLIDAY_WEEKEND_PARKING}</p>
+                <SourceLink href={CITY_HOLIDAY_PARKING_URL}>City holiday schedule</SourceLink>
+              </details>
+            ) : (
+              <><p className="mt-1 text-sm">Saturday at 8 AM through Monday at 6 AM.</p><SourceLink href={CITY_HOLIDAY_PARKING_URL}>City holiday schedule</SourceLink></>
+            )}
+          </aside>
+        )}
         <div className="flex flex-wrap gap-2 pt-1">
           <Link
             href="/map?mode=browse&intent=parking"
             className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-[13px] font-semibold"
             style={{ background: "var(--app-ink)", color: "var(--app-bg-elevated-solid)" }}
           >
-            Open the parking map
+            Parking map
             <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
           </Link>
           <a
@@ -144,15 +163,12 @@ export default function ParkingPage() {
       <section aria-labelledby="parking-start-heading" className="space-y-3">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              Choose where you&rsquo;re going
-            </p>
             <h2
               id="parking-start-heading"
               className="mt-1 font-serif text-[23px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              A useful first choice
+              Park near your destination
             </h2>
           </div>
         </div>
@@ -194,7 +210,7 @@ export default function ParkingPage() {
               </>
             );
             const className =
-              "hover-lift flex min-h-[78px] items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 transition";
+              "hover-lift flex min-h-[64px] items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 transition";
             const style = {
               borderColor: "var(--app-border)",
               boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
@@ -240,7 +256,7 @@ export default function ParkingPage() {
               className="mt-1 font-serif text-[23px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {PARKING_RATE_SCHEDULE.hourly} · {PARKING_RATE_SCHEDULE.dailyMax} max
+              {PARKING_RATE_SCHEDULE.hourly} · {PARKING_RATE_SCHEDULE.dailyMax}
             </h2>
           </div>
           <CircleParking
@@ -257,7 +273,7 @@ export default function ParkingPage() {
           >
             <Clock className="h-4 w-4" style={{ color: "var(--app-cool)" }} aria-hidden />
             <p className="mt-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              Overnight maximum
+              Weekday nights and weekend days
             </p>
             <p className="text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
               {PARKING_RATE_SCHEDULE.nighttimeMax}
@@ -292,10 +308,8 @@ export default function ParkingPage() {
           className="mt-4 text-[13px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Take the ticket with you. Pay at a first-level pay station before
-          returning to your car, then insert the validated ticket at the exit.
-          Exit stations accept credit cards or a ticket already validated at a
-          pay station.
+          Take your ticket with you. Use a first-level pay station, or pay by card
+          at the exit. The exit also accepts a ticket already validated at a pay station.
         </p>
         <div className="mt-2">
           <SourceLink href={CITY_GARAGE_URL}>Verify garage rates and payment</SourceLink>

@@ -55,7 +55,7 @@ function StopPicture({ photo }: { photo: NonNullable<GuideStop["photo"]> }) {
 function OutingStop({ stop, primary }: { stop: GuideStop; primary: boolean }) {
   const Marker = stop.icon ? STOP_ICONS[stop.icon] : CalendarDays;
   return (
-    <li className={styles.stop} data-photo={stop.photo ? "" : undefined}>
+    <li id={stop.anchor} className={styles.stop} data-photo={stop.photo ? "" : undefined}>
       {stop.photo && <StopPicture photo={stop.photo} />}
       <div className={styles.stopBody}>
         <div className={styles.stopHeading}>
@@ -121,6 +121,13 @@ export default function LocalOutingGuide({
           <p className={styles.scope}>{guide.scopeLabel}</p>
           <h1 className={styles.title}>{guide.title}</h1>
           {guide.summary && <p className={styles.summary}>{guide.summary}</p>}
+          {guide.notice && (
+            <aside aria-label={guide.notice.heading} className={styles.notice}>
+              <p className={styles.noticeHeading}><CalendarDays size={16} aria-hidden="true" />{guide.notice.heading}</p>
+              <p>{guide.notice.text}</p>
+              <a className={styles.noticeLink} href={guide.notice.action.href}>{guide.notice.action.label} <ArrowRight aria-hidden="true" size={16} /></a>
+            </aside>
+          )}
         </div>
         <figure className={styles.figure}>
           <Image
