@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:083a3cfd7fad17ccb0329b400d7869f0acce86a74a83e7cf2cb31f4d5c450f50",
+  "data_version": "sha256:cb8a65b7687cdb66fb15f512d8f00b174e31be9ab3f41122ddb233c4afcdfb11",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-24T18:53:30.272Z",
+      "promoted_at": "2026-11-24T18:55:52.165Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -174,9 +174,9 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "251e0bda7946988c16a8228bd00f11aaad73508cf390b3ebd616be66f2c4246d",
+          "sha256": "4307370de9afea109a0b900d64d2a0a3f8b07c4a2eb5eaa0418ae3f12d99e81c",
           "records": null,
-          "bytes": 12608
+          "bytes": 12818
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
