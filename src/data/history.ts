@@ -24,6 +24,8 @@ export type HistoryImage = {
   src: string;
   alt?: string;
   creator: string;
+  /** Year the photograph was taken, when supplied by the source. */
+  capturedYear?: number;
   source_url: string;
   license: { label: string; url: string };
   modifications: string;
@@ -197,6 +199,7 @@ export const HISTORY: HistoryEntry[] = [
       src: "/history-photos/carroll-creek-park.jpg",
       alt: "Carroll Creek Linear Park, with lily pads on the creek, a brick promenade, and a stone arch bridge in the distance",
       creator: "Art Anderson",
+      capturedYear: 2015,
       source_url: "https://commons.wikimedia.org/wiki/File:Carroll_Creek_Community_Bridge_-_panoramio.jpg",
       license: CC_BY_SA_3,
       modifications: DISPLAY_MODIFICATIONS,

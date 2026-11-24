@@ -29,7 +29,31 @@ const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement, us
     "href",
     args.returnTo === todayOrigin ? todayOrigin : "/today",
   );
-  const stops = canvas.getByRole("list");
+  if (args.guide.route) {
+    const overview = within(canvas.getByRole("navigation", { name: "Route overview" }));
+    for (const stop of args.guide.stops) {
+      const link = overview.getByRole("link", { name: new RegExp(stop.routeName!) });
+      await expect(link).toHaveAttribute("href", `#${stop.anchor}`);
+      await expect(link).toHaveTextContent(stop.suggestedMinutes ? `${stop.suggestedMinutes} min` : "Start");
+      await expect(canvasElement.querySelector(`[id="${stop.anchor}"]`)).toBeTruthy();
+    }
+    const notice = args.guide.notice;
+    if (notice) {
+      const aside = within(canvas.getByRole("complementary", { name: notice.heading }));
+      if (notice.active) await expect(aside.getByText(notice.text)).toBeVisible();
+      else await expect(aside.getByText(notice.text)).not.toBeVisible();
+      await userEvent.click(aside.getByText(notice.active ? "Holiday hours and parking sources" : `${notice.heading} · Closures and parking`));
+      await expect(aside.getByText(notice.text)).toBeVisible();
+      for (const source of notice.sources) await expect(aside.getByRole("link", { name: source.label })).toHaveAttribute("href", source.href);
+    }
+    const { credit } = args.guide.photo;
+    if (credit) {
+      await userEvent.click(canvas.getByText(`${credit.creator} · ${credit.capturedYear}`));
+      await expect(canvas.getByRole("link", { name: `Photo by ${credit.creator}` })).toHaveAttribute("href", credit.source_url);
+      await expect(canvas.getByRole("link", { name: credit.license.label })).toHaveAttribute("href", credit.license.url);
+    }
+  }
+  const stops = args.guide.route ? canvas.getByRole("list", { name: "Walking itinerary" }) : canvas.getByRole("list");
   const items = within(stops).getAllByRole("listitem");
   await expect(items).toHaveLength(args.guide.stops.length);
   for (const [index, stop] of args.guide.stops.entries()) {
@@ -67,6 +91,7 @@ const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement, us
 
 export const DowntownOnPhone: Story = {
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { guide: downtownGuideForDate(new Date("2026-11-24T17:00:00Z")) },
   play: usableGuide,
 };
 

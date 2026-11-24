@@ -16,17 +16,19 @@ import { directionsHref } from "@/lib/map/directionsHref";
 import { getOwnedPlacePhoto, OWNED_PLACE_PHOTOS, type OwnedPlacePhoto } from "@/lib/owned-place-photos";
 import { easternDayKey, easternParts, easternWallToUtcISO } from "@/lib/tz";
 
-export type GuidePhoto = Omit<OwnedPlacePhoto, "kind" | "referenceContext">;
+export type GuidePhoto = Omit<OwnedPlacePhoto, "kind" | "referenceContext"> & {
+  credit?: Omit<HistoryImage, "src" | "alt">;
+};
 export type GuideAction = { label: string; href: string };
 
 type StopPhoto = GuidePhoto & {
   caption: string;
-  credit?: Omit<HistoryImage, "src" | "alt">;
 };
 
 export type GuideStop = {
   title: string;
   anchor?: string;
+  routeName?: string;
   when: string;
   suggestedMinutes?: number;
   where: string;
@@ -50,15 +52,15 @@ export type LocalOutingGuide = {
   photoCaption: string;
   stops: GuideStop[];
   stopLayout?: "choices";
-  route?: { firstAction: GuideAction; allowance: string; teaser: string };
+  route?: { firstAction: GuideAction; durationLabel: string; allowance: string; teaser: string };
   note?: string;
   secondaryAction?: GuideAction;
-  notice?: { heading: string; text: string; sources: GuideAction[] };
+  notice?: { heading: string; text: string; sources: GuideAction[]; active?: boolean };
 };
 
 const delaplainePhoto = CREDITED_LOCAL_PLACE_PHOTOS["delaplaine-arts-center-frederick"].image;
 const weinbergPhoto = CREDITED_LOCAL_PLACE_PHOTOS["weinberg-center-for-the-arts-frederick"].image;
-const bridgePhoto = HISTORY_BY_SLUG["carroll-creek-park"].image;
+const bridgePhoto = HISTORY_BY_SLUG["carroll-creek-park"].image!;
 
 type DowntownGuide = LocalOutingGuide & { route: NonNullable<LocalOutingGuide["route"]> };
 
@@ -66,19 +68,28 @@ const garageDirections = { label: "Directions to East All Saints garage", href: 
 
 export const downtownGuide: DowntownGuide = {
   title: "Two Hours Downtown",
-  summary: "Visit the downtown exhibits and free galleries, then follow Carroll Creek back to the garage.",
+  summary: "Visit the galleries in a former mill, then find the painted stonework on Community Bridge.",
   route: {
     firstAction: garageDirections,
-    allowance: "About 2 hours, including 15 minutes for parking and walking between stops.",
+    durationLabel: "About 2 hours",
+    allowance: "Includes 15 minutes for parking and walks between stops.",
     teaser: "See free galleries and walk Carroll Creek. Start at East All Saints garage.",
   },
   scopeLabel: "Downtown Frederick",
-  photo: OWNED_PLACE_PHOTOS["carroll-creek-linear-park-frederick"],
-  photoCaption: "Carroll Creek in downtown Frederick.",
-  note: "Start between 9 AM and 3 PM Monday through Saturday, or between 11 AM and 3 PM on Sunday. If it rains, spend the creek portion at the galleries or the Visitor Center exhibits instead. On Sunday, 11 AM–1 PM fits both the gallery hours and the free garage window. Hours and parking checked Nov 24, 2026.",
+  photo: {
+    src: bridgePhoto.src,
+    alt: bridgePhoto.alt ?? "The brick promenade beside Carroll Creek, looking toward Community Bridge.",
+    width: 1280,
+    height: 921,
+    credit: bridgePhoto,
+  },
+  photoCaption: "Carroll Creek near Community Bridge",
+  note: "Start between 9 AM and 3 PM Monday through Saturday, or between 11 AM and 3 PM on Sunday. Start earlier on short winter days if you want daylight at the creek. If it rains, spend the creek portion at the galleries or the Visitor Center exhibits instead. On Sunday, 11 AM–1 PM fits both the gallery hours and the free garage window. Hours and parking checked Nov 24, 2026.",
   stops: [
     {
       title: "Park at East All Saints",
+      anchor: "east-all-saints-garage",
+      routeName: "East All Saints Street Garage",
       when: "Open 24 hours",
       where: "125 E All Saints St, Frederick",
       icon: "parking",
@@ -90,6 +101,8 @@ export const downtownGuide: DowntownGuide = {
     },
     {
       title: "Frederick Visitor Center",
+      anchor: "visitor-center",
+      routeName: "Frederick Visitor Center",
       suggestedMinutes: 20,
       when: "Daily, 9 AM–5 PM",
       where: "151 S East St, Frederick",
@@ -101,6 +114,8 @@ export const downtownGuide: DowntownGuide = {
     },
     {
       title: "The Delaplaine Arts Center",
+      anchor: "delaplaine",
+      routeName: "The Delaplaine Arts Center",
       suggestedMinutes: 40,
       when: "Mon–Sat, 9 AM–5 PM · Sun, 11 AM–5 PM",
       where: "40 S Carroll St, Frederick",
@@ -110,21 +125,15 @@ export const downtownGuide: DowntownGuide = {
       detail: "Gallery hours differ on holidays. The center lists mobility-device access in public areas, with an exception for motorized scooters.",
       action: { label: "See current exhibitions", href: "https://delaplaine.org/exhibitions/" },
       source: { label: "Delaplaine visitor information", href: "https://delaplaine.org/visit/" },
+      tipSource: { label: "History of the mill", href: "https://delaplaine.org/about/" },
     },
     {
       title: "Carroll Creek and Community Bridge",
+      anchor: "carroll-creek",
+      routeName: "Carroll Creek & Community Bridge",
       suggestedMinutes: 45,
       when: "Dawn–10 PM",
       where: "From S Carroll St toward S Market St and back",
-      photo: bridgePhoto && {
-        ...bridgePhoto,
-        alt: bridgePhoto.alt ?? "Community Bridge over Carroll Creek.",
-        width: 1280,
-        height: 921,
-        objectPosition: "top",
-        caption: "Community Bridge and Carroll Creek",
-        credit: bridgePhoto,
-      },
       description: "Look for William Cochran’s painted stonework on Community Bridge, then follow the creek toward South Market Street. Turn back whenever you’re ready.",
       detail: "The city lists benches and walking paths. Use the restroom at the Visitor Center before leaving for the creek.",
       action: { label: "See the creek on Map", href: "/map?in=frederick&place=carroll-creek-linear-park-frederick" },
@@ -160,11 +169,12 @@ export function downtownGuideForDate(now: Date): DowntownGuide {
     summary: "Walk from East All Saints garage to Community Bridge and along Carroll Creek, then return the same way.",
     route: {
       firstAction: garageDirections,
-      allowance: "About 1 hour, including 15 minutes for parking and walking to the creek.",
+      durationLabel: "About 1 hour",
+      allowance: "Includes 15 minutes for parking and the walk to the creek.",
       teaser: "Park free at East All Saints garage for an hour outdoors along Carroll Creek.",
     },
-    notice,
-    note: "Save the indoor exhibits for another day. The Visitor Center restrooms are closed on Thanksgiving.",
+    notice: { ...notice, active: true },
+    note: "Choose a daytime start if you want to see the painted bridge in daylight. The Visitor Center restrooms are closed on Thanksgiving.",
     stops: [
       holidayGarage,
       { ...creek, detail: "Follow the paved creek path toward South Market Street and return to the garage the same way. The City lists benches along the path." },
@@ -185,7 +195,7 @@ export function downtownFeatureForToday(now: Date) {
   const visit = tomorrow ? nextFrederickDay(now) : now;
   const guide = downtownGuideForDate(visit);
   return {
-    downtown: guide.photo.src,
+    downtown: "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
     downtownTitle: guide.title,
     downtownTeaser: guide.route.teaser,
     downtownWhen: tomorrow ? "Tomorrow" : "Daytime walk",

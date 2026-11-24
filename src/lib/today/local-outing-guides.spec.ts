@@ -43,10 +43,15 @@ describe("local outing guides", () => {
       "The Delaplaine Arts Center",
       "Carroll Creek and Community Bridge",
     ]);
+    expect(downtownGuide.photo).toMatchObject({ src: "/history-photos/carroll-creek-park.jpg", credit: { creator: "Art Anderson", capturedYear: 2015, license: { label: "CC BY-SA 3.0" } } });
+    expect(downtownFeatureForToday(new Date("2026-11-24T15:00:00Z")).downtown).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(new Set(downtownGuide.stops.map(stop => stop.anchor)).size).toBe(4);
+    expect(downtownGuide.stops.every(stop => stop.anchor && stop.routeName)).toBe(true);
     expect(downtownGuide.stops[1].detail).toContain("accessible restroom");
     expect(downtownGuide.note).toContain("Sunday, 11 AM–1 PM");
     expect(downtownGuide.stops.map(stop => stop.suggestedMinutes)).toEqual([undefined, 20, 40, 45]);
-    expect(downtownGuide.route.allowance).toMatch(/2 hours.*15 minutes/);
+    expect(downtownGuide.route.durationLabel).toBe("About 2 hours");
+    expect(downtownGuide.route.allowance).toContain("15 minutes");
     expect(downtownGuide.route.firstAction.label).toContain("East All Saints");
     expect(downtownGuide.route.firstAction.href).toContain("destination=39.4118117,-77.4072907");
     expect(downtownGuide.stops[0].price).toContain("Free Sundays, 8 AM–2 PM");
@@ -60,6 +65,7 @@ describe("local outing guides", () => {
     const wednesday = downtownGuideForDate(new Date("2026-11-26T04:59:59Z"));
     expect(wednesday.stops).toEqual(downtownGuide.stops);
     expect(wednesday.route).toEqual(downtownGuide.route);
+    expect(wednesday.notice?.active).toBeFalsy();
     expect(wednesday.notice?.heading).toContain("Thu, Nov 26");
     expect(wednesday.notice?.sources.map(source => source.href)).toContain(downtownGuide.stops[1].source.href);
   });
@@ -68,10 +74,12 @@ describe("local outing guides", () => {
     for (const iso of ["2026-11-26T05:00:00Z", "2026-11-27T04:59:59Z"]) {
       const holiday = downtownGuideForDate(new Date(iso));
       expect(holiday.title).toBe("Thanksgiving Creek Walk");
+      expect(holiday.notice?.active).toBe(true);
       expect(holiday.notice?.text).toContain("Visitor Center and Delaplaine galleries close");
       expect(holiday.notice?.sources).toHaveLength(3);
       expect(holiday.stops.map(stop => stop.title)).toEqual([downtownGuide.stops[0].title, downtownGuide.stops[3].title]);
-      expect(holiday.route.allowance).toMatch(/1 hour.*15 minutes/);
+      expect(holiday.route.durationLabel).toBe("About 1 hour");
+      expect(holiday.route.allowance).toContain("15 minutes");
       expect(holiday.stops[1].suggestedMinutes).toBe(45);
       expect(holiday.route.firstAction.href).toContain("travelmode=driving");
       expect(holiday.stops[1].detail).not.toContain("Visitor Center");
