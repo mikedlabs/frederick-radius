@@ -8,7 +8,7 @@ const widths = [320, 375, 390, 430, 640, 768, 1024];
 const meta = {
   title: "Radius Chrome/Header geometry", component: TopBar,
   parameters: { layout: "fullscreen", a11y: { test: "error" }, docs: { description: {
-    component: "Real shared header with a controlled unavailable county-status report. The browser gate checks each route at 320, 375, 390, 430, 640, 768 and 1024 pixels, preserving every action and the visible uncertainty label.",
+    component: "Real shared header with a controlled unavailable county-status report. The browser gate checks two rows on phones, one row at larger widths, and readable controls at 200% text.",
   } } },
   beforeEach: () => {
     const priorFetch = window.fetch;
@@ -70,10 +70,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
         if (browser) await browser.page.viewport(width, 844);
         await waitFor(() => expect(document.documentElement.clientWidth).toBe(width));
         const context = `${pathname} at ${width}px${enlarged ? " / 200% text" : ""}`;
-        // `fonts.ready` can resolve while the wordmark's face is still being
-        // fetched, and the wider fallback serif then wraps the row (the
-        // intermittent 109px header). Measure only in the loaded face. A deep
-        // page shows Back and no wordmark, so its face is never requested.
+        // Measure the wordmark in its loaded face. Deep pages show Back instead.
         if (header.querySelector<HTMLElement>("[data-header-wordmark]")?.getClientRects().length) await waitFor(() => expect(
           [...document.fonts].filter((face) => /caslon/i.test(face.family)).map((face) => face.status),
           `${context}: wordmark face loaded`,
@@ -90,28 +87,45 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
           `${context}: shared chrome offset matches actual row`,
         ).toBe(row.getBoundingClientRect().height));
         await expect(header.scrollWidth, context).toBeLessThanOrEqual(header.clientWidth);
-        if (!enlarged && header.getBoundingClientRect().height !== 57) {
-          const rowStyle = getComputedStyle(row);
-          const mark = header.querySelector<HTMLElement>("[data-header-wordmark]");
-          console.info("Header font-fit diagnostic", JSON.stringify({ pathname, width, probeFont: fontFamily ?? "app system", rootFont: getComputedStyle(document.documentElement).fontSize,
-            wordmark: mark && { width: mark.getBoundingClientRect().width, font: getComputedStyle(mark).fontFamily, size: getComputedStyle(mark).fontSize, weight: getComputedStyle(mark).fontWeight,
-              spacing: getComputedStyle(mark).letterSpacing, faces: [...document.fonts].filter((face) => /caslon/i.test(face.family)).map((face) => `${face.family} ${face.weight} ${face.status}`) },
-            row: { width: row.clientWidth, height: row.getBoundingClientRect().height, font: rowStyle.fontFamily, gap: rowStyle.gap, padding: [rowStyle.paddingLeft, rowStyle.paddingRight] },
-            children: [...row.children].flatMap((child) => {
-              const elements = getComputedStyle(child).display === "contents" ? [...child.children] : [child];
-              return elements.map((element) => {
-                const box = element.getBoundingClientRect(), style = getComputedStyle(element);
-                return { tag: element.tagName, label: element.getAttribute("aria-label") || element.textContent?.trim(), width: box.width, height: box.height,
-                  left: box.left, top: box.top, display: style.display, basis: style.flexBasis, minWidth: style.minWidth,
-                  padding: [style.paddingLeft, style.paddingRight], margin: [style.marginLeft, style.marginRight],
-                  font: style.fontFamily, fontSize: style.fontSize, scrollWidth: element.scrollWidth };
-              });
-            }) }, null, 2));
+        const identity = row.querySelector<HTMLElement>("[data-header-identity]")!;
+        const actions = row.querySelector<HTMLElement>("[data-header-actions]")!;
+        const contextRow = row.querySelector<HTMLElement>("[data-header-context]")!;
+        const identityControl = identity.querySelector<HTMLElement>("a[href], button")!;
+        const moreTrigger = actions.querySelector<HTMLElement>("[data-today-tools-trigger]")!;
+        await expect(identityControl, context).toBeVisible();
+        await expect(within(moreTrigger).getByText("More", { exact: true }), context).toBeVisible();
+        await expect(contextRow, context).toContainElement(pulse);
+        const statusNames = within(pulse).getAllByText("County status", { exact: true });
+        await expect(statusNames.filter(label => label.getClientRects().length > 0), context).toHaveLength(1);
+        if (isToday || globalArea) {
+          const area = contextRow.querySelector<HTMLElement>("[data-location-chip], [data-today-area-trigger]");
+          await expect(area, context).toBeVisible();
+        }
+        if (isToday || globalFind) {
+          const find = within(actions).getByRole(isToday ? "link" : "button", {
+            name: isToday ? "Find a place, service, event, or answer" : "Ask or find across Frederick County",
+          });
+          await expect(find, context).toBeVisible();
+          if (width < 640) await expect(within(find).getByText("Find", { exact: true }), context).toBeVisible();
         }
         if (!enlarged) {
-          // Normal text retains the existing single-row app bar.
           await expect(getComputedStyle(document.documentElement).fontSize, context).toBe("16px");
-          await expect(header.getBoundingClientRect().height, context).toBe(57);
+          const brandBox = identityControl.getBoundingClientRect();
+          const moreBox = moreTrigger.getBoundingClientRect();
+          const statusBox = pulse.getBoundingClientRect();
+          const headerHeight = header.getBoundingClientRect().height;
+          const centerY = (box: DOMRect) => box.top + box.height / 2;
+          const boxLabel = (box: DOMRect) => `${Math.round(box.width)}×${Math.round(box.height)} at (${Math.round(box.x)},${Math.round(box.y)})`;
+          const arrangement = `${context}: identity ${boxLabel(brandBox)}, More ${boxLabel(moreBox)}, county status ${boxLabel(statusBox)}`;
+          await expect(brandBox.right, `${arrangement}: identity before utilities`).toBeLessThanOrEqual(moreBox.left + 1);
+          await expect(Math.abs(centerY(brandBox) - centerY(moreBox)), arrangement).toBeLessThanOrEqual(5);
+          if (width < 640) {
+            await expect(statusBox.top, `${context}: context below the first row`).toBeGreaterThanOrEqual(Math.max(brandBox.bottom, moreBox.bottom) - 1);
+            await expect(headerHeight, `${context}: two compact rows`).toBeLessThan(114);
+          } else {
+            await expect(Math.abs(centerY(statusBox) - centerY(brandBox)), `${arrangement}: one masthead row`).toBeLessThanOrEqual(5);
+            await expect(headerHeight, `${context}: one compact row`).toBeLessThan(80);
+          }
           if (width === 1024) {
             const reading = document.createElement("div");
             reading.className = "app-main-reading";
@@ -134,7 +148,7 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
           await expect(home, context).toHaveAttribute("href", "/");
           await expect(home, context).toHaveAccessibleName("Frederick Radius, home");
           await expect(home.querySelector("svg"), context).toBeVisible();
-          if (!enlarged && !(pathname === "/map" && width === 320)) {
+          if (!enlarged) {
             await expect(wordmark, context).toBeVisible();
             await expect(wordmark, context).toHaveTextContent("Frederick Radius");
             // A visible span can still clip the end of Radius or wrap to two lines.
@@ -238,14 +252,12 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
         if (globalArea) {
           const area = header.querySelector<HTMLElement>("[data-location-chip]")!;
           await expect(area, context).toHaveAccessibleName(new RegExp(`Current scope: ${areaName.source}`));
-          if (pathname === "/map") {
-            const label = area.querySelector<HTMLElement>(width < 640 ? '[data-location-scope-label="compact"]' : '[data-location-scope-label="full"]')!;
-            await expect(label, context).toBeVisible();
-            // Phone headers share this row with county status. The short
-            // county label must fit for every tested phone and status.
-            await expect(label.textContent, context).toMatch(wholeCounty && width < 640 ? /^County$/ : areaName);
-            if (wholeCounty && width < 640) await expect(label.scrollWidth, `${context}: area name clipped`).toBeLessThanOrEqual(label.clientWidth);
-          }
+          const visibleLabels = [...area.querySelectorAll<HTMLElement>("[data-location-scope-label]")]
+            .filter(label => label.getClientRects().length > 0);
+          await expect(visibleLabels, `${context}: one printed scope`).toHaveLength(1);
+          const label = visibleLabels[0];
+          await expect(label.textContent, context).toMatch(wholeCounty && width < 640 ? /^(?:Whole county|County)$/ : areaName);
+          await expect(label.scrollWidth, `${context}: complete area name`).toBeLessThanOrEqual(label.clientWidth + 1);
         }
         if (globalFind) {
           await expect(canvas.getByRole("button", { name: "Ask or find across Frederick County" }), context).toBeVisible();

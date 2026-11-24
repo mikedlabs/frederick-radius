@@ -41,7 +41,8 @@ Clear space around the mark should be at least the radius of its inner arc. Neve
 
 ### Primary lockups
 
-- The product header pairs the two-arc mark with a one-line `Frederick Radius` wordmark. On narrow phones with a county alert or status message, the mark can sit above the name to keep the navigation on one row. More tools groups the tools index and appearance switch. Search, area and active county alerts stay directly accessible on the screens that use them.
+- The shared masthead uses the existing white reverse two-arc Ripple and one-line `Frederick Radius` wordmark in Libre Caslon Display on Charcoal. On phones, the upper row holds the name and the labeled Find and More actions where they apply. A paper-toned strip below shows the selected area and a link labeled County status with its current state. Keep the full wording “Clear in checked feeds” visible when the sources support it.
+- Tablets and laptops use one row. Deep pages keep their Back control. The same hierarchy applies in light and dark appearance. More opens the tool directory and appearance controls.
 - The tagline lockup adds `FREDERICK COUNTY STARTS WHERE YOU ARE` below the wordmark.
 - Use the Deep Coral mark with the Charcoal wordmark on light surfaces. Use the White reverse lockup on Deep Coral, Catoctin Forest, Charcoal, or photography with enough contrast.
 - The app-icon tile is for launchers, avatars, and app-store use. Do not put the tile inside the normal product header.

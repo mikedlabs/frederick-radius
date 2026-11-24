@@ -11,7 +11,7 @@ import {
   useSyncExternalStore,
   type RefObject,
 } from "react";
-import { Search, Compass, ChevronLeft, Ellipsis, MessageSquare, X } from "lucide-react";
+import { Search, Compass, ChevronLeft, Menu, MessageSquare, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import styles from "./NavChrome.module.css";
 import LocationChip from "./LocationChip";
@@ -115,6 +115,8 @@ export default function TopBar() {
     readAppleKeyboard,
     readUnknownKeyboard,
   );
+
+  const findShortcut = appleKeyboard === null ? undefined : appleKeyboard ? "Meta+K" : "Control+K";
 
   useLayoutEffect(() => {
     const row = rowRef.current;
@@ -268,13 +270,7 @@ export default function TopBar() {
     else seenFirstPath.current = true;
   }, [pathname]);
 
-  // These routes own the middle of the header because their primary workspace
-  // already contains a full search or query control. That changes the desktop
-  // center treatment, but mobile still keeps one permanent global search
-  // action so the app's primary utility never moves between screens.
-  const pageOwnsSearch = pageOwnsPrimarySearch(pathname);
-  const showMobileSearch = shouldShowGlobalMobileSearch(pathname);
-  const findTarget = topBarFindTarget(pathname);
+  const showGlobalFind = shouldShowGlobalMobileSearch(pathname);
   const openPrimaryFind = useCallback((
     opener: HTMLElement | null,
     returnScrollY = window.scrollY,
@@ -392,7 +388,6 @@ export default function TopBar() {
       <header
         data-today-header={pathname === "/today" || undefined}
         data-map-header={pathname === "/map" ? "true" : undefined}
-        data-dense-mobile-header={showMobileSearch || pathname === "/compass" ? "true" : undefined}
         className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] pt-[env(safe-area-inset-top)]`}
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
@@ -402,163 +397,113 @@ export default function TopBar() {
         <div
           ref={rowRef}
           data-app-topbar-row
-          className={`${styles.row} mx-auto flex h-[var(--app-topbar-h)] max-w-screen-md items-center gap-1.5 sm:gap-2 lg:max-w-screen-lg`}
+          className={styles.row}
         >
-          {isDeepPage ? (
-            // Deep page: a clear way back, so no screen is a dead-end.
-            <button
-              type="button"
-              onClick={goBack}
-              aria-label="Back"
-              data-header-back
-              className="-ml-1.5 inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-[var(--app-radius-sm)] px-1 font-semibold tracking-tight transition-colors hover:bg-[var(--app-bg-sunken)] min-[390px]:justify-start min-[390px]:pl-1 min-[390px]:pr-2.5"
-              style={{ color: "var(--app-ink)" }}
-            >
-              <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-              <span className="hidden text-[15px] min-[390px]:inline">Back</span>
-            </button>
-          ) : (
-            <AppTransitionLink
-              href="/"
-              prefetch={false}
-              onMouseEnter={() => router.prefetch("/")}
-              onFocus={() => router.prefetch("/")}
-              aria-label="Frederick Radius, home"
-              className={`${styles.home} tap-44 flex items-center gap-2 font-brand text-[18px] tracking-[-0.015em]`}
-              style={{ color: "var(--app-brand-text)" }}
-            >
-              <RippleMark size={28} className="shrink-0" />
-              <span data-header-wordmark className="whitespace-nowrap leading-none" style={{ color: "var(--app-ink)" }}>
-                Frederick Radius
-              </span>
-            </AppTransitionLink>
-          )}
-
-          {pageOwnsSearch ? (
-            <div data-header-spacer className="min-w-0 flex-1">
-              {pathname === "/map" ? (
-                <span className="hidden truncate font-sans text-[18px] font-semibold leading-none tracking-tight sm:block" style={{ color: "var(--app-ink)" }}>
-                  Frederick County
+          <div data-header-identity className={styles.identity}>
+            {isDeepPage ? (
+              // Deep page: a clear way back, so no screen is a dead-end.
+              <button
+                type="button"
+                onClick={goBack}
+                aria-label="Back"
+                data-header-back
+                className={styles.back}
+              >
+                <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+                <span>Back</span>
+              </button>
+            ) : (
+              <AppTransitionLink
+                href="/"
+                prefetch={false}
+                onMouseEnter={() => router.prefetch("/")}
+                onFocus={() => router.prefetch("/")}
+                aria-label="Frederick Radius, home"
+                className={`${styles.home} font-brand`}
+              >
+                <RippleMark size={32} />
+                <span data-header-wordmark>
+                  Frederick Radius
                 </span>
-              ) : null}
-            </div>
-          ) : (
-            <>
-              {/* Mobile uses the 44px square header action rendered just after
-                  this flexible spacer. Desktop gets the wider field because
-                  the side rail leaves room for a descriptive search control. */}
-              <div data-header-spacer aria-hidden className="min-w-0 flex-1 lg:hidden" />
+              </AppTransitionLink>
+            )}
+          </div>
+          <div data-header-actions className={styles.actions}>
+            {pathname === "/today" && <TodayAsk embedded density="header" showQuickNeeds={false} shortcut={findShortcut} />}
+            {showGlobalFind && (
               <button
                 type="button"
                 disabled={!findInteractionReady}
                 data-find-interaction-ready={findInteractionReady ? "true" : "false"}
+                aria-label="Ask or find across Frederick County"
+                aria-haspopup="dialog"
+                aria-controls={searchOpen ? "radius-find-dialog" : undefined}
+                aria-expanded={searchOpen}
+                aria-keyshortcuts={findShortcut}
                 onPointerDown={capturePointerScroll}
                 onClick={(event) => {
+                  haptic("light");
                   const returnScrollY = pointerScrollYRef.current ?? window.scrollY;
                   pointerScrollYRef.current = null;
                   openPrimaryFind(event.currentTarget, returnScrollY);
                 }}
-                aria-label="Ask or find across Frederick County"
-                aria-keyshortcuts={appleKeyboard === null ? undefined : appleKeyboard ? "Meta+K" : "Control+K"}
-                className={`${styles.search} tap-44 ml-1 hidden h-9 min-w-0 flex-1 items-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)] disabled:cursor-wait disabled:opacity-60 lg:flex`}
-                style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink-2)" }}
+                className={styles.search}
               >
-                <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-                <span className="truncate text-left">What do you need?</span>
-                {appleKeyboard === null ? null : (
-                  <kbd
-                    className="ml-auto shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight"
-                    style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-                  >
-                    {appleKeyboard ? "⌘K" : "Ctrl K"}
-                  </kbd>
-                )}
-              </button>
-            </>
-          )}
-
-          {showMobileSearch && (
-            <button
-              type="button"
-              disabled={!findInteractionReady}
-              data-find-interaction-ready={findInteractionReady ? "true" : "false"}
-              aria-label={findTarget === "map" ? "Search this map" : "Ask or find across Frederick County"}
-              aria-haspopup={findTarget === "map" ? undefined : "dialog"}
-              aria-controls={findTarget === "map" ? "map-search-input" : searchOpen ? "radius-find-dialog" : undefined}
-              aria-expanded={findTarget === "map" ? undefined : searchOpen}
-              title={findTarget === "map" ? "Search this map" : "Ask or find across Frederick County"}
-              onPointerDown={capturePointerScroll}
-              onClick={(event) => {
-                haptic("light");
-                const returnScrollY = pointerScrollYRef.current ?? window.scrollY;
-                pointerScrollYRef.current = null;
-                openPrimaryFind(event.currentTarget, returnScrollY);
-              }}
-              className={`${styles.tool} relative grid h-11 w-11 shrink-0 place-items-center rounded-[var(--app-radius-sm)] disabled:cursor-wait disabled:opacity-60 lg:hidden`}
-              style={{ color: searchOpen ? "var(--app-link)" : "var(--app-ink)" }}
-            >
-              <Search className="h-[20px] w-[20px]" strokeWidth={1.75} aria-hidden />
-              {/* Top bar icons stay unboxed. An open tool is marked by a 2px
-                  rule under the glyph, the way the bottom bar marks its tab. */}
-              {searchOpen ? <span aria-hidden data-top-tool-rule className="pointer-events-none absolute inset-x-2.5 bottom-1 h-0.5" style={{ background: "var(--app-link)" }} /> : null}
-            </button>
-          )}
-
-          {shouldShowGlobalLocation(pathname) ? (
-            <Suspense fallback={null}><LocationChip compact={pathname === "/map"} /></Suspense>
-          ) : null}
-
-          {/* Pulse stays named on larger screens. On a phone it appears only
-              when active, unavailable, or already open, so safety never gets
-              hidden but a quiet feed does not crowd the app bar. */}
-          <PulseIndicator />
-          {pathname === "/today" ? (
-            <>
-              <Suspense fallback={null}><TodayScopeStatus density="header" /></Suspense>
-              <TodayAsk embedded density="header" showQuickNeeds={false} />
-            </>
-          ) : null}
-          <HeaderDisclosure
-            key={pathname}
-            name="tools"
-            label="More tools"
-            trigger={<><Ellipsis aria-hidden size={20} /><span className={styles.moreLabel}>More</span></>}
-          >
-            <AppTransitionLink
-              ref={toolsOpenerRef}
-              href="/compass"
-              onClick={(event) => {
-                if (event.button === 0 && !event.defaultPrevented && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-                  rememberNativeRequest({ target: "tools-opener" });
-                }
-              }}
-              prefetch={false}
-              onMouseEnter={() => router.prefetch("/compass")}
-              onFocus={() => router.prefetch("/compass")}
-              onPointerDown={() => router.prefetch("/compass")}
-              aria-label="Open tools"
-              aria-current={pathname === "/compass" ? "page" : undefined}
-              className={styles.utilityRow}
-            >
-              <Compass size={20} strokeWidth={1.75} aria-hidden />
-              <span>Tools</span>
-              {pathname === "/compass" ? <span aria-hidden data-top-tool-rule /> : null}
-            </AppTransitionLink>
-            {feedbackInMoreMenu(pathname) && (
-              <button type="button" className={styles.utilityRow} aria-haspopup="dialog"
-                disabled={!findInteractionReady}
-                onClick={event => {
-                  const menu = event.currentTarget.closest("details");
-                  const opener = menu?.querySelector("summary") ?? event.currentTarget;
-                  if (menu) menu.open = false;
-                  requestFeedback(opener);
-                }}>
-                <MessageSquare size={20} strokeWidth={1.75} aria-hidden />
-                <span>Send feedback</span>
+                <Search size={18} strokeWidth={1.8} aria-hidden />
+                <span>Find</span>
+                {appleKeyboard !== null && <kbd aria-hidden>{appleKeyboard ? "⌘K" : "Ctrl K"}</kbd>}
               </button>
             )}
-            <AppearanceControl />
-          </HeaderDisclosure>
+            <HeaderDisclosure
+              key={pathname}
+              name="tools"
+              label="More tools"
+              trigger={<><Menu aria-hidden size={18} strokeWidth={1.8} /><span>More</span></>}
+            >
+              <AppTransitionLink
+                ref={toolsOpenerRef}
+                href="/compass"
+                onClick={(event) => {
+                  if (event.button === 0 && !event.defaultPrevented && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                    rememberNativeRequest({ target: "tools-opener" });
+                  }
+                }}
+                prefetch={false}
+                onMouseEnter={() => router.prefetch("/compass")}
+                onFocus={() => router.prefetch("/compass")}
+                onPointerDown={() => router.prefetch("/compass")}
+                aria-label="Open tools"
+                aria-current={pathname === "/compass" ? "page" : undefined}
+                className={styles.utilityRow}
+              >
+                <Compass size={20} strokeWidth={1.75} aria-hidden />
+                <span>Tools</span>
+                {pathname === "/compass" ? <span aria-hidden data-top-tool-rule /> : null}
+              </AppTransitionLink>
+              {feedbackInMoreMenu(pathname) && (
+                <button type="button" className={styles.utilityRow} aria-haspopup="dialog"
+                  disabled={!findInteractionReady}
+                  onClick={event => {
+                    const menu = event.currentTarget.closest("details");
+                    const opener = menu?.querySelector("summary") ?? event.currentTarget;
+                    if (menu) menu.open = false;
+                    requestFeedback(opener);
+                  }}>
+                  <MessageSquare size={20} strokeWidth={1.75} aria-hidden />
+                  <span>Send feedback</span>
+                </button>
+              )}
+              <AppearanceControl />
+            </HeaderDisclosure>
+          </div>
+          <div data-header-context className={styles.context}>
+            {pathname === "/today" ? (
+              <Suspense fallback={null}><TodayScopeStatus density="header" /></Suspense>
+            ) : shouldShowGlobalLocation(pathname) ? (
+              <Suspense fallback={null}><LocationChip /></Suspense>
+            ) : null}
+            <PulseIndicator />
+          </div>
         </div>
       </header>
 

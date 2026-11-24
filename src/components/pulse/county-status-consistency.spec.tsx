@@ -99,7 +99,7 @@ describe("County status API, visible pill and Pulse masthead", () => {
     }));
     const expected = level === "Clear" ? "Clear in checked feeds" : level === "Unknown" ? "Unable to verify" : level;
     expect(board.querySelector("[data-pulse-status-level]")?.textContent).toBe(expected);
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe(level === "Unknown" ? "Unverified" : level);
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe(level === "Unknown" ? "Unverified" : expected);
     expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe(expected);
     expect(container.querySelector("a")?.getAttribute("aria-label")).toMatch(new RegExp(`^County status: ${expected}(?:;|\\.)`));
     const disclosure = board.querySelector("[data-pulse-source-checks]");

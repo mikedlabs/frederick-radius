@@ -341,22 +341,18 @@ for (const viewport of VIEWPORTS) {
           await expect(countyStatus).toHaveCount(1);
           await expect(countyStatus).toHaveAttribute("href", "/pulse");
           await expect(countyStatus).toHaveAttribute("aria-label", /^County status:/);
-          if (viewport.width >= 640) {
-            await expect(countyStatus).toBeVisible();
-          } else {
-            // Only a valid quiet report can suppress the phone status control.
-            // Checking, unknown and reported alerts remain reachable.
-            await expect.poll(async () => {
-              const label = await countyStatus.getAttribute("aria-label");
-              const visible = await countyStatus.isVisible();
-              if (label === "County status: Clear in checked feeds; no active alerts") {
-                return !visible && (await countyStatus.getAttribute("data-pulse-state")) === "ready";
-              }
-              return (/^County status: (?:checking|Unable to verify; current alerts are unverified)$/.test(label ?? "")
-                || /^County status: (?:Checking|Unable to verify)\. (?:Checking again|Current check unavailable)\. Earlier report had \d+ alerts?; current alerts are unverified\.$/.test(label ?? "")
-                || /^County status: (?:Urgent|Advisory); \d+ alerts? reported(?:; some sources unavailable)?$/.test(label ?? "")) && visible;
-            }).toBe(true);
-          }
+          await expect(countyStatus).toBeVisible();
+          await expect(countyStatus.getByText("County status", { exact: true }).filter({ visible: true })).toBeVisible();
+          await expect.poll(async () => {
+            const label = await countyStatus.getAttribute("aria-label");
+            if (label === "County status: Clear in checked feeds; no active alerts") {
+              const qualifiedClear = countyStatus.getByText("Clear in checked feeds", { exact: true }).filter({ visible: true });
+              return (await qualifiedClear.count()) === 1 && (await countyStatus.getAttribute("data-pulse-state")) === "ready";
+            }
+            return /^County status: (?:checking|Unable to verify; current alerts are unverified)$/.test(label ?? "")
+              || /^County status: (?:Checking|Unable to verify)\. (?:Checking again|Current check unavailable)\. Earlier report had \d+ alerts?; current alerts are unverified\.$/.test(label ?? "")
+              || /^County status: (?:Urgent|Advisory); \d+ alerts? reported(?:; some sources unavailable)?$/.test(label ?? "");
+          }).toBe(true);
           await showHeaderTools(page);
         }
 

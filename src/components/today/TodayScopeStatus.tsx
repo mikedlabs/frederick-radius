@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MapPin } from "lucide-react";
 import HeaderDisclosure from "@/components/nav/HeaderDisclosure";
 import { useRouter, useSearchParams } from "next/navigation";
 import { commitLocationScope } from "@/components/nav/locationScopeNavigation";
@@ -200,6 +200,7 @@ export default function TodayScopeStatus({ dateline, density = "standard" }: {
       label={`Choose your area: ${label}`}
       trigger={
         <>
+          <MapPin aria-hidden size={16} />
           {headerScope === "county" ? (
             <>
               <span data-today-scope-full>{label}</span>

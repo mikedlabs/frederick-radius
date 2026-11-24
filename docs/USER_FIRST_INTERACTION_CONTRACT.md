@@ -27,6 +27,14 @@ The mobile navigation keeps four stable destinations:
 - **Events** answers what is scheduled.
 - **Saved** holds what the person chose to keep.
 
+The shared phone header uses two rows. The Charcoal masthead holds the white
+Ripple and Frederick Radius name alongside labeled Find and More actions where
+they apply. In the paper-toned strip beneath it, the area control names the current scope. County status always shows its name and
+the countywide state, even when the visitor has selected one town. A clear
+report reads “Clear in checked feeds.” Both rows work in dark appearance.
+Tablets and laptops use a single row. On deep pages, Back returns to the
+visitor’s previous context.
+
 An ordinary primary-tab tap resumes that tab's last safe root URL and reading
 position in the current browser session. Reselecting an active root keeps the
 current task. Direct and shared links, modified clicks and new-tab navigation

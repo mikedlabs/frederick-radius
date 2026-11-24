@@ -5,7 +5,9 @@ for (const viewport of [
   { label: "narrow phone", width: 320, height: 720 },
   { label: "standard phone", width: 390, height: 844 },
   { label: "wide phone", width: 430, height: 932 },
-  { label: "tablet", width: 768, height: 900 },
+  { label: "phone at the row breakpoint", width: 639, height: 844 },
+  { label: "tablet at the row breakpoint", width: 640, height: 900 },
+  { label: "tablet", width: 820, height: 1180 },
   { label: "desktop", width: 1280, height: 900 },
 ]) {
   test(`TopBar keeps secondary destinations calm without overflow on a ${viewport.label}`, async ({
@@ -20,7 +22,7 @@ for (const viewport of [
         body: JSON.stringify({ active: false, count: 0, tone: "quiet", level: "Clear", ok: true, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() }),
       });
     });
-    await page.goto("/compass", {
+    await page.goto("/compass?in=brunswick", {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
@@ -69,31 +71,39 @@ for (const viewport of [
     }));
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 
-    if (viewport.width >= 640) {
-      await expect(pulse).toBeVisible();
-      await expect(pulse.getByText("County status", { exact: true })).toBeVisible();
+    await expect(pulse).toBeVisible();
+    await expect(pulse.getByText("County status", { exact: true }).filter({ visible: true })).toBeVisible();
+    await expect(pulse.getByText("Clear in checked feeds", { exact: true }).filter({ visible: true })).toHaveCount(1);
+    const identity = header.locator("[data-header-identity] :is(a[href], button)");
+    const context = header.locator("[data-header-context]");
+    const location = context.locator("[data-location-chip]");
+    const town = location.getByText("Brunswick", { exact: true }).filter({ visible: true });
+    await expect(town).toHaveCount(1);
+    await expect(location).toHaveAccessibleName(/Current scope: Brunswick/);
+    const controls = [identity, more, location, pulse];
+    const boxes = await Promise.all(controls.map(control => control.boundingBox()));
+    for (const bounds of boxes) {
+      expect(bounds?.width).toBeGreaterThanOrEqual(44);
+      expect(bounds?.height).toBeGreaterThanOrEqual(44);
+    }
+    const [brandBox, menuBoxClosed, locationBox, pulseBox] = boxes;
+    const centerY = (box: { y: number; height: number }) => box.y + box.height / 2;
+    expect(Math.abs(centerY(brandBox!) - centerY(menuBoxClosed!))).toBeLessThanOrEqual(5);
+    expect(locationBox!.x + locationBox!.width).toBeLessThanOrEqual(pulseBox!.x + 1);
+    const phone = viewport.width < 640;
+    if (phone) {
+      await expect(more.getByText("More", { exact: true })).toBeVisible();
+      const endOfFirstRow = Math.max(brandBox!.y + brandBox!.height, menuBoxClosed!.y + menuBoxClosed!.height);
+      expect(Math.min(locationBox!.y, pulseBox!.y)).toBeGreaterThanOrEqual(endOfFirstRow - 1);
     } else {
-      await expect(pulse).toBeHidden();
-
-      if (viewport.width === 390) {
-        const location = header.locator("[data-location-chip]");
-        const compactScope = location.locator('[data-location-scope-label="compact"]');
-        await expect(compactScope).toBeHidden();
-        await expect(location).toHaveAccessibleName(/Change town or location scope\. Current scope: .+/);
-        await expect(
-          location.locator('[data-location-scope-label="full"]'),
-        ).toBeHidden();
-        const geometry = await location.evaluate((control) => ({
-          width: control.getBoundingClientRect().width,
-          height: control.getBoundingClientRect().height,
-        }));
-        expect(geometry.width).toBeGreaterThanOrEqual(44);
-        expect(geometry.height).toBeGreaterThanOrEqual(44);
-        await location.click();
-        await expect(page.getByRole("group", { name: "Set what you're browsing" })).toBeVisible();
-        await page.getByRole("button", { name: "Done choosing an area" }).click();
-        await expect(location).toBeFocused();
-      }
+      expect(Math.abs(centerY(brandBox!) - centerY(pulseBox!))).toBeLessThanOrEqual(5);
+    }
+    expect((await header.boundingBox())!.height).toBeLessThan(phone ? 114 : 80);
+    if (viewport.width === 390) {
+      await location.click();
+      await expect(page.getByRole("group", { name: "Set what you're browsing" })).toBeVisible();
+      await page.getByRole("button", { name: "Done choosing an area" }).click();
+      await expect(location).toBeFocused();
     }
   });
 }
@@ -144,11 +154,22 @@ test("TopBar keeps Checking visible until a valid quiet report arrives", async (
     expect(bounds?.height).toBeGreaterThanOrEqual(44);
     expect(bounds?.width).toBeGreaterThanOrEqual(44);
     expect(await header.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+    await status.focus();
+    await expect(status).toBeFocused();
+    const more = header.getByLabel("More tools", { exact: true });
+    const priorMore = await more.boundingBox();
+    const priorHeader = await header.boundingBox();
     release();
     await expect(status).toHaveAttribute("aria-label", "County status: Clear in checked feeds; no active alerts");
     await expect(status).toHaveAttribute("data-pulse-state", "ready");
-    await expect(status).toBeHidden();
-    await expect(status.locator("[data-pulse-mobile-state]")).toHaveText("Clear");
+    await expect(status).toBeVisible();
+    await expect(status).toBeFocused();
+    await expect(status.getByText("County status", { exact: true }).filter({ visible: true })).toBeVisible();
+    await expect(status.getByText("Clear in checked feeds", { exact: true }).filter({ visible: true })).toBeVisible();
+    const nextMore = await more.boundingBox();
+    expect(Math.abs(nextMore!.y - priorMore!.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(nextMore!.x - priorMore!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs((await header.boundingBox())!.height - priorHeader!.height)).toBeLessThanOrEqual(1);
   } finally { release(); }
 });
 
@@ -232,9 +253,19 @@ for (const width of [375, 1366]) {
     } else {
       await dialog.getByRole("button", { name: "Clear search", exact: true }).click();
     }
+    if (width === 375) {
+      // A landscape resize moves the masthead context onto its first row.
+      // Find must retain its draft and return focus to the visible launcher.
+      await page.setViewportSize({ width: 812, height: 375 });
+      await expect(townField).toHaveValue(nextQuery);
+    }
     await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(detailOpener).toBeFocused();
+    if (width === 375) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(detailOpener).toBeFocused();
+    }
     await expect.poll(() => page.evaluate(() => window.history.state?.__frederickRadiusLayer ?? null)).toBeNull();
     await page.goBack();
     await expect(page).toHaveURL(/\/today(?:\?|$)/);
