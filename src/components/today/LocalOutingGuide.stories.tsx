@@ -21,7 +21,9 @@ type Story = StoryObj<typeof meta>;
 const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement, userEvent }) => {
   const canvas = within(canvasElement);
   await canvasElement.ownerDocument.fonts.ready;
-  await expect(canvas.getByRole("heading", { level: 1, name: args.guide.title })).toBeVisible();
+  const heading = canvas.getByRole("heading", { level: 1, name: args.guide.title });
+  await expect(heading).toBeVisible();
+  await expect(heading.scrollWidth).toBeLessThanOrEqual(heading.clientWidth + 1);
   await expect(canvas.getByRole("img", { name: args.guide.photo.alt })).toBeVisible();
   await expect(canvas.getByRole("link", { name: "Back to Today" })).toHaveAttribute(
     "href",
