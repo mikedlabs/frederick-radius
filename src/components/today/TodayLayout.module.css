@@ -216,7 +216,9 @@
   position: relative;
   display: block;
   min-width: 0;
-  aspect-ratio: 1.34;
+  /* A landscape crop leaves room for the second outing below the walk,
+     including when a county advisory appears above the daily briefing. */
+  aspect-ratio: 16 / 9;
   background: var(--app-bg-sunken);
   overflow: hidden;
 }

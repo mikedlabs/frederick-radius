@@ -1,13 +1,26 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AqiObservation } from "./airnow";
-import { airQualityObservedAt, getAirQuality, isFreshAqiObservation, parseAirNowObservations, parseFrederickAirReport } from "./airnow";
+import { airQualityObservedAt, getAirQuality, getFrederickAirReport, isFreshAqiObservation, parseAirNowObservations, parseFrederickAirReport } from "./airnow";
 import { FREDERICK_CENTER } from "@/lib/geo";
+
+const cachedEntries = vi.hoisted(() => new Map<string, unknown>());
+vi.mock("next/cache", () => ({
+  unstable_cache: <T,>(load: () => Promise<T>, keys: string[]) => async () => {
+    const key = keys.join("|");
+    if (cachedEntries.has(key)) return cachedEntries.get(key) as T;
+    const data = await load();
+    cachedEntries.set(key, data);
+    return data;
+  },
+}));
 
 const originalAirNowKey = process.env.AIRNOW_API_KEY;
 
 afterEach(() => {
+  cachedEntries.clear();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   if (originalAirNowKey === undefined) delete process.env.AIRNOW_API_KEY;
   else process.env.AIRNOW_API_KEY = originalAirNowKey;
 });
@@ -131,6 +144,63 @@ describe("Frederick regional reporting-area file", () => {
     expect(report?.forecast?.aqi).toBe(17);
   });
 
+  it("shares one large cold download and caches only parsed regional data across reads", async () => {
+    vi.useFakeTimers().setSystemTime(noon);
+    const outside = forecastRow.replace("Maryland Piedmont", "Other area") + "\n";
+    const nationalFile = outside.repeat(Math.ceil(2_100_000 / outside.length)) + forecastRow + "\n" + observedRow;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(nationalFile)));
+    const [first, second] = await Promise.all([getFrederickAirReport(), getFrederickAirReport()]);
+    expect(second).toEqual(first);
+    expect((await getFrederickAirReport())?.observations[0].aqi).toBe(51);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const options = vi.mocked(fetch).mock.calls[0][1];
+    expect(options?.cache).toBe("no-store");
+    expect(options?.next?.revalidate).toBeUndefined();
+    expect(cachedEntries.size).toBe(1);
+    const stored = JSON.stringify([...cachedEntries.values()]);
+    expect(stored.length).toBeLessThan(1000);
+    expect(stored).not.toContain("Other area");
+  });
+
+  it("expires observations and selects the new Eastern day's forecast from a retained regional report", async () => {
+    const tomorrow = forecastRow.replace("11/24/26", "11/25/26").replace("|17|", "|21|");
+    const night = observedRow.replace("11:00", "20:00");
+    vi.useFakeTimers().setSystemTime(new Date("2026-11-25T03:59:00Z"));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response([forecastRow, tomorrow, night].join("\n"))));
+    const evening = await getFrederickAirReport();
+    expect(evening?.forecast?.aqi).toBe(17);
+    expect(evening?.observations).toHaveLength(1);
+    vi.setSystemTime(new Date("2026-11-25T05:01:00Z"));
+    const afterMidnight = await getFrederickAirReport();
+    expect(afterMidnight?.forecast?.aqi).toBe(21);
+    expect(afterMidnight?.observations).toEqual([]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries after a failed download and does not cache a provider error as an empty report", async () => {
+    vi.useFakeTimers().setSystemTime(noon);
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(new Response("Service unavailable", { status: 503 }))
+      .mockResolvedValueOnce(new Response("not a reporting file"))
+      .mockResolvedValueOnce(new Response(observedRow)));
+    expect(await getFrederickAirReport()).toBeNull();
+    expect(await getFrederickAirReport()).toBeNull();
+    expect(cachedEntries.size).toBe(0);
+    expect((await getFrederickAirReport())?.observations[0].aqi).toBe(51);
+  });
+
+  it("keeps the promoted build offline even with a previously cached report and a configured key", async () => {
+    vi.useFakeTimers().setSystemTime(noon);
+    const fetcher = vi.fn(async () => new Response(observedRow));
+    vi.stubGlobal("fetch", fetcher);
+    expect((await getFrederickAirReport())?.observations[0].aqi).toBe(51);
+    vi.stubEnv("RADIUS_DATA_MODE", "promoted");
+    vi.stubEnv("AIRNOW_API_KEY", "test-key");
+    expect(await getFrederickAirReport()).toBeNull();
+    expect(await getAirQuality(FREDERICK_CENTER)).toBeNull();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
   it("recovers a missing keyed observation from a confirmed public O record", async () => {
     vi.useFakeTimers().setSystemTime(noon);
     process.env.AIRNOW_API_KEY = "test-key";
@@ -162,6 +232,11 @@ describe("Frederick regional reporting-area file", () => {
     expect(await getAirQuality(FREDERICK_CENTER)).toEqual([]);
     expect(await getAirQuality({ lat: 39.311, lng: -77.626 })).toBeNull();
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the published observation at the city point without an API key", async () => {
+    vi.useFakeTimers().setSystemTime(noon);
+    delete process.env.AIRNOW_API_KEY;
     vi.stubGlobal("fetch", vi.fn(async () => new Response(observedRow)));
     expect((await getAirQuality(FREDERICK_CENTER))?.[0].aqi).toBe(51);
   });

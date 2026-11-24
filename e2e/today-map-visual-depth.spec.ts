@@ -314,7 +314,7 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   await decoded(image, walkingPhoto);
   const textProbes = [
     { name: "Daypart heading", control: page.getByRole("heading", { level: 1 }) },
-    { name: "Area picker", control: todayArea(page) },
+    { name: "Area picker", control: todayArea(page).locator("span:visible") },
     { name: "Quick action words", control: page.getByRole("group", { name: "Quick needs", exact: true }).getByRole("link").first().locator("span") },
   ];
   const text = async () => Promise.all(textProbes.map(async ({ name, control }) => ({
@@ -343,7 +343,12 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
     previousBaseline = key;
     return root.px === 16 && stableBaseline >= 1;
   }, { message: "The actual16px root and control text settle before recording a100% baseline" }).toBe(true);
-  expect(normal.map(({ px }) => px), "normal fixed release labels are measured at100%, never an already-enlarged baseline").toEqual([22, 13, 14]);
+  // The area label shares the 0.875rem type of the other header controls.
+  expect(normal, "Actual visible labels at the default 16px root").toEqual([
+    { name: "Daypart heading", px: 22 },
+    { name: "Area picker", px: 14 },
+    { name: "Quick action words", px: 14 },
+  ]);
   await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
   await page.evaluate(() => document.fonts.ready);
   let enlarged = await text();
@@ -358,6 +363,25 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
       return root.px === 32 && normal.every((before, index) => Math.abs(enlarged[index].px / before.px - 2) < 0.005);
     }, { message: "The real32px root and every control's actual2x reading size must render" }).toBe(true);
     normal.forEach((before, index) => expect(enlarged[index].px / before.px, before.name).toBeCloseTo(2, 2));
+    for (const { name, control } of textProbes) {
+      await expect(control, name).toBeVisible();
+      const fit = await control.evaluate(label => {
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        const lines = Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0);
+        const owner = (label.closest("summary, a") ?? label).getBoundingClientRect();
+        const insideOwner = lines.every(line => line.left >= owner.left - 1 && line.right <= owner.right + 1);
+        for (let box: Element | null = label; box && box !== document.body; box = box.parentElement) {
+          const style = getComputedStyle(box), bounds = box.getBoundingClientRect();
+          const clipsX = /^(hidden|clip|scroll|auto)$/.test(style.overflowX);
+          const clipsY = /^(hidden|clip|scroll|auto)$/.test(style.overflowY);
+          if (lines.some(line => (clipsX && (line.left < bounds.left - 1 || line.right > bounds.right + 1))
+            || (clipsY && (line.top < bounds.top - 1 || line.bottom > bounds.bottom + 1)))) return false;
+        }
+        return lines.length > 0 && insideOwner;
+      });
+      expect(fit, `${name} shows its full text at 200%`).toBe(true);
+    }
   } finally {
     await attach(info, "text-growth-readiness", readiness);
   }

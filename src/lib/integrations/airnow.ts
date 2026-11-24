@@ -1,4 +1,7 @@
+import { unstable_cache } from "next/cache";
+import { isPromotedDataBuild } from "@/lib/data-release-mode";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
+import { createSingleFlight } from "@/lib/single-flight";
 import { easternDayKey, easternWallToUtcISO } from "@/lib/tz";
 import { cache } from "react";
 
@@ -116,10 +119,13 @@ export type AqiForecast = {
 };
 type FrederickAirReport = { observations: AqiObservation[]; forecast: AqiForecast | null };
 
-export function parseFrederickAirReport(text: string, now: Date): FrederickAirReport | null {
-  const today = easternDayKey(now);
-  const observations = new Map<string, AqiObservation>();
-  const forecasts = new Map<string, AqiForecast>();
+type FrederickAirData = {
+  forecasts: AqiForecast[];
+  observations: { issueDate: string; reading: AqiObservation }[];
+};
+
+function parseRegionalData(text: string): FrederickAirData | null {
+  const data: FrederickAirData = { forecasts: [], observations: [] };
   let foundArea = false;
   for (const line of text.split("\n")) {
     if (!line.includes("|Maryland Piedmont|MD|")) continue;
@@ -129,45 +135,77 @@ export function parseFrederickAirReport(text: string, now: Date): FrederickAirRe
     const value = pollutantValue(param, aqi, category);
     const validDate = dateKey(valid);
     const issueDate = dateKey(issue);
-    if (!value || !validDate || !issueDate || issueDate > today) continue;
-    if (kind === "F" && validDate === today && issueDate <= validDate) {
-      const previous = forecasts.get(value.parameter);
-      if (!previous || issueDate > previous.issueDate) {
-        forecasts.set(value.parameter, { ...value, reportingArea, validDate, issueDate });
-      }
+    if (!value || !validDate || !issueDate) continue;
+    if (kind === "F" && issueDate <= validDate) {
+      data.forecasts.push({ ...value, reportingArea, validDate, issueDate });
     } else if (kind === "O" && ["EST", "EDT"].includes(zone)) {
       const hourObserved = localHour(hour);
       if (hourObserved === null) continue;
-      const observation = {
-        ...value, reportingArea, dateObserved: validDate, hourObserved,
-        latitude: numberValue(lat), longitude: numberValue(lng), stateCode: state,
-      };
-      const previous = observations.get(value.parameter);
-      const newer = !previous || validDate > previous.dateObserved
-        || (validDate === previous.dateObserved && hourObserved > previous.hourObserved);
-      if (newer && isFreshAqiObservation(observation, now)) observations.set(value.parameter, observation);
+      data.observations.push({
+        issueDate,
+        reading: {
+          ...value, reportingArea, dateObserved: validDate, hourObserved,
+          latitude: numberValue(lat), longitude: numberValue(lng), stateCode: state,
+        },
+      });
     }
   }
-  if (!foundArea) return null;
+  return foundArea ? data : null;
+}
+
+function reportAt(data: FrederickAirData, now: Date): FrederickAirReport {
+  const today = easternDayKey(now);
+  const forecasts = new Map<string, AqiForecast>();
+  for (const forecast of data.forecasts) {
+    if (forecast.validDate !== today || forecast.issueDate > today) continue;
+    const previous = forecasts.get(forecast.parameter);
+    if (!previous || forecast.issueDate > previous.issueDate) forecasts.set(forecast.parameter, forecast);
+  }
+  const observations = new Map<string, AqiObservation>();
+  for (const { issueDate, reading } of data.observations) {
+    if (issueDate > today || !isFreshAqiObservation(reading, now)) continue;
+    const previous = observations.get(reading.parameter);
+    if (!previous || reading.dateObserved > previous.dateObserved ||
+        (reading.dateObserved === previous.dateObserved && reading.hourObserved > previous.hourObserved)) {
+      observations.set(reading.parameter, reading);
+    }
+  }
   const forecast = [...forecasts.values()].sort((a, b) => b.aqi - a.aqi)[0] ?? null;
   return { forecast, observations: [...observations.values()] };
 }
 
-async function loadFrederickReport(): Promise<FrederickAirReport | null> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), AIRNOW_TIMEOUT_MS);
-  try {
-    const response = await fetch(REPORTING_AREA_FILE, { signal: ctrl.signal, next: { revalidate: 1800 } });
-    if (!response.ok) return null;
-    return parseFrederickAirReport(await response.text(), new Date());
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+export function parseFrederickAirReport(text: string, now: Date): FrederickAirReport | null {
+  const data = parseRegionalData(text);
+  return data ? reportAt(data, now) : null;
 }
 
-export const getFrederickAirReport = cache(loadFrederickReport);
+async function fetchRegionalData(): Promise<FrederickAirData> {
+  // The nationwide body exceeds Next's response-cache limit. Only the parsed
+  // Maryland Piedmont records belong in the shared cache.
+  const response = await fetch(REPORTING_AREA_FILE, { cache: "no-store", signal: AbortSignal.timeout(AIRNOW_TIMEOUT_MS) });
+  if (!response.ok) throw new Error(`AirNow reporting file returned HTTP ${response.status}`);
+  const data = parseRegionalData(await response.text());
+  if (!data) throw new Error("AirNow reporting file has no Maryland Piedmont records");
+  return data;
+}
+
+// Coalesce the complete cold cache lookup/write and independent background
+// revalidations which Next may start for different requests.
+const inFlight = createSingleFlight<"read" | "download", FrederickAirData>();
+const cachedRegionalData = unstable_cache(
+  () => inFlight("download", fetchRegionalData),
+  ["airnow-maryland-piedmont-v1", REPORTING_AREA_FILE],
+  { revalidate: 1800 },
+);
+
+export const getFrederickAirReport = cache(async (): Promise<FrederickAirReport | null> => {
+  if (isPromotedDataBuild()) return null;
+  try {
+    return reportAt(await inFlight("read", cachedRegionalData), new Date());
+  } catch {
+    return null;
+  }
+});
 
 async function keyedObservations(lat: number, lng: number, key: string, signal: AbortSignal) {
   const url = new URL(AIRNOW_BASE);
@@ -183,6 +221,7 @@ async function keyedObservations(lat: number, lng: number, key: string, signal: 
 }
 
 async function loadAirQuality(lat: number, lng: number, deadlineMs: number): Promise<AqiObservation[] | null> {
+  if (isPromotedDataBuild()) return null;
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
   const key = process.env.AIRNOW_API_KEY;
   const cityCenter = lat === FREDERICK_CENTER.lat && lng === FREDERICK_CENTER.lng;

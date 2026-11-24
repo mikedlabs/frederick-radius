@@ -584,9 +584,9 @@ export default function MapDock(props: MapDockProps) {
       const mapBounds = host.getBoundingClientRect();
       const mapHeight = mapBounds.height;
       dockElement.style.setProperty("--map-canvas-height", `${mapHeight}px`);
-      // A two-row return/search dock leaves too little clear list space on a
-      // short phone canvas. Keep Back as a full touch target beside Search.
-      setCompactRecoveryDock(!mapAvailable && mapBounds.width < 1024 && mapHeight < 360);
+      // Leave room for a wrapped result and its Directions action on short
+      // canvases. Back keeps its full touch target beside the search field.
+      setCompactRecoveryDock(!mapAvailable && mapBounds.width < 1024 && mapHeight < 480);
       host.style.setProperty("--map-dock-height", `${dockElement.getBoundingClientRect().height}px`);
       const available = Math.max(148, mapHeight - 96);
       const minimum = mapHeight < 320 ? 148 : 280;
