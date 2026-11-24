@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "@playwright/test";
+import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 
 test.use({ isMobile: true, hasTouch: true });
 const COMPASS_PINS_KEY = "fr.compass.pins.v1";
@@ -198,3 +199,5 @@ test("Tools sends a typed need through shared Find without making people choose 
   await expect(page).toHaveURL(/\/amenities\?need=trash$/);
   await expect(page.getByRole("button", { name: "Trash", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
+
+registerWebkitLoopbackDocumentSeam();
