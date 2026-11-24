@@ -24,7 +24,7 @@
     "id": "airnow",
     "name": "AirNow Air Quality",
     "owner": "US EPA AirNow",
-    "url": "https://www.airnowapi.org/aq/observation/latLong/current",
+    "url": "https://www.airnowapi.org/aq/observation/current/ziplatlong",
     "license": "AirNow terms, attribution required",
     "status": "active",
     "collection": "runtime",

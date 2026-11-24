@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:926bc55532edcbfac77151487d3cc3f5f38dfd7ca075fa63cdfddd3618aa7076",
+  "data_version": "sha256:9caa44043f3c453c19453386328f6dd12f6b8d5dc08cbd3905daa937df4c935a",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -601,13 +601,13 @@
       ]
     },
     "sources": {
-      "promoted_at": "2026-11-20T15:45:37.204Z",
+      "promoted_at": "2026-11-24T16:04:55.066Z",
       "artifacts": [
         {
           "path": "src/data/source-registry.generated.json",
-          "sha256": "9a975f4a162f7e0b133aecb3d555b854dc8d57e28cfd6b100dec5c11d43e026a",
+          "sha256": "43f93a54d9d7a19d1461997f3ede1bac602962718e1337b2b48560da988f13b1",
           "records": 162,
-          "bytes": 109022
+          "bytes": 109055
         }
       ]
     },
