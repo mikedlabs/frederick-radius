@@ -102,7 +102,20 @@ describe("County status API, visible pill and Pulse masthead", () => {
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe(level === "Unknown" ? "Unverified" : level);
     expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe(expected);
     expect(container.querySelector("a")?.getAttribute("aria-label")).toMatch(new RegExp(`^County status: ${expected}(?:;|\\.)`));
-    expect(board.textContent).toContain("Other conditions keep their own source checks below.");
+    const disclosure = board.querySelector("[data-pulse-source-checks]");
+    expect(disclosure?.querySelector("summary")?.textContent).toBe("Source checks");
+    const rows = new Map(Array.from(disclosure?.querySelectorAll("dt") ?? [], term => [
+      term.textContent, term.nextElementSibling,
+    ] as const));
+    expect([...rows.keys()]).toEqual(pageSummary.checks?.map(check => check.source));
+
+    const schools = rows.get("FCPS");
+    expect(schools?.textContent).toContain(partial ? "Unable to verify" : "Verified for this snapshot");
+    expect(schools?.textContent).toContain("Last source check Oct 8, 2026, 9:00 AM EDT");
+    expect(schools?.querySelector("time")?.dateTime).toBe(NOW);
+    const roadConditions = rows.get("MDOT road conditions");
+    expect(roadConditions?.textContent).toContain(roadFailure ? "Source time unavailable" : "Verified for this snapshot");
+    if (roadFailure) expect(roadConditions?.querySelector("time")).toBeNull();
     if (level === "Advisory") expect(container.querySelector("a")?.getAttribute("aria-label")).toContain("3 alerts reported; some sources unavailable");
     if (level === "Unknown") expect(container.querySelector("a")?.getAttribute("aria-label")).not.toContain("Clear");
   });
