@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:31180037fba152f9e0716552191999630b59834c2d6137a9e6aae6a9ebf6e97d",
+  "data_version": "sha256:926bc55532edcbfac77151487d3cc3f5f38dfd7ca075fa63cdfddd3618aa7076",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-24T14:24:09.733Z",
+      "promoted_at": "2026-11-24T15:29:17.152Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -540,9 +540,9 @@
         },
         {
           "path": "src/data/field-notes.json",
-          "sha256": "f93ec6183931e12d0768516011c293b78ad84e9944ad6f2ece9e04246aa12df9",
+          "sha256": "19f1bb35d59d7303ce23d1b5a78251c45245b062a675ca2bd686245acefde939",
           "records": 83,
-          "bytes": 110115
+          "bytes": 110432
         },
         {
           "path": "src/data/course-info.json",
