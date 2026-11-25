@@ -889,3 +889,106 @@ test("a later read that falls back to the approved attempt after the re-pin is r
   assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]);
   assert.match(result.failure, /native gate changed identity or has failed before approval/);
 });
+
+// For about a second after GitHub restarts an approved run, its list and its
+// detail can report different attempts. From 2026-11-11 to 2026-11-24 that
+// stopped 5 of the 42 scheduled batches with "Independent native run ID,
+// attempt or check suite changed during discovery." These tests pin the one
+// case that gets a bounded second look and the cases that still do not.
+test("a detail that lags the list after the second approval is read again and both gates stay approved", async () => {
+  const { state, approvalOptions } = harness();
+  // transit-steward 2026-11-13 and refresh-commerce-links 2026-11-17 and
+  // 2026-11-20: style.yml listed at attempt 2 while its detail still said 1.
+  let staleDetailReads = 2;
+  state.detailProjection = (run) => (run.id === 202 && state.approvals.includes(202) && staleDetailReads-- > 0
+    ? { ...run, run_attempt: 1 } : run);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "approved"); assert.equal(result.verified, true); assert.equal(result.manualApprovalRequired, false);
+  assert.deepEqual(state.approvals, [101, 202]); assert.deepEqual(state.waits, [750]);
+  assert.equal(result.restartReadWaits, 1);
+  assert.deepEqual(result.approvalWrites.map((write) => [write.id, write.attempt, write.restartedAttempt]), [[101, 1, 2], [202, 1, 2]]);
+  assert.equal(result.runs[1].attempt, 2); assert.equal(result.runs[1].action, "approved");
+});
+
+test("a list that lags the detail after the second approval is read again and both gates stay approved", async () => {
+  const { state, approvalOptions } = harness();
+  // data-steward 2026-11-17: style.yml listed at attempt 1 while its detail
+  // already said 2. The late row still shows the held attempt.
+  let staleListReads = 1;
+  state.listProjection = (run) => (run.id === 202 && state.approvals.includes(202) && staleListReads-- > 0
+    ? { ...run, run_attempt: 1, status: "completed", conclusion: "action_required" } : run);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "approved"); assert.equal(result.verified, true);
+  assert.deepEqual(state.approvals, [101, 202]); assert.deepEqual(state.waits, [750]);
+  assert.equal(result.restartReadWaits, 1);
+  assert.equal(state.calls.filter((call) => call.name === "approve").length, 2);
+});
+
+test("a first gate whose reads straddle its restart no longer leaves the second gate held", async () => {
+  const { state, approvalOptions } = harness(); state.attemptStep = 0;
+  // transit-steward 2026-11-23: the observation still saw ci.yml attempt 1
+  // queued, the next list said 1 and its detail said 2, so style.yml was never
+  // approved.
+  let detailReads = 0; let listReads = 0;
+  state.onRead = (name, args) => {
+    if (!state.approvals.includes(101)) return;
+    if (name === "getRun" && args.run_id === 101) detailReads += 1;
+    if (name === "listRuns" && args.workflow_id === 11 && ++listReads === 2) state.runs[0].run_attempt = 2;
+  };
+  state.detailProjection = (run) => (run.id === 101 && detailReads >= 2 && run.run_attempt === 1 ? { ...run, run_attempt: 2 } : run);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "approved"); assert.equal(result.verified, true);
+  assert.deepEqual(state.approvals, [101, 202]); assert.deepEqual(state.waits, [750]);
+  assert.equal(result.approvalWrites[0].restartedAttempt, 2); assert.equal(result.runs[0].attempt, 2);
+});
+
+test("reads that still disagree after three waits stay held", async () => {
+  const { state, approvalOptions } = harness();
+  state.detailProjection = (run) => (run.id === 202 && state.approvals.includes(202) ? { ...run, run_attempt: 1 } : run);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.equal(result.verified, false); assert.equal(result.manualApprovalRequired, true);
+  assert.deepEqual(state.approvals, [101, 202]); assert.deepEqual(state.waits, [750, 750, 750]);
+  assert.equal(result.restartReadWaits, 3);
+  assert.match(result.failure, /Independent native run ID, attempt or check suite changed during discovery/);
+});
+
+test("a gate this script has not approved gets no second look when its reads disagree", async () => {
+  const { state, approvalOptions } = harness();
+  state.detailProjection = (run) => (run.id === 202 && state.approvals.length === 1 ? { ...run, run_attempt: 2 } : run);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]); assert.deepEqual(state.waits, []);
+  assert.equal(result.restartReadWaits, undefined);
+  assert.match(result.failure, /Independent native run ID, attempt or check suite changed during discovery/);
+});
+
+test("reads that disagree by more than the one restart get no second look", async () => {
+  const { state, approvalOptions } = harness();
+  state.listProjection = (run) => (run.id === 101 && state.approvals.length === 1 ? { ...run, run_attempt: 3 } : run);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]); assert.deepEqual(state.waits, []);
+  assert.match(result.failure, /Independent native run ID, attempt or check suite changed during discovery/);
+});
+
+test("reads that disagree on the check suite get no second look", async () => {
+  const { state, approvalOptions } = harness();
+  let staleDetailReads = 2;
+  state.detailProjection = (run) => (run.id === 202 && state.approvals.includes(202) && staleDetailReads-- > 0
+    ? { ...run, run_attempt: 1, check_suite_id: 9999 } : run);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.waits, []);
+});
+
+test("reads that settle on a failed restart stay held", async () => {
+  const { state, approvalOptions } = harness();
+  let staleDetailReads = 2;
+  state.detailProjection = (run) => {
+    if (run.id !== 202 || !state.approvals.includes(202)) return run;
+    if (staleDetailReads-- > 0) return { ...run, run_attempt: 1 };
+    state.runs[1].status = "completed"; state.runs[1].conclusion = "failure";
+    return { ...run, status: "completed", conclusion: "failure" };
+  };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.equal(result.verified, false);
+  assert.deepEqual(state.waits, [750]);
+  assert.match(result.failure, /native gate changed identity or has failed before approval/);
+});
