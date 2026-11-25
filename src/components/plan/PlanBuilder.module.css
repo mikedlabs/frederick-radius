@@ -111,6 +111,7 @@
 .stopEntry { scroll-margin-block-start: calc(var(--app-topbar-h, 6rem) + .75rem); }
 @media (max-width: 375px) {
  .sequence { margin-inline: .75rem; }
+ .sequence ol { grid-auto-columns: minmax(min(100%, 4rem), 1fr); }
  .sequenceHeading { margin-bottom: .2rem; }
  .sequenceName { font-size: .94rem; line-height: 1.22; }
 }
