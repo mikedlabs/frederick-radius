@@ -60,6 +60,8 @@ export const EVENT_BROWSE_SNAPSHOT_LIMIT = 1_500;
 // connection, but no public request can turn this bounded archive read into a
 // long-running database wait.
 const EVENT_ARCHIVE_MAX_TIMEOUT_MS = 5_000;
+// The fixed name that stands in for the cached reader's source text in its key.
+export const EVENT_ARCHIVE_CACHE_READER = "durable-event-archive-read";
 
 type EventArchiveSnapshotOptions = {
   /** Select a calendar window without using that date to judge source freshness. */
@@ -691,7 +693,7 @@ export async function loadEventArchiveSnapshot(
   let freshUncachedEnvelope: ArchiveEnvelope | null = null;
   const pipeline = (async (): Promise<EventArchiveSnapshot> => {
     try {
-      const cachedRead = unstable_cache(async () => {
+      const readEnvelope = async () => {
         const remainingMs = Math.floor(deadlineAt - performance.now() - settleReserveMs);
         if (controller.signal.aborted || remainingMs <= 0) {
           throw new ArchiveSnapshotReadError("event_archive_timeout");
@@ -705,7 +707,15 @@ export async function loadEventArchiveSnapshot(
           freshUncachedEnvelope = envelope;
           throw error;
         }
-      }, [
+      };
+      // Next starts the cache key with this callback's source text. Minified,
+      // that text differs between the page bundle and the route-handler bundle
+      // and can change with a release. The warm job and /api/events/browse
+      // therefore filled one entry while every page read another. A fixed text
+      // leaves the key parts below as the whole identity, so all readers share
+      // one entry. Change "-v1" whenever the stored envelope changes shape.
+      readEnvelope.toString = () => EVENT_ARCHIVE_CACHE_READER;
+      const cachedRead = unstable_cache(readEnvelope, [
         "durable-event-archive-envelope-gzip-v1",
         start.toISOString(), end.toISOString(), String(limit), String(timeoutMs),
         ...(startsInWindow ? ["starts-in-window"] : []),

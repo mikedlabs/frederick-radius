@@ -1,166 +1,172 @@
-# The event archive is unreadable in production
+# The event archive outage, 2026-08-19 to 2026-08-21
 
-Status: **open**. Confirmed against the live database on 2026-08-20, with the
-ownership and promoted-build findings added 2026-08-21.
-Tracking issue: #1581. Detection shipped in #1615. The fix below is not applied.
+Status: **resolved** by #1624 and verified on production on 2026-08-21 at
+15:57 UTC. The detection work that made the cause visible shipped in #1615
+and #1619.
 
-## What is wrong
+A fresh production check on 2026-08-27 at 18:00 UTC returned three event
+cards from `/api/today/events` with `partial: false`, no issues, and no
+unavailable sources. The current reader still sends archive bounds as ISO text
+with explicit `::timestamptz` casts, and its regression test rejects any
+`Date` object that reaches the pooled driver.
 
-The archive is full and the app cannot see any of it.
+This document originally gave a confident but incorrect diagnosis. It is kept
+and rewritten because the failed investigation is part of the operational
+record.
 
-Queried directly against `vrjujcyuzlipqkrtshhr` on 2026-08-20 at 21:22 UTC:
+## What was actually broken
+
+`snapshotBounds` returns `{ start: Date; end: Date }`. Both values were passed
+directly into a `postgres` tagged template. Production rejected every archive
+read with this Node error:
 
 ```
-canonical_total       2185
-upcoming_scheduled    1170     next 60 days
-today_scheduled         65     today, America/New_York
-tombstones             653
-last_archive_run      2026-08-20 21:04:21+00     18 minutes earlier
-last_archive_status   partial                    the normal steady state
+The "string" argument must be of type string or an instance of Buffer
+or ArrayBuffer. Received an instance of Date
 ```
 
-At that same moment production served:
+The driver could not serialize the parameter. **Postgres never saw the
+query.**
 
-```
-/api/today/events  ->  events: 0 | partial: true
-```
+On a direct connection, postgres-js infers the parameter type and applies its
+own `Date` serializer. That is why the failure did not reproduce locally or in
+CI. Production connects through the Supavisor transaction pooler, where
+`src/lib/db/client.ts` must set `prepare: false`. Without the inference round
+trip, the raw `Date` reached the string writer.
 
-65 events were scheduled for that day. The app showed the 39 curated seeds
-compiled into the bundle. The collector is healthy and has never been the
-problem.
+The collector remained healthy. The write path in
+`src/lib/events/event-identity.ts` already passed timestamps as strings, while
+the readers passed `Date` objects. The archive therefore grew to 2,185 records
+while public surfaces fell back to their compiled curated events.
 
-## Why
+`src/lib/loaders/eventRelated.ts` contained the same bug and was fixed in the
+same change.
 
-RLS is enabled with zero policies, and neither `anon` nor `authenticated`
-holds a SELECT grant:
+The fix sends ISO text with an explicit `::timestamptz` cast. That is correct
+with prepared statements enabled or disabled and matches the existing write
+path.
 
-| table | rls_enabled | rls_forced | policies | anon | authenticated | service_role |
+## Why it took three tries
+
+| Investigation | Diagnosis | Verdict |
+| --- | --- | --- |
+| #1576 | Cold-start read timeouts | Not the cause. It fixed real but unrelated defects. |
+| #1581 | RLS enabled with zero policies | Not the cause and treated too early as settled. |
+| 2026-08-20 follow-up | Reconfirmed the RLS table and repeated #1581 | Not the cause. |
+
+All three investigations reasoned from outside the failing query. At the
+time, `beforeDeadline` returned `null` for both a rejected read and a slow one,
+and the caller described every `null` as a read timeout. The application could
+only report that the archive was slow.
+
+It was not slow. `/api/health` completed `SELECT 1` through the same client in
+3 ms during the incident. #1619 preserved the real failure for operators, and
+production named the driver error on the first request after deployment.
+
+## The RLS finding was real and was not the cause
+
+The production audit during the incident found this posture:
+
+| Table | RLS enabled | RLS forced | Policies | `anon` | `authenticated` | `service_role` |
 | --- | --- | --- | ---: | --- | --- | --- |
-| `event_canonical_records` | true | false | 0 | ✗ | ✗ | ✓ |
-| `event_tombstones` | true | false | 0 | ✗ | ✗ | ✓ |
-| `ingest_runs` | true | false | 0 | ✗ | ✗ | ✓ |
-| `ingested_events` | true | false | 0 | ✗ | ✗ | ✓ |
-| `raw_events` | true | false | 0 | ✗ | ✗ | ✓ |
+| `event_canonical_records` | yes | no | 0 | no | no | yes |
+| `event_tombstones` | yes | no | 0 | no | no | yes |
+| `ingest_runs` | yes | no | 0 | no | no | yes |
+| `ingested_events` | yes | no | 0 | no | no | yes |
+| `raw_events` | yes | no | 0 | no | no | yes |
 
-RLS on with no policy denies every role except the table owner (because
-`rls_forced` is false) and `service_role`. A denial returns **zero rows, not an
-error**, which is why every surface degraded politely instead of failing.
+The three tables read by the archive loader were owned by `postgres`, and
+`relforcerowsecurity` was false, so the owner bypassed RLS. The repository's
+current database contract also expects application reads to use a SQL
+connection role with `BYPASSRLS`; the zero-policy posture is intentional. See
+`drizzle/README.md`.
 
-## What is confirmed, and what the RLS table does not explain
+Do not try to fix an archive read by granting `anon`. That role reaches tables
+through the public PostgREST surface. The raw-SQL ingestion tables and their
+RLS posture are deliberately outside `src/lib/db/schema.ts` so an automated
+schema push cannot reopen that path. Database migrations remain manual and
+must follow `drizzle/README.md`.
 
-Two facts settled on 2026-08-21 that change the shape of this.
+## Runbook for a quiet event surface
 
-**The tables are owned by `postgres`, and `relforcerowsecurity` is false.**
-
-```sql
-select c.relname, pg_get_userbyid(c.relowner) as owner
-from pg_class c join pg_namespace n on n.oid = c.relnamespace
-where n.nspname = 'public'
-  and c.relname in ('event_canonical_records','event_tombstones','ingest_runs');
---  all three -> postgres
-```
-
-A table owner bypasses RLS when force is off. So if `DATABASE_URL`
-authenticates as `postgres`, these reads succeed no matter how many policies
-are missing. **The RLS table above is real but is not on its own a sufficient
-explanation.** Whatever the runtime connects as, it is neither the owner nor
-`service_role`.
-
-**It is not promoted-build mode leaking into the runtime.** That hypothesis
-was worth testing because `getDb()` returns null whenever
-`isPromotedDataBuild()` is true, which would produce exactly these symptoms
-with a perfectly healthy database. It is ruled out: `defaultDatabaseProbe` in
-`public-health.ts` calls the same `getSql()` and throws on a null client, and
-production reports `database: reachable, latencyMs: 3`.
-
-That 3ms also rules out slowness. The connection is healthy and fast. The
-archive query specifically is being refused.
-
-## Getting the answer without guessing
-
-Do not pick a fix from the two below by reasoning. Ask production.
-
-Once #1619 ships, the loader carries the real Postgres error instead of
-calling every failure "read timeout":
+### 1. Read the public health contract
 
 ```
-curl -s https://frederickradius.app/api/today/events | jq .
+curl -sS https://frederickradius.app/api/today/events \
+  | jq '{events: (.events | length), partial, issues, unavailable}'
 ```
 
-`sourceHealth.unavailable` will read something like `event archive (read
-rejected: permission denied for table event_canonical_records)`. That
-sentence names the missing privilege and decides everything below.
+The public endpoint exposes stable codes in `issues`, not raw database errors:
 
-The role itself can also be read directly, from a Supabase SQL editor session
-or the project logs:
+| Code | Meaning and next check |
+| --- | --- |
+| `event_archive_timeout` | The bounded read exceeded its deadline. Check pooled connection latency and query timing. |
+| `event_archive_unavailable` | The client was absent, the query was rejected, or the anchored read returned no row. Inspect the server diagnostic. |
+| `event_archive_status_unavailable` | The latest archive ledger row could not be confirmed. Do not call this a collector failure without checking `ingest_runs`. |
+| `event_archive_refresh_failed` | The latest `event-archive` run finished with an error. Investigate the writer. |
+| `event_archive_stale` | The latest archive run is older than the five-hour freshness limit. Check the cron and its heartbeat. |
+| `event_archive_validation` | One or more archived snapshots failed validation and were withheld. Inspect the snapshots and validator tests. |
 
-```sql
-select usename, application_name, count(*)
-from pg_stat_activity
-where datname = current_database()
-group by 1, 2 order by 3 desc;
-```
+`partial: false` with an empty `issues` array is the healthy reader state. A
+nonzero event count alone is not proof because curated events remain available
+during an archive outage.
 
-Sample it while the site is serving traffic. A `pg_stat_activity` snapshot
-taken on 2026-08-20 showed only `authenticator`, `pgbouncer`, `postgres` and
-`supabase_admin`, and never caught the app's own connection, which is why the
-role is still unnamed here.
+### 2. Read the server diagnostic for an unavailable archive
 
-## Fix A, preferred: let the app's role read
-
-Use this when the connecting role is a real role that simply lacks the grant.
-Replace `<app_role>` with the username from `DATABASE_URL`. This grants read
-only, on the three tables the reader touches, and does not disturb RLS.
-
-```sql
-grant select on public.event_canonical_records to <app_role>;
-grant select on public.event_tombstones        to <app_role>;
-grant select on public.ingest_runs             to <app_role>;
-
-create policy "app reads scheduled events"
-  on public.event_canonical_records for select to <app_role> using (true);
-create policy "app reads tombstones"
-  on public.event_tombstones for select to <app_role> using (true);
-create policy "app reads its own ingest ledger"
-  on public.ingest_runs for select to <app_role> using (true);
-```
-
-## Fix B: point the app at a role that can already read
-
-`service_role` already holds SELECT on all five tables. If the intended design
-is for the runtime to connect with those privileges, then the RLS posture is
-correct as it stands and the bug is the connection string. Change
-`DATABASE_URL` in Vercel Production and redeploy. No migration required.
-
-Prefer this only if the runtime is genuinely meant to hold service privileges.
-It is a much broader grant than Fix A.
-
-## Do not grant `anon`
-
-`anon` reaches these tables through PostgREST, which is a public HTTP surface.
-`drizzle/README.md` and `CLAUDE.md` both record that `schema.ts` deliberately
-omits the raw-SQL ingestion tables and their RLS precisely so a careless push
-cannot re-open the anon hole. Granting `anon` here would re-open it by hand.
-The app does not need it: it connects directly, not through PostgREST.
-
-## Verifying the fix
+The public response intentionally does not echo arbitrary driver text. Query
+failures are logged server-side as:
 
 ```
-curl -s https://frederickradius.app/api/today/events | jq '{n: (.events|length), partial}'
+[events] Archive read rejected.
 ```
 
-Expect a non-zero count with `partial: false`. `/today` and `/events` should
-show live listings rather than the curated seeds.
+The attached diagnostic is flattened, bounded, and credential-redacted. Use
+that record to distinguish a transport error from a missing relation, a
+privilege problem, or malformed input. Do not infer the cause from
+`event_archive_unavailable` alone.
 
-Independently, `/admin/data-health` should stop reporting
-`event archive (unreadable)`. As of #1615 that string means the reader was
-locked out, and is deliberately distinct from `event archive (last run failed)`,
-which means the collector failed. Conflating those two is what sent the
-2026-08-18 diagnosis at a healthy collector.
+### 3. Separate reader health from writer health
 
-## Applying it
+Check `/admin/data-health` and the latest `event-archive` entry in
+`ingest_runs`.
 
-Migrations here are applied by hand in the Supabase SQL editor. `npm run
-db:migrate` and `npm run db:push` are both blocked on purpose, because
-`schema.ts` does not model these tables and drizzle-kit would propose dropping
-them. See `drizzle/README.md`.
+- `event_archive_refresh_failed` and `event_archive_stale` point first to the
+  archive writer or its schedule.
+- `event_archive_unavailable` points first to the runtime connection or read
+  query.
+- `event_archive_status_unavailable` means the reader could not establish the
+  writer's ledger state. It does not prove that the writer failed.
+
+The event-source tripwire treats any archive loss as broad degradation even
+when curated or cached events keep the page populated. Do not use a populated
+Today or Events page as the all-clear.
+
+### 4. Account for response caching
+
+`/api/today/events` is forced dynamic and reads the archive at runtime. The
+route marks healthy responses as briefly shareable and degraded responses as
+`private, no-store`. Check response headers when verifying a transition. A
+previously healthy shared response can briefly outlive a new failure, while a
+degraded fallback must not be taught to the shared cache.
+
+### 5. Preserve the pooled-driver contract
+
+For raw SQL used through Supavisor transaction pooling:
+
+- Keep `prepare: false` and one connection per serverless instance as defined
+  in `src/lib/db/client.ts`.
+- Convert timestamps to ISO strings before interpolation and cast them
+  explicitly in SQL.
+- Serialize structured archive payloads before binding them. Do not pass raw
+  `Date` objects or JavaScript objects to the driver.
+- Run the focused loader tests, which assert that no `Date` reaches the archive
+  query.
+
+## Verified after the original fix
+
+```
+/api/today/events   events: 3 | partial: false | unavailable: none
+/events             real ingested events, not only the compiled seeds
+                    (county boards, city council, Black Frederick Festival,
+                     Crush Fest at McClintock Distilling, bluegrass jam)
+```

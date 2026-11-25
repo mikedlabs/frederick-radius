@@ -126,7 +126,8 @@ describe("submitted search photo budget", () => {
     mocks.eventSnapshot.mockResolvedValue({ publicEvents: eventPool, sourceHealth: { degraded: false } });
     await SearchPage({ searchParams: Promise.resolve({ q: "Radius Investor Showcase" }) });
     expect(mocks.eventSnapshot).toHaveBeenCalledOnce();
-    expect(mocks.eventSnapshot).toHaveBeenCalledWith(expect.any(Date), { timeoutMs: 2500 });
+    // The shared envelope, not a database read per search.
+    expect(mocks.eventSnapshot).toHaveBeenCalledWith(expect.any(Date), { timeoutMs: 2500, cache: true });
     expect(mocks.search).toHaveBeenCalledWith("Radius Investor Showcase", 80, eventPool, expect.objectContaining({ resultKind: "all" }));
   });
 

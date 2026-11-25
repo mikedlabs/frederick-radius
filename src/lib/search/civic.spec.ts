@@ -63,10 +63,39 @@ describe("searchCivicActions", () => {
     expect(searchCivicActions("health food")).toEqual([]);
   });
 
+  it("does not answer everyday searches with a trash or recycling schedule", () => {
+    // Each of these shares only "day", "pickup" or "curbside" with a schedule keyword.
+    expect(searchCivicActions("thanksgiving day and black friday hours")).toEqual([]);
+    expect(searchCivicActions("day care and preschool")).toEqual([]);
+    expect(searchCivicActions("veterans day parade and ceremony")).toEqual([]);
+    expect(searchCivicActions("pickup and delivery")).toEqual([]);
+    expect(searchCivicActions("curbside pickup")).toEqual([]);
+    expect(searchCivicActions("restaurants with curbside pickup")).toEqual([]);
+    expect(searchCivicActions("yard waste pickup")[0]).toMatchObject({ id: "civic:trash-schedule" });
+    expect(searchCivicActions("curbside recycling")[0]).toMatchObject({ id: "civic:recycling-schedule" });
+  });
+
   it("does not let a plural government title outrank actual parks", () => {
     expect(searchCivicActions("park")).toEqual([
       expect.objectContaining({ id: "civic:parks-rec-centers" }),
     ]);
+  });
+
+  it("leads a trash schedule question with the trash schedule page", () => {
+    const r = searchCivicActions("trash pickup schedule");
+    expect(r[0]?.id).toBe("civic:trash-schedule");
+    expect(r[0]?.href).toContain("cityoffrederickmd.gov/236/Collection-Schedule");
+    expect(r[0]?.subtitle).toBe("Official link · cityoffrederickmd.gov");
+  });
+
+  it("resolves 'trash day' to the trash schedule", () => {
+    expect(searchCivicActions("trash day")[0]?.id).toBe("civic:trash-schedule");
+  });
+
+  it("resolves 'recycling day' to the County recycling schedule", () => {
+    const r = searchCivicActions("recycling day");
+    expect(r[0]?.id).toBe("civic:recycling-schedule");
+    expect(r[0]?.href).toContain("Curbside-Collection-Schedule");
   });
 });
 

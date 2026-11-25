@@ -22,7 +22,7 @@
  * this is timezone- and DST-safe with no wall-clock arithmetic.
  */
 
-import { isEventEnded } from "@/lib/eventWhenLabel";
+import { isEventEnded, statedEndBoundsVisibility } from "@/lib/eventWhenLabel";
 
 /** The minimum shape we need to judge visibility. */
 export type TimedEvent = {
@@ -34,16 +34,17 @@ export type TimedEvent = {
 /**
  * True if the event is live or still in the future as of `now`.
  *
- * A valid end later than the start is authoritative. Missing, invalid, and
- * zero-duration ends use the shared lifecycle fallback (two hours for timed
- * events; the full Eastern day for all-day events).
+ * A valid end later than the start is authoritative. Missing, invalid,
+ * zero-duration, and 11:59 PM placeholder ends use the shared lifecycle
+ * fallback (three hours for timed events; the full Eastern day for all-day
+ * events), so a 5:30 PM hearing stamped "ends 11:59 PM" is not upcoming at
+ * 10:50 PM.
  */
 export function isUpcomingEvent(e: TimedEvent, now: Date = new Date()): boolean {
   const startMs = Date.parse(e.starts_at);
   if (!Number.isFinite(startMs)) return false;
-  const endMs = e.ends_at ? Date.parse(e.ends_at) : NaN;
-  if (Number.isFinite(endMs) && endMs > startMs) {
-    return endMs >= now.getTime();
+  if (statedEndBoundsVisibility(e)) {
+    return Date.parse(e.ends_at as string) >= now.getTime();
   }
   return !isEventEnded(e, now);
 }

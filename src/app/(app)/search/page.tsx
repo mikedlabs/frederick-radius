@@ -276,9 +276,12 @@ export default async function SearchPage({
   let eventCoverage: SearchEventCoverage = "complete";
   // All results also searches exact event titles that carry no event keyword.
   // This is the bounded archive reader, without a publisher refresh fan-out.
+  // It reads the shared envelope that Events reads and the warm job refreshes.
+  // A database read on every search missed its budget often enough in
+  // production that a search for an event by name returned no event.
   if (query && !civicOnly && (kind === "all" || kind === "event")) {
     try {
-      const snapshot = await loadEventArchiveSnapshot(new Date(), { timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS });
+      const snapshot = await loadEventArchiveSnapshot(new Date(), { timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS, cache: true });
       const events = searchEventsFromSnapshot(snapshot);
       eventPool = events.publicEvents;
       eventCoverage = events.coverage;

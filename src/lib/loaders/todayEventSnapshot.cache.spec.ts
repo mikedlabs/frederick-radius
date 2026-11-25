@@ -13,7 +13,7 @@ vi.mock("@/lib/db/client", () => ({ getSql: mocks.getSql }));
 // cannot prove that rejected foreground revalidation retains the prior entry.
 import { workAsyncStorage } from "next/dist/server/app-render/work-async-storage.external.js";
 import { workUnitAsyncStorage } from "next/dist/server/app-render/work-unit-async-storage.external.js";
-import { loadEventArchiveSnapshot, loadWeekendEventSnapshot, TODAY_EVENT_SNAPSHOT_MAX_AGE_MS } from "./todayEventSnapshot";
+import { EVENT_ARCHIVE_CACHE_READER, loadEventArchiveSnapshot, loadWeekendEventSnapshot, TODAY_EVENT_SNAPSHOT_MAX_AGE_MS } from "./todayEventSnapshot";
 import { decodeArchiveEnvelope, encodeArchiveEnvelope,
   EVENT_ARCHIVE_CACHE_DECODED_MAX_BYTES, EVENT_ARCHIVE_CACHE_ENTRY_MAX_BYTES } from "./eventArchiveCacheCodec";
 
@@ -250,6 +250,17 @@ describe("durable archive cache through installed Next App Router revalidation",
     expect(keys[0]).toContain("durable-event-archive-envelope-gzip-v1,2026-10-18T04:00:00.000Z");
     expect(keys[0]).toContain(",6,2500-");
     expect(keys.some(key => key.includes("2026-10-19T04:00:00.000Z"))).toBe(true);
+  });
+  it("keys the envelope by a fixed name so pages and route handlers share one entry", async () => {
+    const sql = vi.fn().mockResolvedValue([envelope()]); mocks.getSql.mockReturnValue(sql);
+    await cached();
+    // Next starts the key with the callback's own text. On one production
+    // deployment that text was "async()=>{let a=Math.floor(x-performance.now()-B)..."
+    // for /events and "async()=>{let e=Math.floor(p-performance.now()-j)..." for
+    // the warm job, so the two never shared an entry.
+    const key = cache.generateSimpleCacheKey.mock.calls[0][0];
+    expect(key.startsWith(`${EVENT_ARCHIVE_CACHE_READER}-durable-event-archive-envelope-gzip-v1,2026-10-18T04:00:00.000Z,`)).toBe(true);
+    expect(key).not.toMatch(/=>|async|performance|function/);
   });
   it("reads only scheduled starts in the Eastern weekend before applying its cap", async () => {
     const sql = vi.fn<(parts: TemplateStringsArray, ...parameters: unknown[]) => Promise<ReturnType<typeof envelope>[]>>()
