@@ -304,7 +304,9 @@ export default function BottomSheet({
   // races its exit animation. Search-only map state changes stay on the same
   // pathname and intentionally keep the sheet open.
   useEffect(() => {
-    if (!open || pathname === openPath.current) return;
+    // The router can report no pathname before it is ready. Only a known
+    // destination can tell us the visitor actually left the sheet's route.
+    if (!open || !pathname || pathname === openPath.current) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- closes a route-scoped overlay after its owning route has changed
     setOpen(false);
     onCloseRef.current();
