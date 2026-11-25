@@ -658,7 +658,11 @@ const cachedAssemble = unstable_cache(
   // publisher's own iCal CATEGORIES, or a feed whose default category is that
   // venue type. A description word alone no longer sets one. Cached category
   // and set membership change.
-  ["unified-events-v39"],
+  // v40: Frederick Community College rows are read as UTC (they showed five
+  // hours late), an 11:59 PM or 12:59 AM placeholder end is no end, county
+  // and campus rows take title-only categories, and standing-program
+  // publishers rank as programs. Cached times, categories and order change.
+  ["unified-events-v40"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.

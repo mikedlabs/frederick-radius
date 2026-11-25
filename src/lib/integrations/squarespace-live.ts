@@ -144,7 +144,7 @@ async function fetchVenue(
           : undefined;
       // Window by overlap after normalizing the end. A real two-hour show must
       // stay in the source result for its full run, while a start-only row gets
-      // the shared two-hour assumed runtime.
+      // the shared assumed runtime (ASSUMED_RUNTIME_MS).
       if (!isEventWithinReadWindow(
         { starts_at: start.toISOString(), ends_at: end?.toISOString() },
         now,

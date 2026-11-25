@@ -33,6 +33,31 @@ describe("Eastern timezone formatting", () => {
     expect(easternWallToUtcISO(year, month, day, hour, minute)).toBe(utc);
   });
 
+  it.each([
+    // Clocks fall back at 2 AM on Nov 1, 2026. Later that morning is EST.
+    { wall: [2026, 11, 1, 0, 30] as const, utc: "2026-11-01T04:30:00.000Z" },
+    { wall: [2026, 11, 1, 3, 0] as const, utc: "2026-11-01T08:00:00.000Z" },
+    { wall: [2026, 11, 1, 4, 30] as const, utc: "2026-11-01T09:30:00.000Z" },
+    // Clocks spring forward at 2 AM on Mar 8, 2026. Later that morning is EDT.
+    { wall: [2026, 3, 8, 1, 0] as const, utc: "2026-03-08T06:00:00.000Z" },
+    { wall: [2026, 3, 8, 3, 0] as const, utc: "2026-03-08T07:00:00.000Z" },
+    { wall: [2026, 3, 8, 4, 0] as const, utc: "2026-03-08T08:00:00.000Z" },
+  ])("converts $wall correctly on a morning the clocks change", ({ wall, utc }) => {
+    const [year, month, day, hour, minute] = wall;
+    expect(easternWallToUtcISO(year, month, day, hour, minute)).toBe(utc);
+  });
+
+  it("keeps its earlier answers for a wall time that is skipped or repeated", () => {
+    // 2:30 AM does not exist on the spring-forward morning.
+    expect(easternWallToUtcISO(2026, 3, 8, 2, 30)).toBe("2026-03-08T07:30:00.000Z");
+    // 1:30 AM happens twice on the fall-back morning. The first one is kept.
+    expect(easternWallToUtcISO(2026, 11, 1, 1, 30)).toBe("2026-11-01T05:30:00.000Z");
+  });
+
+  it("carries a day past the end of a month", () => {
+    expect(easternWallToUtcISO(2026, 5, 32, 1, 0)).toBe("2026-06-01T05:00:00.000Z");
+  });
+
   it("retains seconds across an Eastern year boundary", () => {
     expect(easternWallToUtcISO(2026, 12, 31, 23, 59, 58)).toBe("2027-01-01T04:59:58.000Z");
   });
