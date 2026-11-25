@@ -114,11 +114,13 @@ describe("parseCountyEventWindow", () => {
     const window = parseCountyEventWindow("May 14, 2026", "5:30 PM");
     expect(window?.start.toISOString()).toBe("2026-05-14T21:30:00.000Z");
     expect(window?.end).toBeNull();
+    expect(window?.hasClock).toBe(true);
   });
 
   it("still anchors a date with no clock at midday", () => {
     const window = parseCountyEventWindow("May 14, 2026");
     expect(window?.start.toISOString()).toBe("2026-05-14T16:00:00.000Z");
     expect(window?.end).toBeNull();
+    expect(window?.hasClock).toBe(false);
   });
 });

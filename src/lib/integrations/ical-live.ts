@@ -929,18 +929,21 @@ function civicEngageClocks(timeStr?: string): { start?: string; end?: string } {
 export function parseCountyEventWindow(
   dateStr: string,
   timeStr?: string,
-): { start: Date; end: Date | null } | null {
+): { start: Date; end: Date | null; hasClock: boolean } | null {
   const clocks = civicEngageClocks(timeStr);
   const start = parseCountyDateTime(dateStr, clocks.start);
   if (!start) return null;
-  if (!clocks.end) return { start, end: null };
+  // Whether the publisher gave a start clock at all. Without one the start
+  // is the midday anchor, and no surface may print it as a time.
+  const hasClock = Boolean(clocks.start);
+  if (!clocks.end) return { start, end: null, hasClock };
   let end = parseCountyDateTime(dateStr, clocks.end);
   if (end && end.getTime() <= start.getTime()) {
     // The same clock on the next Eastern calendar day. Adding 24 hours is an
     // hour off on the two nights a year the clocks change.
     end = parseCountyDateTime(dateStr, clocks.end, 1);
   }
-  return { start, end };
+  return { start, end, hasClock };
 }
 
 function unescapeIcalText(s: string): string {
@@ -1502,7 +1505,8 @@ async function fetchRssFeed(
         description: clampDescription(cleanDescription(description), 300),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
-        published_time: publishedTime(publishedWindow, publishedWindow),
+        // A single clock ("5:30 PM") is a published start with no end.
+        published_time: publishedTime(eventWindow?.hasClock ?? false, publishedWindow),
         venue_name: venue,
         address,
         geom: feed.default_geom,

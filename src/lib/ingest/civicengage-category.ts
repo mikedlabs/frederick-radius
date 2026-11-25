@@ -4,7 +4,7 @@
  * County and City CivicEngage calendars are fetched per numeric catID. The
  * official names for those IDs live on each domain's /iCalendar.aspx page.
  * `config/civicengage_sources.json` labels are a separate display concern
- * (PR #1729) and are often wrong on main, so this table is keyed by
+ * (PR #1729) and have been wrong before, so this table is keyed by
  * domain + catID, never by label text.
  *
  * Scope values match draft PR #1740 (`public` | `campus` | `notice`) so a

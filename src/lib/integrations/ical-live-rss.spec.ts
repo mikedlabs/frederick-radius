@@ -74,6 +74,10 @@ describe("CivicEngage live RSS", () => {
     expect(overnight?.ends_at).toBe("2026-05-15T05:00:00.000Z");
     expect(story?.starts_at).toBe("2026-05-15T21:30:00.000Z");
     expect(story?.ends_at).toBe("2026-05-15T23:30:00.000Z");
+    // The publisher gave a start and no end, so Events may print the start.
+    // "date" here made Events say "Time not listed" over a real 5:30 PM start.
+    expect(story?.published_time).toBe("start");
+    expect(overnight?.published_time).toBe("range");
   });
 
   it("leaves out a row that publishes a date and no time", async () => {
