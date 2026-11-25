@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * The event-assembly SEAM (assembleRaw). The pure transforms it composes
@@ -78,6 +78,10 @@ describe("assembleRaw — assembly seam", () => {
     });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("assembles with all live feeds empty and reports healthy", async () => {
     const r = await assembleRaw(NOW);
     expect(Array.isArray(r.unified)).toBe(true);
@@ -126,6 +130,58 @@ describe("assembleRaw — assembly seam", () => {
     expect(r.sourceHealth.unavailable).toContain("municipal calendars");
     // The curated seeds still assemble; a dead feed never yields a dead board.
     expect(Array.isArray(r.unified)).toBe(true);
+  });
+
+  it("keeps the calendars that answered when a slow one is still being read at the deadline", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    // The real loader settles as soon as its caller's signal aborts: the
+    // calendars that answered are in the result and the slow ones are failed.
+    vi.mocked(getLiveEvents).mockImplementationOnce(
+      (_windowDays, options) =>
+        new Promise((resolve) => {
+          options?.signal?.addEventListener(
+            "abort",
+            () =>
+              resolve({
+                events: [
+                  {
+                    id: "dfp:answered-calendar-concert",
+                    title: "Answered Calendar Concert",
+                    description: "An evening concert beside the creek.",
+                    starts_at: "2026-07-18T23:00:00.000Z",
+                    ends_at: "2026-07-19T01:00:00.000Z",
+                    venue_name: "Carroll Creek Amphitheater",
+                    address: "Carroll Creek Linear Park, Frederick, MD 21701",
+                    geom: { lng: -77.4089, lat: 39.4135 },
+                    municipality: "frederick",
+                    category: "music",
+                    organizer: "Downtown Frederick Partnership",
+                    source: "dfp",
+                    source_label: "Downtown Frederick Partnership",
+                    url: "https://downtownfrederick.org/vm-event/answered-calendar-concert/",
+                    is_free: true,
+                    status: "scheduled",
+                    last_verified_at: NOW.toISOString(),
+                  },
+                ],
+                sources_succeeded: ["dfp"],
+                sources_failed: ["city-frederick"],
+              }),
+            { once: true },
+          );
+        }),
+    );
+
+    const pending = assembleRaw(NOW);
+    await vi.advanceTimersByTimeAsync(8_000);
+    const r = await pending;
+
+    // One slow calendar costs only itself. Before this was pinned, the whole
+    // municipal group fell back to nothing at the deadline.
+    expect(r.unified.map((e) => e.title)).toContain("Answered Calendar Concert");
+    expect(r.sourceHealth.degraded).toBe(true);
+    expect(r.sourceHealth.unavailable).toEqual(["city-frederick"]);
   });
 
   it("distinguishes a healthy empty adapter from an upstream outage", async () => {

@@ -2715,6 +2715,38 @@ async function fetchFeed(
   return trimFeedResultToWindow(result, session.startedAtMs, windowDays);
 }
 
+/**
+ * Read calendars four at a time, starting with the ones that answer.
+ *
+ * Every RSS calendar in the registry is a CivicPlus host, and those hosts hang
+ * together on server-side connections. Four of them are among the first seven
+ * registry entries, so in registry order they held all four connections until
+ * the caller's deadline and the calendars behind them were never read. Read
+ * last, a hang costs only the CivicPlus calendars. The results stay in
+ * registry order, because dedupe keeps the first calendar that lists an event.
+ */
+async function readFeedsAnsweringFirst<R>(
+  feeds: readonly FeedSpec[],
+  read: (feed: FeedSpec) => Promise<R>,
+): Promise<R[]> {
+  const readOrder = feeds
+    .map((_feed, index) => index)
+    .sort(
+      (a, b) =>
+        Number(feeds[a].format === "rss") - Number(feeds[b].format === "rss"),
+    );
+  const settled = await mapEventSourcesWithConcurrency(
+    readOrder,
+    PUBLIC_EVENT_SOURCE_CONCURRENCY,
+    (index) => read(feeds[index]),
+  );
+  const results = new Array<R>(feeds.length);
+  readOrder.forEach((index, position) => {
+    results[index] = settled[position];
+  });
+  return results;
+}
+
 /** Fetch a deliberately small subset of the live-feed registry. Feature pages
  * can use this instead of paying for the countywide fanout when their scope is
  * known in advance (for example, /beer only needs brewery-owned calendars). */
@@ -2743,11 +2775,7 @@ export async function getLiveEventsForSources(
       evts: result.events,
       ok: result.ok,
     }));
-  const results = await mapEventSourcesWithConcurrency(
-    feeds,
-    PUBLIC_EVENT_SOURCE_CONCURRENCY,
-    read,
-  );
+  const results = await readFeedsAnsweringFirst(feeds, read);
 
   const seen = new Map<string, LiveEvent>();
   for (const { evts } of results) {
@@ -2819,11 +2847,7 @@ export async function getLiveEvents(
   const [feedResults, ticketmasterResult] = await Promise.all([
     // Public and probe reads share the same load-shedding ceiling. Their
     // resilience state remains intentionally separate inside fetchFeed.
-    mapEventSourcesWithConcurrency(
-      feeds,
-      PUBLIC_EVENT_SOURCE_CONCURRENCY,
-      read,
-    ),
+    readFeedsAnsweringFirst(feeds, read),
     includeTicketmaster
       ? readMode === "probe"
         ? fetchLiveTicketmasterMusicResult()
