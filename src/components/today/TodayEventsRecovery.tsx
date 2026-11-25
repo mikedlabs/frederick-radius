@@ -189,9 +189,9 @@ export function TodayEventsRecoveryView({
   // Render the same anchors throughout, including while appending the picks.
   return (
     <section aria-label="Events today" data-today-event-recovery="true" data-today-event-shortlist>
-      <header data-today-section-heading="true" className="flex min-h-14 items-center justify-between gap-3 border-y px-0.5 py-2"
+      <header data-today-section-heading="true" className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-y px-0.5 py-2"
         style={{ borderColor: "var(--app-border)" }}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-[1_1_9rem]">
           <h2 className={choiceStyles.recoveryHeading}>Events today</h2>
           <p role={hasEvents ? undefined : "status"} className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
             {hasEvents ? meta : status}

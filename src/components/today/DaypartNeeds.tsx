@@ -821,7 +821,7 @@ function DaypartNeedsShelf({
   return (
     <section
       aria-label={shelfHeading.aria}
-      className="mt-6"
+      className={`mt-6 ${variant === "brief" ? styles.brief : ""}`}
       data-today-decision-density={variant}
     >
       <TodaySectionHeading

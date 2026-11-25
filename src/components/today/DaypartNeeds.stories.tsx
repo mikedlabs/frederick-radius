@@ -144,6 +144,11 @@ export const OpeningSoonEnlargedText320: Story = {
         await expect(line.bottom).toBeLessThanOrEqual(bounds.bottom + 2);
       }
     }
+    const header = canvasElement.querySelector<HTMLElement>("[data-today-section-heading]")!;
+    const title = header.querySelector("h2")!.getBoundingClientRect();
+    const browse = header.querySelector("a")!.getBoundingClientRect();
+    await expect(title.width).toBeGreaterThanOrEqual(header.clientWidth * .8);
+    await expect(browse.top).toBeGreaterThanOrEqual(title.bottom);
     await expect(parseFloat(getComputedStyle(document.documentElement).fontSize)).toBe(32);
     // Both lines double with the root: a 20px row name and a 14px meta line.
     await expect(parseFloat(getComputedStyle(card.querySelector("[data-today-pick-name]")!).fontSize)).toBeGreaterThanOrEqual(40);

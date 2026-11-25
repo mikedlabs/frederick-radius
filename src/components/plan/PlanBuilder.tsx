@@ -667,27 +667,12 @@ export default function PlanBuilder({
           )}
           {plan.stops.length > 0 && (
             <div className="relative">
-              {plan.stops.length > 1 && (
-                <nav className={styles.sequence} aria-label="Jump to a planned stop">
-                  <h2>Stop sequence</h2>
-                  <ol>
-                    {plan.stops.map(stop => (
-                      <li key={stop.order}>
-                        <a href={`#plan-stop-${stop.order}`}>
-                          <span className={styles.sequenceMarker} aria-hidden="true">{stop.order}</span>
-                          <time dateTime={stop.at}>{clock(stop.at)}</time>
-                          <span className={styles.sequenceName}>{stop.place?.name ?? stop.event?.title}</span>
-                        </a>
-                      </li>
-                    ))}
-                  </ol>
-                </nav>
-              )}
               <ol className={`${styles.stopList} pl-10`} style={plan.stops.length === 1 ? { gridTemplateColumns: "minmax(0, 1fr)" } : undefined} aria-label="Plan stops, in order">
                 {plan.stops.map((stop, index) => (
                   <Stop
                     key={`${stop.order}-${stop.place?.slug ?? stop.event?.slug ?? index}`}
                     stop={stop}
+                    sequence={index === 0 && plan.stops.length > 1 ? plan.stops : undefined}
                     returnTo={planReturnTo}
                     index={stop.spec_index ?? index}
                     pending={pending || !controlsReady}
@@ -1112,8 +1097,26 @@ function PickerRow({
   );
 }
 
+function StopSequence({ stops }: { stops: Plan["stops"] }) {
+  return <nav className={styles.sequence} aria-label="Jump to a planned stop">
+    <p className={styles.sequenceHeading}>Stop sequence</p>
+    <ol>
+      {stops.map(stop => (
+        <li key={stop.order}>
+          <a href={`#plan-stop-${stop.order}`}>
+            <span className={styles.sequenceMarker} aria-hidden="true">{stop.order}</span>
+            <time dateTime={stop.at}>{clock(stop.at)}</time>
+            <span className={styles.sequenceName}>{stop.place?.name ?? stop.event?.title}</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </nav>;
+}
+
 function Stop({
   stop,
+  sequence,
   returnTo,
   index,
   pending,
@@ -1124,6 +1127,7 @@ function Stop({
   onRemove,
 }: {
   stop: Plan["stops"][number];
+  sequence?: Plan["stops"];
   returnTo?: string;
   index: number;
   pending: boolean;
@@ -1186,6 +1190,7 @@ function Stop({
           <PlaceMedallion place={fallbackPlace} size={48} className={`${styles.stopMedallion} rounded-[var(--app-radius-sm)]`} />
         </div>
         </div>
+        {sequence && <StopSequence stops={sequence} />}
         <PlanStopPhoto stop={stop} />
         <div className={styles.stopBody} style={{ paddingTop: 12 }}>
         <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{stop.why}</p>

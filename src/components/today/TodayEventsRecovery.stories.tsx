@@ -385,6 +385,11 @@ export const WeekendAcrossMonths: Story = {
     await expect(calendar).toHaveAttribute("href", "/events?in=brunswick&when=weekend");
     await expect(calendar).toBeVisible();
     document.documentElement.style.fontSize = "200%";
+    const heading = canvasElement.querySelector('[data-today-event-shortlist] header')!;
+    const title = heading.querySelector('h2')!.getBoundingClientRect();
+    const board = heading.querySelector('a')!.getBoundingClientRect();
+    await expect(title.width).toBeGreaterThanOrEqual(heading.clientWidth * .8);
+    await expect(board.top).toBeGreaterThanOrEqual(title.bottom);
     await expect(calendar.getBoundingClientRect().width).toBeLessThanOrEqual(canvasElement.clientWidth);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   },

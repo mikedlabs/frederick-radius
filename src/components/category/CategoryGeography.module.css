@@ -1,0 +1,11 @@
+.geography { display: grid; gap: .23rem .9rem; align-items: center; margin-top: .65rem; }
+.geography figure { min-width: 0; padding: 0; }
+.geography figure figcaption, .caption { font-size: .83rem; font-weight: 650; color: var(--app-ink); }
+.geography figure > div { max-width: none; height: .55rem; margin: .38rem 0 .04rem; }
+.geography figure ul { column-gap: .85rem; row-gap: 0; }
+.geography > div { justify-self: start; margin: 0; min-height: 2.75rem; border: 0; background: transparent !important; padding: 0; }
+.town { min-height: 2.75rem; display: inline-flex; align-items: center; gap: .25rem; font: inherit; color: var(--app-brand-text); text-decoration: underline; text-underline-offset: .18rem; }
+.town:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 2px; }
+@media (min-width: 720px) {
+  .geography { grid-template-columns: minmax(0,34rem) auto; justify-content: start; }
+}
