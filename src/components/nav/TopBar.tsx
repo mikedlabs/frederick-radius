@@ -127,6 +127,7 @@ export default function TopBar() {
     const previousPriority = root.style.getPropertyPriority(property);
     let published: string | null = null;
     let disposed = false;
+    let pendingFrame: number | null = null;
     const measure = () => {
       if (disposed) return;
       // The row excludes the header's safe-top padding and bottom border.
@@ -138,12 +139,22 @@ export default function TopBar() {
       published = value;
     };
     measure();
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    // Publishing a root variable reflows the page below the header. Let the
+    // browser finish delivering resize observations before changing that layout.
+    const scheduleMeasurement = () => {
+      if (disposed || pendingFrame !== null) return;
+      pendingFrame = window.requestAnimationFrame(() => {
+        pendingFrame = null;
+        measure();
+      });
+    };
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleMeasurement);
     observer?.observe(row);
     window.addEventListener("resize", measure);
     return () => {
       disposed = true;
       observer?.disconnect();
+      if (pendingFrame !== null) window.cancelAnimationFrame(pendingFrame);
       window.removeEventListener("resize", measure);
       if (published !== null && root.style.getPropertyValue(property) === published) {
         if (previous) root.style.setProperty(property, previous, previousPriority);

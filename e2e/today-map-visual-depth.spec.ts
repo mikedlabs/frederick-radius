@@ -543,6 +543,27 @@ test("Today keeps exact local discovery and scoped tasks after its owner-approve
   expect(evidence.errors).toEqual([]);
 });
 
+const foodOrigin = "/today?in=brunswick&intent=coffee#find-radius";
+
+test.describe("Today food discovery before hydration", () => {
+  test.use({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+
+  test("an early tap opens scoped food and native Back restores the original section", async ({ context, page, baseURL }) => {
+    await prepare(context, page, baseURL);
+    await page.goto(foodOrigin, { waitUntil: "commit" });
+    await page.getByRole("link", { name: "Eat & drink", exact: true }).tap();
+    await expect(page).toHaveURL(url => {
+      const origin = new URL(url.searchParams.get("returnTo") ?? "/", url.origin);
+      return url.pathname === "/nearby" && url.searchParams.get("c") === "food" &&
+        url.searchParams.get("in") === "brunswick" && !url.searchParams.has("facet") &&
+        origin.pathname === "/today" && origin.search === "?in=brunswick&intent=coffee";
+    });
+    await page.goBack({ waitUntil: "commit" });
+    await expect(page).toHaveURL(new URL(foodOrigin, baseURL).href);
+    await expect(page.locator("#find-radius:target")).toBeVisible();
+  });
+});
+
 test("Today food discovery preserves the town, intent and native Back location", async ({ context, page, baseURL }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const { evidence } = await prepare(context, page, baseURL);
@@ -552,7 +573,7 @@ test("Today food discovery preserves the town, intent and native Back location",
       watchPosition: () => { throw new Error("An explicit town must not watch geolocation."); },
     } });
   });
-  const origin = "/today?in=brunswick&intent=coffee#find-radius";
+  const origin = foodOrigin;
   await todayReady(page, origin);
   const action = page.locator('[data-today-discovery-action="food"]');
   await expect(action).toHaveAccessibleName("Eat & drink");
@@ -560,18 +581,20 @@ test("Today food discovery preserves the town, intent and native Back location",
   await expect(named).toHaveCount(1);
   await expect(named).toHaveAttribute("data-today-geographic-place", lockSlug);
   await decoded(named.locator("img"), lockPhoto.src);
-  const href = new URL((await action.getAttribute("href"))!, "https://radius.test");
-  expect(href.pathname).toBe("/nearby"); expect(href.searchParams.get("c")).toBe("food"); expect(href.searchParams.get("facet")).toBeNull();
-  expect(href.searchParams.get("in")).toBe("brunswick"); expect(href.searchParams.get("returnTo")).toBe(origin);
-  await action.click();
-  await expect(page).toHaveURL(url => url.pathname === "/nearby" && url.searchParams.get("c") === "food" && url.searchParams.get("in") === "brunswick" && !url.searchParams.has("facet"));
+  // Only the browser receives the fragment. A decoded image can precede the
+  // client update that adds it to the link's returnTo.
+  const destination = `/nearby?${new URLSearchParams({ c: "food", in: "brunswick", returnTo: origin })}`;
+  await expect(action).toHaveAttribute("href", destination);
+  await action.tap();
+  await expect(page).toHaveURL(url => url.pathname === "/nearby" && url.searchParams.get("c") === "food" &&
+    url.searchParams.get("in") === "brunswick" && !url.searchParams.has("facet") && url.searchParams.get("returnTo") === origin);
   await page.goBack({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(url => `${url.pathname}${url.search}${url.hash}` === origin);
   await expect(page.locator('[data-today-discovery-action="food"]')).toBeVisible();
   await expect(page.locator("[data-today-geographic-place]")).toHaveCount(1);
   await expect(page.locator("[data-today-local-discovery]")).not.toContainText(/Sophie|Carillon|Find pizza/);
   expect(evidence.errors).toEqual([]);
-  await attach(info, "food-scope-back-continuity", { origin, destination: href.pathname + href.search, localPhoto: lockPhoto.src, widths: await assertWidth(page) });
+  await attach(info, "food-scope-back-continuity", { origin, destination, localPhoto: lockPhoto.src, widths: await assertWidth(page) });
 });
 
 test("Map makes the exact owned image prominent before metadata and keeps real Details Back focus at 320px", async ({ context, page, baseURL }, info) => {

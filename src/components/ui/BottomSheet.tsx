@@ -275,7 +275,10 @@ export default function BottomSheet({
   // Keep Tab within the sheet while it's open.
   useFocusTrap(sheetRef, open && present);
 
-  useEffect(() => {
+  // A visitor can press Back as soon as the lazy dialog replaces its fallback.
+  // Capture the opener and synchronize presence in that same commit so a later
+  // mount effect cannot reopen a sheet whose history entry has already closed.
+  useLayoutEffect(() => {
     if (present) {
       focusReturnGeneration.current++;
       openPath.current = window.location.pathname;
