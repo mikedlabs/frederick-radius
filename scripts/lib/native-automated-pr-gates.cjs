@@ -296,9 +296,9 @@ async function approveNativeAutomatedPrRuns(options) {
         noteAssociations(workflow, discovery ? "discovery-detail" : "pre-approval-detail", [latestDetail], read);
         validateRunSource(latestDetail, workflow, candidate.identity);
         // From 2026-11-11 to 2026-11-24 a late read on one side of a restart
-        // stopped 5 of the 42 scheduled batches here, four of them after both
-        // gates were already approved. Read both again, at most three times
-        // 750 ms apart. This only waits: the reads must still agree before
+        // stopped 5 of the 40 approval jobs here, four of them after both gates
+        // were approved and went on to pass. Read both again, at most three
+        // times 750 ms apart. This only waits: the reads must still agree before
         // anything is accepted, and the checks below then judge the agreed run.
         if (readsStraddleRestart(latestList, latestDetail) && restartReadWaits < 3) {
           restartReadWaits += 1;

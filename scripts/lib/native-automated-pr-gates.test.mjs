@@ -892,9 +892,9 @@ test("a later read that falls back to the approved attempt after the re-pin is r
 
 // For about a second after GitHub restarts an approved run, its list and its
 // detail can report different attempts. From 2026-11-11 to 2026-11-24 that
-// stopped 5 of the 42 scheduled batches with "Independent native run ID,
-// attempt or check suite changed during discovery." These tests pin the one
-// case that gets a bounded second look and the cases that still do not.
+// stopped 5 of the 40 approval jobs with "Independent native run ID, attempt
+// or check suite changed during discovery." These tests pin the one case that
+// gets a bounded second look and the cases that still do not.
 test("a detail that lags the list after the second approval is read again and both gates stay approved", async () => {
   const { state, approvalOptions } = harness();
   // transit-steward 2026-11-13 and refresh-commerce-links 2026-11-17 and
@@ -908,6 +908,23 @@ test("a detail that lags the list after the second approval is read again and bo
   assert.equal(result.restartReadWaits, 1);
   assert.deepEqual(result.approvalWrites.map((write) => [write.id, write.attempt, write.restartedAttempt]), [[101, 1, 2], [202, 1, 2]]);
   assert.equal(result.runs[1].attempt, 2); assert.equal(result.runs[1].action, "approved");
+});
+
+test("the second look reads the same way when the list omits PR associations, as it did in all five failed receipts", async () => {
+  const { state, approvalOptions } = harness();
+  state.listProjection = (run) => ({ ...run, pull_requests: [] });
+  let staleDetailReads = 2;
+  state.detailProjection = (run) => (run.id === 202 && state.approvals.includes(202) && staleDetailReads-- > 0
+    ? { ...run, run_attempt: 1 } : run);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "approved"); assert.equal(result.verified, true);
+  assert.deepEqual(state.approvals, [101, 202]); assert.deepEqual(state.waits, [750]);
+  // The first two rows are what run 43385675738 recorded last on 2026-11-13.
+  // The next two are the same reads 750 ms later.
+  assert.deepEqual(result.associationReads.filter((row) => row.workflow === "style.yml").slice(-4)
+    .map((row) => [row.phase, row.runs[0].attempt, row.runs[0].associationState]),
+  [["pre-approval", 2, "empty-array"], ["pre-approval-detail", 1, "exact"],
+    ["pre-approval", 2, "empty-array"], ["pre-approval-detail", 2, "exact"]]);
 });
 
 test("a list that lags the detail after the second approval is read again and both gates stay approved", async () => {
