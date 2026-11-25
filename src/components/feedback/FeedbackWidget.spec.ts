@@ -4,6 +4,7 @@ import {
   buildFeedbackRequestBody,
   feedbackSendErrorMessage,
   FEEDBACK_TRIGGER_BOTTOM,
+  FEEDBACK_TRIGGER_DISPLAY_CLASS,
   publicFeedbackSurface,
 } from "./FeedbackWidget";
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
@@ -14,6 +15,21 @@ describe("FeedbackWidget bottom-chrome clearance", () => {
     expect(FEEDBACK_TRIGGER_BOTTOM).toContain("safe-area-inset-bottom");
     expect(FEEDBACK_TRIGGER_BOTTOM).toContain("+ 12px");
   });
+
+  it("shows the floating trigger only from the breakpoint where the desktop rail is present", () => {
+    // The trigger sits at the foot of the rail, so both use the lg breakpoint.
+    const rail = readFileSync("src/components/nav/SideRail.tsx", "utf8");
+    expect(rail).toContain("hidden lg:flex");
+    expect(FEEDBACK_TRIGGER_DISPLAY_CLASS).toBe("hidden lg:inline-flex");
+  });
+
+  it("has no per-route position or visibility rule", () => {
+    const widget = readFileSync("src/components/feedback/FeedbackWidget.tsx", "utf8");
+    expect(widget).not.toContain('pathname === "/map"');
+    expect(widget).not.toContain("feedbackInMoreMenu");
+    const helpers = readFileSync("src/lib/feedback-ui.ts", "utf8");
+    expect(helpers).not.toContain("feedbackInMoreMenu");
+  });
 });
 
 describe("FeedbackWidget public surfaces", () => {
@@ -21,14 +37,6 @@ describe("FeedbackWidget public surfaces", () => {
     expect(feedbackSendErrorMessage("feedback-storage-unavailable")).toBe(
       "We couldn't save your report, so your message is still here for you to try again in a moment.",
     );
-  });
-
-  it("reserves room below reading pages so the last content scrolls clear of the trigger", () => {
-    const css = readFileSync("src/app/globals.css", "utf8");
-    const bar = Number(/--app-bottomnav-reserve:\s*(\d+)px/.exec(css)?.[1]);
-    const reserve = /\.app-main-reading\[data-bottom-nav-reserve="true"\]\s*\{\s*padding-bottom:\s*calc\((\d+(?:\.\d+)?)rem \+ env/.exec(css);
-    // FEEDBACK_TRIGGER_BOTTOM puts the 44px trigger 12px above the bar.
-    expect(Number(reserve?.[1]) * 16).toBeGreaterThanOrEqual(bar + 12 + 44);
   });
 
   it("names only the food-truck board as a surface with its own confirmation wording", () => {

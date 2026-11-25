@@ -3,6 +3,7 @@ import { expect, userEvent, waitFor, within } from "storybook/test";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import SearchOverlay from "./SearchOverlay";
+import { FIND_FRAME_PANEL_CLASS, FIND_FRAME_ROOT_CLASS, FIND_FRAME_SCRIM_CLASS } from "./find-frame";
 import { usePushRecentSearch } from "@/hooks/useRecentSearches";
 import { freeSearchPlaceVisual } from "@/lib/search/place-visual";
 import type { QualifiedSearchIndexResult } from "@/lib/search/index";
@@ -192,7 +193,7 @@ const meta = {
     layout: "fullscreen",
     docs: {
       description: {
-        component: "Find restores only the draft words. These clearly labeled sample responses show a fresh read, loading and failure. Provider data and stored result snapshots are not used. An empty field opens on the flat Useful now list; recent searches lead only when this device has submitted phrases to repeat. A pending search holds the panel with four still placeholder rows, and the desktop panel keeps one height in every state.",
+        component: "Find restores only the draft words. These clearly labeled sample responses show a fresh read, loading and failure. Provider data and stored result snapshots are not used. An empty field opens on the flat Useful now list; recent searches lead only when this device has submitted phrases to repeat. A pending search holds the panel with four still placeholder rows, and the desktop panel keeps one height in every state. Restored words are requested as soon as Find opens, and only typing waits out the debounce. The dialog root, the scrim and the panel come from find-frame.ts, which the header's loading state also draws, so that state is the same panel over the same scrim.",
       },
     },
   },
@@ -354,6 +355,16 @@ export const DesktopPanelHoldsItsHeight: Story = {
     const panel = dialogElement.querySelector<HTMLElement>(":scope > div")!;
     const pendingHeight = panel.getBoundingClientRect().height;
     await expect(pendingHeight).toBeLessThan(window.innerHeight);
+    // The frame the header's loading state shares: the scrim shows, and the
+    // panel is centered in it.
+    const scrim = dialogElement.querySelector<HTMLElement>(':scope > button[aria-label="Close search"]')!;
+    await expect(dialogElement.className).toBe(FIND_FRAME_ROOT_CLASS);
+    await expect(scrim.className).toBe(FIND_FRAME_SCRIM_CLASS);
+    await expect(panel.className).toBe(FIND_FRAME_PANEL_CLASS);
+    await expect(getComputedStyle(scrim).display).toBe("block");
+    const frame = dialogElement.getBoundingClientRect();
+    const sheet = panel.getBoundingClientRect();
+    await expect(Math.abs((sheet.left + sheet.right) / 2 - (frame.left + frame.right) / 2)).toBeLessThanOrEqual(1);
     await userEvent.click(within(dialogElement).getByRole("button", { name: "Clear search" }));
     await expect(within(dialogElement).getByText("Useful now", { exact: true })).toBeVisible();
     await expect(panel.getBoundingClientRect().height).toBe(pendingHeight);

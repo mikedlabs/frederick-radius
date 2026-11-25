@@ -20,8 +20,8 @@ import type { DecisionAction } from "@/lib/decision/telemetry";
  *   - PLAIN TOOL: a flat bar attached to the screen's bottom edge, the page
  *     ground with one top hairline. No floating offset, card, radius or
  *     shadow. Its height (4px + a 48px cell row + 4px + the 1px hairline)
- *     equals the shared `--app-bottomnav-reserve`, so toasts and the feedback
- *     trigger clear it exactly as they clear the tab bar.
+ *     equals the shared `--app-bottomnav-reserve`, so toasts clear it exactly
+ *     as they clear the tab bar.
  *   - The reading column reserves more than that height plus the bottom safe
  *     area (`.app-main-reading[data-bottom-nav-reserve="true"]`), so the bar
  *     never covers the last content of the page.

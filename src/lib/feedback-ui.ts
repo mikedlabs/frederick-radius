@@ -7,11 +7,6 @@ export const OPEN_FEEDBACK_EVENT = "fr:open-feedback";
  */
 export const PENDING_FEEDBACK_KEY = "fr:pending-feedback";
 
-/** Reading and comparing need the full content area on these two pages. */
-export function feedbackInMoreMenu(pathname: string | null) {
-  return pathname === "/today" || pathname === "/parking";
-}
-
 export function requestFeedback(returnFocusTo: HTMLElement) {
   // Touch activation does not necessarily move focus to the invoking control.
   returnFocusTo.focus({ preventScroll: true });

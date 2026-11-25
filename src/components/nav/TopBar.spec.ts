@@ -72,13 +72,26 @@ describe("TopBar search ownership", () => {
   it("keeps the full search workspace out of the persistent shell until it opens", () => {
     const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
 
+    // One dynamic request serves the preload and the lazy boundary. Nothing
+    // may pull the workspace into the shell bundle with a static import.
     expect(topBar).toContain(
-      'const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"))',
+      'searchOverlayRequest ??= import("@/components/search/SearchOverlay")',
     );
-    expect(topBar).not.toContain(
-      'import SearchOverlay from "@/components/search/SearchOverlay"',
-    );
+    // A failed request replaces the wrapper, because React.lazy keeps the
+    // rejection it saw (TopBar.find-preload.spec.tsx covers the retry).
+    expect(topBar).toContain("let LazySearchOverlay = lazy(loadSearchOverlay)");
+    expect(topBar).not.toContain('from "@/components/search/SearchOverlay"');
     expect(topBar).toContain("{searchOpen ? (");
     expect(topBar).toContain("openerRef={searchOpenerRef}");
+    // The shared frame is read by the shell, so it cannot import the overlay.
+    const frame = readFileSync("src/components/search/find-frame.ts", "utf8");
+    expect(frame).not.toMatch(/from "[^"]*SearchOverlay"/);
+  });
+
+  it("offers feedback in More tools on every route", () => {
+    const topBar = readFileSync("src/components/nav/TopBar.tsx", "utf8");
+
+    expect(topBar).toContain("<span>Send feedback</span>");
+    expect(topBar).not.toContain("feedbackInMoreMenu");
   });
 });

@@ -199,8 +199,9 @@ describe("Find continuity through the real lazy header and overlay", () => {
   });
 
   it("restores the query after Escape and fetches new results instead of retaining the old answer", async () => {
+    let finish!: (value: Response) => void;
     fetchMock.mockResolvedValueOnce(response("Earlier fixture result"))
-      .mockResolvedValueOnce(response("Updated fixture result"));
+      .mockReturnValueOnce(new Promise<Response>((resolve) => { finish = resolve; }));
     const opener = await open();
     await type("coffee");
     await settle();
@@ -211,11 +212,15 @@ describe("Find continuity through the real lazy header and overlay", () => {
     expect(document.activeElement).toBe(opener);
     await open();
     expect(input().value).toBe("coffee");
+    // The restored words are requested at once. open() waits 60ms, well
+    // inside the 150ms debounce that typing gets.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(container.textContent).not.toContain("Earlier fixture result");
     expect(container.textContent).toContain("Searching");
     // Pending work holds the panel with placeholder rows, never a previous result.
     expect(container.querySelector("[data-search-loading]")?.children).toHaveLength(4);
-    await settle();
+    await act(async () => { finish(response("Updated fixture result")); });
+    await settle(30);
     expect(container.textContent).toContain("Updated fixture result");
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toBe("coffee");

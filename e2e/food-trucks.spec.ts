@@ -82,7 +82,14 @@ test("the weekly board promotes useful stops and folds stops that already ended"
 test("public visitors can open feedback and the food-truck add form", async ({ page }) => {
   await page.goto("/food-trucks");
 
-  await expect(page.getByRole("button", { name: "Send feedback" })).toBeVisible();
+  // At this phone width there is no floating trigger. More tools carries
+  // feedback, and the board's own report action opens the same sheet.
+  await expect(page.locator("[data-feedback-trigger]")).toBeHidden();
+  const more = page.getByLabel("More tools", { exact: true });
+  await more.click();
+  await expect(page.getByRole("button", { name: "Send feedback", exact: true })).toBeVisible();
+  await more.click();
+  await expect(page.getByRole("button", { name: "Send feedback", exact: true })).toBeHidden();
   await page.getByRole("button", { name: "Report a missing truck or wrong stop" }).click();
   const feedbackDialog = page.getByRole("dialog", { name: "Send feedback" });
   await expect(feedbackDialog).toBeVisible();
