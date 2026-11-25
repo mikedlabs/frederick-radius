@@ -92,6 +92,7 @@ export default function WithinReach({
   places,
   amenities,
   mode,
+  budgetMinutes,
   originLng,
   originLat,
   boundaryStatus,
@@ -101,6 +102,7 @@ export default function WithinReach({
   /** Inside-radius OSM amenities, distance-ascending. */
   amenities: (Amenity & { distance_m: number })[];
   mode: TravelMode;
+  budgetMinutes: number;
   /** Rounded before either value enters the Matrix request URL. */
   originLng: number;
   originLat: number;
@@ -248,8 +250,8 @@ export default function WithinReach({
       ? matrixState.durations
       : EMPTY_ROUTED_DURATIONS;
   const reach = useMemo(
-    () => sortReachByTravelTime(baseReach, routedDurations),
-    [baseReach, routedDurations],
+    () => sortReachByTravelTime(baseReach, routedDurations, budgetMinutes),
+    [baseReach, routedDurations, budgetMinutes],
   );
   const hasRoutedTimes = reach.some(
     (item) => routedMinutesFor(routedDurations, item.matrixId) !== null,
@@ -296,11 +298,12 @@ export default function WithinReach({
                 <button
                   type="button"
                   title={r.name}
-                  onClick={() => {
+                  aria-label={`${r.group.label}: ${r.name}, ${routedMinutes === null ? "straight-line estimate" : "street route"}, ${routedMinutes ?? r.minutes} min`}
+                  onClick={(event) => {
                     haptic("light");
-                    openSheet(r.place!);
+                    openSheet(r.place!, { returnFocus: event.currentTarget });
                   }}
-                  className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] py-1.5 pl-2 pr-2.5 text-left transition active:scale-[0.96]"
+                  className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] py-1.5 pl-2 pr-2.5 text-left transition active:scale-[0.96]"
                   style={{ borderColor: "var(--app-border)" }}
                 >
                   {body}
@@ -309,7 +312,8 @@ export default function WithinReach({
                 <Link
                   href={r.href ?? "/map"}
                   title={r.name}
-                  className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] py-1.5 pl-2 pr-2.5 text-left transition active:scale-[0.96]"
+                  aria-label={`${r.group.label}: ${r.name}, ${routedMinutes === null ? "straight-line estimate" : "street route"}, ${routedMinutes ?? r.minutes} min`}
+                  className="tactile-interactive inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] py-1.5 pl-2 pr-2.5 text-left transition active:scale-[0.96]"
                   style={{ borderColor: "var(--app-border)" }}
                 >
                   {body}

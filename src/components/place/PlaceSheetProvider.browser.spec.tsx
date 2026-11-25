@@ -188,7 +188,7 @@ describe("on-demand place sheet recovery", () => {
     expect(initial.textContent).toContain("Known first");
     expect(initial.getAttribute("data-metadata-pending")).toBe("true");
     expect(initial.getAttribute("data-opener")).toBe("map-first");
-    expect(initial.getAttribute("data-origin")).toBe('{"lng":-77.41,"lat":39.41}');
+    expect(JSON.parse(initial.getAttribute("data-origin")!)).toEqual({ lng: -77.41, lat: 39.41, expiresAt: expect.any(Number) });
     expect(initial.getAttribute("data-return-to")).toBe(mapUrl);
     await act(async () => finish(Response.json({ places: [placeRecord("first-place", "Full first")] })));
     const hydrated = container.querySelector('[role="dialog"]')!;
@@ -311,6 +311,10 @@ describe("on-demand place sheet recovery", () => {
     expect(harness.push).not.toHaveBeenCalled();
     expect(harness.leave).not.toHaveBeenCalled();
     expect(harness.recent).not.toHaveBeenCalled();
+    // The lookup is complete; the active travel-origin timer still protects
+    // the sheet if the visitor leaves it open beyond the five-minute limit.
+    await act(async () => { await vi.advanceTimersByTimeAsync(5 * 60_000); });
+    expect(sheet.getAttribute("data-origin")).toBe("null");
     expect(vi.getTimerCount()).toBe(0);
   });
 

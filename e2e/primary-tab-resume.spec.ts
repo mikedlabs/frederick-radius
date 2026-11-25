@@ -138,7 +138,7 @@ test("Events tabs restore private search, Compact view, filters and nonzero list
   await filter.tap();
   await dialog.getByRole("tab", { name: "What", exact: true }).tap();
   await dialog.getByRole("textbox", { name: "Filter the events shown" }).fill(eventQuery);
-  await dialog.getByRole("button", { name: "Done", exact: true }).tap();
+  await dialog.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }).tap();
   await expect(dialog).toBeHidden();
   await display.tap();
   await page.getByRole("button", { name: "Compact view", exact: true }).tap();

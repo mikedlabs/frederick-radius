@@ -115,64 +115,66 @@ export default async function AboutPage() {
     // Centered, capped at the same 768 the rest of the app uses.
     <div className="relative mx-auto w-full max-w-screen-md space-y-5 py-3 sm:space-y-7 sm:py-6">
 
-      {/* Seasonal hero photograph — a real photo of Frederick from the
-          owner's seasons collection, picked by current season with
-          daily rotation. Frames "the pocket compass for Frederick
-          County" line with a real sense of place before the pitch. */}
-      <div
-        className="relative aspect-[2/1] overflow-hidden rounded-[var(--app-radius-lg)] sm:aspect-[16/9]"
-      >
-        <SeasonalPhoto
-          season="auto"
-          alt="Frederick County"
-          priority={true}
-          sizes="(max-width: 768px) 100vw, 640px"
-          className="absolute inset-0"
-        />
-        {/* Soft bottom gradient so the eyebrow + H1 below stay readable
-            against a busy photo without darkening it heavily. */}
+      <div className="grid gap-4 md:grid-cols-2 md:items-center md:gap-7">
+        {/* Seasonal hero photograph — a real photo of Frederick from the
+            owner's seasons collection, picked by current season with
+            daily rotation. Frames "the pocket compass for Frederick
+            County" line with a real sense of place before the pitch. */}
         <div
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 h-1/3"
-          style={{
-            background: "linear-gradient(to top, rgba(0,0,0,0.18), transparent)",
-          }}
-        />
-      </div>
+          className="relative aspect-[2/1] overflow-hidden rounded-[var(--app-radius-lg)] md:order-2 md:aspect-[4/3]"
+        >
+          <SeasonalPhoto
+            season="auto"
+            alt="Frederick County"
+            priority={true}
+            sizes="(min-width: 768px) 380px, calc(100vw - 32px)"
+            className="absolute inset-0"
+          />
+          {/* Soft bottom gradient so the eyebrow + H1 below stay readable
+              against a busy photo without darkening it heavily. */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-1/3"
+            style={{
+              background: "linear-gradient(to top, rgba(0,0,0,0.18), transparent)",
+            }}
+          />
+        </div>
 
-      <header className="space-y-3">
-        <p
-          className="eyebrow"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          About Frederick Radius
-        </p>
-        <h1
-          className="font-serif text-[36px] font-semibold leading-[1.05] tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Frederick County, organized around{" "}
-          <span style={{ color: "var(--app-brand)" }}>your day.</span>
-        </h1>
-      </header>
+        <header className="space-y-3 md:order-1">
+          <p
+            className="eyebrow"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            About Frederick Radius
+          </p>
+          <h1
+            className="font-serif text-[36px] font-semibold leading-[1.05] tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Frederick County, organized around{" "}
+            <span style={{ color: "var(--app-brand)" }}>your day.</span>
+          </h1>
 
-      {/* The first useful action stays with the promise instead of making a
-          visitor read the whole origin story before they can try the app. */}
-      <div>
-        <Link
-          href="/today"
-          className="tactile tactile-lift tactile-glow-brand inline-flex min-h-11 items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white"
-          style={{ background: "var(--app-brand)" }}
-        >
-          See what&apos;s useful right now
-          <ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        </Link>
+          {/* The first useful action stays with the promise instead of making a
+              visitor read the whole origin story before they can try the app. */}
+          <div>
+            <Link
+              href="/today"
+              className="tactile tactile-lift tactile-glow-brand inline-flex min-h-11 items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white"
+              style={{ background: "var(--app-brand)" }}
+            >
+              See what&apos;s useful right now
+              <ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            </Link>
+          </div>
+        </header>
       </div>
 
       {/* The pitch — four paragraphs, no more. Read top to bottom in
           about 30 seconds. Libre Caslon Display carries the editorial
           headings and Public Sans carries the body. */}
-      <section className="space-y-4 text-[16px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+      <section className="max-w-prose space-y-4 text-[16px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         <p>
           Frederick Radius helps people find open places, local events, and
           practical information across Frederick County, Maryland.
@@ -532,7 +534,7 @@ export default async function AboutPage() {
       >
         <p className="inline-flex items-center gap-2">
           <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-cool)" }} />
-          <Link href="/trust" className="tap-44-y inline-flex items-center font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-cool)" }}>
+          <Link href="/trust" className="inline-flex min-h-11 items-center font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-cool)" }}>
             How Radius checks and sources listings <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
           </Link>
         </p>

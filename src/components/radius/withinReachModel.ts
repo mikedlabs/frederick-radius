@@ -64,8 +64,10 @@ export function formatReachMinutes(
 export function sortReachByTravelTime<T extends ReachTimeItem>(
   items: T[],
   durations: Record<string, number>,
+  budgetMinutes = Infinity,
 ): T[] {
-  return [...items].sort((a, b) => {
+  // An approximate polygon can contain a place whose actual route takes longer.
+  return items.filter((item) => (routedMinutesFor(durations, item.matrixId) ?? item.minutes) <= budgetMinutes).sort((a, b) => {
     const aRouted = routedMinutesFor(durations, a.matrixId);
     const bRouted = routedMinutesFor(durations, b.matrixId);
     const aMinutes = aRouted ?? a.minutes;

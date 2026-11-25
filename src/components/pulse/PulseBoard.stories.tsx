@@ -32,7 +32,7 @@ const river: PulseTile = {
   key: "rivers",
   label: "Monocacy River",
   iconName: "Waves",
-  sourceLabel: "USGS Water Services",
+  sourceLabel: "USGS Water Data",
   countLabel: "At Jug Bridge",
   accent: "var(--app-cool)",
   active: false,

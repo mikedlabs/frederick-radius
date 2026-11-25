@@ -61,10 +61,10 @@ describe("GET /api/events/[slug]/summary", () => {
     const event = { slug: "concert", venue_place_slug: "amphitheater", geo_confidence: "area", status: "scheduled" };
     const geom = { lng: -77.4087, lat: 39.4126 };
     mocks.resolveEventPageBySlug.mockResolvedValue({ kind: "seed", event });
-    mocks.clientPlaceBySlug.mockReturnValue({ geom });
+    mocks.clientPlaceBySlug.mockReturnValue({ geom, name: "Amphitheater", is_operational: "closed_temporarily" });
     mocks.noticeForEvent.mockReturnValue({ status: "cancelled" });
     const response = await request("concert");
-    expect((await response.json()).event).toMatchObject({ geom, geo_confidence: "venue_match", status: "cancelled" });
+    expect((await response.json()).event).toMatchObject({ geom, geo_confidence: "venue_match", status: "cancelled", sheet_venue: { name: "Amphitheater", operational: "closed_temporarily" } });
   });
 
   it("does not give an online event the physical venue coordinate", async () => {

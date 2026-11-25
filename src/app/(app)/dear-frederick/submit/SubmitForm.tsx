@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import SubmissionReceiptHeading from "@/components/submit/SubmissionReceiptHeading";
 import { useCallback, useState } from "react";
 
 /**
@@ -143,12 +144,9 @@ export default function SubmitForm() {
             "color-mix(in srgb, var(--app-positive) 6%, var(--app-bg-elevated))",
         }}
       >
-        <h2
-          className="font-serif text-[18px] font-semibold"
-          style={{ color: "var(--app-ink)" }}
-        >
+        <SubmissionReceiptHeading className="font-serif text-[18px] font-semibold">
           Your letter is in.
-        </h2>
+        </SubmissionReceiptHeading>
         <p
           className="mt-1.5 text-[13.5px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
@@ -184,7 +182,7 @@ export default function SubmitForm() {
           Photo of your letter
         </span>
         <label
-          className="tap-44 mt-1 flex cursor-pointer items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border border-dashed px-3 py-4 text-[14px] font-semibold"
+          className="relative mt-1 flex min-h-11 cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--app-ink)] items-center justify-center gap-2 rounded-[var(--app-radius-sm)] border border-dashed px-3 py-4 text-[14px] font-semibold"
           style={{
             borderColor: "var(--app-control-border, var(--app-border))",
             color: "var(--app-ink-2)",
@@ -196,7 +194,7 @@ export default function SubmitForm() {
             type="file"
             accept="image/*"
             capture="environment"
-            className="hidden"
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             onChange={(e) => onPickPhoto(e.target.files?.[0])}
           />
         </label>

@@ -15,6 +15,7 @@
  * The schedule + calendar logic is pure and unit-tested. Only the
  * protobuf fetch/decode is server-only.
  */
+import { brunswickCancelled } from "@/lib/transit-service-calendar";
 import { gtfsRealtime } from "@/lib/integrations/gtfsRealtimeBindings";
 import SCHEDULE from "@/data/marc-schedule.json";
 import {
@@ -92,6 +93,8 @@ export function activeServiceIds(
   sched: ScheduleJson = SCHED,
 ): Set<string> {
   const active = new Set<string>();
+  const serviceDate = `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
+  if (brunswickCancelled(serviceDate)) return active;
   for (const [svc, c] of Object.entries(sched.calendar)) {
     if (c.days[weekday] === 1 && ymd >= c.start && ymd <= c.end) active.add(svc);
   }
@@ -264,7 +267,7 @@ export async function getMarcBoard(
       (stop) => nextScheduled(stop, 0, active, 1).length > 0,
     ),
   );
-  const predictions = await getTripPredictions();
+  const predictions = serviceToday ? await getTripPredictions() : new Map<string, number>();
 
   const year = Number(ymd.slice(0, 4));
   const month = Number(ymd.slice(4, 6));

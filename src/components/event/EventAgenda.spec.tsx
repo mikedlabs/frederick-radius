@@ -122,6 +122,18 @@ describe("EventAgenda date and time truth", () => {
     expect(groups.flatMap((group) => group.events.map((item) => item.slug))).toEqual(["test-event", "ongoing"]);
   });
 
+  it("integrates overlapping sessions into today's existing links and leaves all-day listings without a rail", () => {
+    const first = event();
+    const second = event({ slug: "second", starts_at: "2026-09-20T17:15:00-04:00" });
+    const allDay = event({ slug: "all-day", is_all_day: true });
+    const html = render([first, second, allDay]);
+    expect(html.match(/data-event-time-rail/g)).toHaveLength(2);
+    expect(html.match(/data-schedule-overlap/g)).toHaveLength(2);
+    expect(html.match(/>Overlap</g)).toHaveLength(1);
+    expect(html).toContain("5:15 PM to 6:00 PM. Overlaps 1 other displayed event.");
+    expect(html.match(/href="\/events\/second"/g)).toHaveLength(1);
+  });
+
   it("does not advertise an unsupported month filter in the standalone empty fallback", () => {
     const html = render([]);
     expect(html).toContain("/events?lens=all");

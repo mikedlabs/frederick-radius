@@ -1,9 +1,6 @@
+import { publishedEventTime } from "./published-time";
 import type { Event } from "@/data/events";
 import { isRangeListing } from "@/lib/eventHorizon";
-import {
-  eventHasTrustworthyEnd,
-  isDateOnlyEventAnchor,
-} from "@/lib/eventWhenLabel";
 
 export { eventHasTrustworthyEnd } from "@/lib/eventWhenLabel";
 
@@ -72,10 +69,10 @@ export function formatEventWhen(e: Event): string {
       : `${dateFmt.format(start)} – ${dateFmt.format(displayEnd)}`;
   }
   const sameDay = EASTERN_DAY_KEY.format(start) === EASTERN_DAY_KEY.format(end);
-  if (isDateOnlyEventAnchor(e)) {
+  if (publishedEventTime(e) === "date") {
     return dateFmt.format(start);
   }
-  if (e.starts_at === e.ends_at || !eventHasTrustworthyEnd(e)) {
+  if (e.starts_at === e.ends_at || publishedEventTime(e) === "start") {
     return `${dateFmt.format(start)} · ${timeFmt.format(start)}`;
   }
   if (sameDay) {
@@ -107,7 +104,7 @@ export function eventDateBlock(e: Event): { weekday: string; day: string; month:
     // 31" reads as what it is, an ongoing listing, not a curtain time.
     time: e.is_all_day
       ? "All day"
-      : isDateOnlyEventAnchor(e)
+      : publishedEventTime(e) === "date"
         ? "Time not listed"
       : isRangeListing(e)
         ? `through ${new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "short", day: "numeric" }).format(new Date(e.ends_at))}`

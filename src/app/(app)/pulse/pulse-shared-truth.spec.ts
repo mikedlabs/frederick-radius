@@ -5,7 +5,8 @@ const pulsePage = readFileSync("src/app/(app)/pulse/page.tsx", "utf8");
 
 describe("Pulse shared current-situation contract", () => {
   it("loads the county condition feeds through one shared snapshot", () => {
-    expect(pulsePage.match(/getCurrentSituationSnapshot\(\)/g)).toHaveLength(1);
+    expect(pulsePage.match(/getCurrentSituationSnapshot\(/g)).toHaveLength(1);
+    expect(pulsePage).toContain("getCurrentSituationSnapshot({ waitForSources: true })");
 
     for (const directGetter of [
       "getChartIncidentsFrederickResult",

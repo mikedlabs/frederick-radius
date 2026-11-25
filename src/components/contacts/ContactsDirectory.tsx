@@ -13,6 +13,7 @@ import {
   formatPhone, TOPICS, topicOf, isEssential, isOpen24_7,
   type DepartmentContact, type TopicId,
 } from "@/data/departments";
+import { telHref } from "@/lib/format/usPhone";
 import { getHomeMuni } from "@/lib/personalize";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
@@ -488,7 +489,7 @@ function EssentialRow({ d }: { d: DepartmentContact }) {
   return (
     <li>
       {d.phone ? (
-        <a href={`tel:${d.phone}`} aria-label={`Call ${d.name}: ${formatPhone(d.phone)}`} className={cls} style={style}>{inner}</a>
+        <a href={telHref(d.phone)} aria-label={`Call ${d.name}: ${formatPhone(d.phone)}`} className={cls} style={style}>{inner}</a>
       ) : (
         <a href={d.website} target={d.website.startsWith("/") ? undefined : "_blank"} rel={d.website.startsWith("/") ? undefined : "noopener noreferrer"} aria-label={`${d.name}: more`} className={cls} style={style}>{inner}</a>
       )}
@@ -531,7 +532,7 @@ function DeptRow({
           )}
         </p>
         {d.phone ? (
-          <a href={`tel:${d.phone}`} aria-label={`Call ${d.name}: ${formatPhone(d.phone)}`} className="tap-44-y mt-0.5 inline-flex items-center gap-1.5 font-mono text-[13px] font-semibold tabular-nums" style={{ color: NUM_COLOR[j] ?? "var(--app-brand-press)" }}>
+          <a href={telHref(d.phone)} aria-label={`Call ${d.name}: ${formatPhone(d.phone)}`} className="tap-44-y mt-0.5 inline-flex items-center gap-1.5 font-mono text-[13px] font-semibold tabular-nums" style={{ color: NUM_COLOR[j] ?? "var(--app-brand-press)" }}>
             <Phone className="h-3 w-3" strokeWidth={2.6} aria-hidden />
             {formatPhone(d.phone)}
           </a>

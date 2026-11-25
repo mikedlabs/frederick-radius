@@ -86,7 +86,13 @@ async function buildOuting(page: Page, audience: PlanSpec["i"]["audience"] = "da
   expect(names.length).toBeGreaterThan(0);
   expect(names.length).toBeLessThanOrEqual(8);
   expect(spec.s).toHaveLength(names.length);
-  const title = await page.getByRole("heading", { level: 1 }).textContent();
+  const resultHeading = page.getByRole("heading", { level: 1 });
+  await expect(resultHeading).toBeFocused();
+  await expect.poll(() => resultHeading.evaluate(heading => {
+    const topBar = document.querySelector("[data-app-topbar-row]");
+    return heading.getBoundingClientRect().top >= (topBar?.getBoundingClientRect().bottom ?? 0);
+  })).toBe(true);
+  const title = await resultHeading.textContent();
   expect(title).toBeTruthy();
   await expect(page.getByRole("button", { name: "Save outing", exact: true })).toBeEnabled();
   await settleFirstStop(page);
@@ -246,6 +252,26 @@ for (const { width, colorScheme, audience, daypart } of savedJourneyCases) {
     await info.attach("saved-outing-exact-return", { contentType: "application/json", body: Buffer.from(JSON.stringify({ ...outing, before, confirmedGeometry, after, runtimeErrors: runtime.errors, consoleErrors: runtime.consoleErrors, askCalls: runtime.askCalls(), touchActions: touch, photoHealth: "not tested" }, null, 2)) });
   });
 }
+
+test("a completed plan adjustment returns to the new title and cancelling returns to Adjust", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 320, height: 844 });
+  await buildOuting(page, "family", false, daypartStarts.morning);
+  const adjust = page.getByRole("button", { name: "Adjust", exact: true });
+  await adjust.click();
+  const editor = page.getByRole("dialog", { name: "Adjust the plan" });
+  await editor.getByText("Fine-tune the outing", { exact: true }).click();
+  await editor.getByRole("combobox", { name: "Who is going" }).selectOption("date");
+  await editor.getByRole("button", { name: "Update this plan" }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: daypartStarts.morning.dateTitle, level: 1 })).toBeFocused();
+  await expectTarget(page, "Save outing", "button");
+  await adjust.click();
+  await expect(editor).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(editor).toHaveCount(0);
+  await expect(adjust).toBeFocused();
+});
 
 test("another real tab observes saving and removing the exact outing without refresh", async ({ context }, info) => {
   test.setTimeout(90_000);

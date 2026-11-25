@@ -389,6 +389,30 @@ will be CLOSED* on Wednesday, November 11, 2026 for Veterans Day. *The following
 });
 
 describe("official CivicPlus alert availability", () => {
+  it("rejects incomplete RSS even when it begins like an empty current-alert feed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<rss><channel><item>")));
+    const result = await getOfficialCivicAlertsResult();
+    expect(result.available).toBe(false);
+    expect(result.sourceHealth.every((source) => !source.available && !source.checkedAt)).toBe(true);
+  });
+
+  it("expires retained membership per category at the original check time", async () => {
+    const checkedAt = "2026-07-28T16:30:00.000Z";
+    const xml = "<rss><channel><item><title>Frederick emergency</title><link>https://www.cityoffrederickmd.gov/AlertCenter.aspx?AID=24</link><pubDate>Tue, 28 Jul 2026 15:00:00 GMT</pubDate></item></channel></rss>";
+    const readAt = async (time: string) => getOfficialCivicAlertsResult({ now: new Date(time) }, async (feed) => {
+      const city = feed.id === "city-emergency";
+      return { parsed: parseOfficialAlertFeed(city ? xml : EMPTY_RSS, feed, city ? checkedAt : time), checkedAt: city ? checkedAt : time };
+    });
+    const retained = await readAt("2026-07-28T16:39:59.999Z");
+    expect(retained.alerts).toHaveLength(1);
+    expect(retained.sourceHealth[0]).toMatchObject({ available: true, checkedAt });
+    const expired = await readAt("2026-07-28T16:40:00.000Z");
+    expect(expired.alerts).toEqual([]);
+    expect(expired).toMatchObject({ available: true, degraded: true });
+    expect(expired.sourceHealth[0]).toMatchObject({ available: false, stale: true, checkedAt, activeCount: 0 });
+    expect(expired.sourceHealth.slice(1).every((source) => source.available && !source.stale)).toBe(true);
+  });
+
   it("keeps category health separate and never claims complete coverage", async () => {
     vi.stubGlobal(
       "fetch",

@@ -25,10 +25,9 @@ filter chip is filled ink (background `--app-ink`, text `--app-bg`), never
 coral. Coral text uses `--app-link` or `--app-brand-text`, Creek text uses
 `--app-cool-text`, and forest text uses `--app-forest-text`; the fill tokens
 `--app-brand`, `--app-brand-press` and `--app-cool` are never text colors.
-Libre Caslon Display sets the header wordmark in the top bar and is a rare
-editorial signature on a few specialty guide pages. No page title or content
-on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages or event
-pages uses it; every title there is heavy system sans. A row shows
+Libre Caslon Display sets the wordmark, the photographic cover story headline
+on Today and selected specialty guide headlines. System sans carries the other
+product titles and all controls. A row shows
 a thumbnail only when a real photograph exists; otherwise it keeps the media
 slot and shows a plain `--app-ink-3` glyph with no tile behind it. A rounded,
 bordered card around ordinary content is a regression. The primitives below
@@ -129,8 +128,10 @@ a 44px minimum height at every size, and no gloss, lip, glow or lift. Pass
 an opaque `--app-bg-elevated-solid` popover with a hairline edge, the 6px
 corner and `--app-shadow-3`, because it really sits above the page. The
 current choice is ink on the sunken ground with a check, not a coral tint.
-Escape, an outside press and tabbing away close it. State belongs to the
-caller.
+The trigger and choices have 44px touch targets. Arrow Up or Down opens the
+choices and moves focus through them. Home and End reach either end. Enter
+commits and returns focus to the trigger. Escape, an outside press and tabbing
+away dismiss the choices. State belongs to the caller.
 
 - Use it in a list page toolbar beside a count or a layout toggle.
 - For one choice from a long list inside a form, a native `<select>` is

@@ -683,9 +683,13 @@ describe("civic Ask grounded results", () => {
     )).toBe(false);
   });
 
+  const schoolCheck = "2026-07-27T11:10:00.000Z";
+  const schoolNow = new Date("2026-07-27T11:20:00.000Z");
+
   it("uses the current FCPS operations notice", () => {
     const result = schoolStatusAskResult({
       available: true,
+      checkedAt: schoolCheck,
       data: [{
         id: "fcps-1",
         title: "FCPS schools open two hours late",
@@ -694,7 +698,7 @@ describe("civic Ask grounded results", () => {
         published_at: "2026-07-27T10:00:00.000Z",
         url: "https://www.fcps.org/alerts/delay",
       }],
-    });
+    }, {}, schoolNow);
 
     expect(result.answer).toContain("FCPS currently has this operations notice");
     expect(result.sources).toHaveLength(1);
@@ -706,16 +710,39 @@ describe("civic Ask grounded results", () => {
     expect(result.sources.every((source) => !source.href.startsWith("/places/"))).toBe(true);
   });
 
-  it("is explicit when the FCPS feed cannot be checked", () => {
-    const result = schoolStatusAskResult({ available: false, data: [] });
-
-    expect(result.answer).toContain("couldn’t load the FCPS operations feed");
-    expect(result.sources[0]?.reason).toBe("Operations feed unavailable");
+  it.each([
+    { available: false, checkedAt: schoolCheck },
+    { available: true, checkedAt: undefined },
+    { available: true, checkedAt: "invalid" },
+    { available: true, checkedAt: "2026-07-27T10:59:59.999Z" },
+    { available: true, checkedAt: "2026-07-27T11:25:00.001Z" },
+  ])("keeps school status unverified for %o", (check) => {
+    for (const data of [[], [{
+      id: "closed", title: "Schools closed", description: "", status: "closed" as const,
+      published_at: schoolCheck, url: "https://www.fcps.org/closed",
+    }]]) {
+      const result = schoolStatusAskResult({ ...check, data, asOf: schoolCheck }, {}, schoolNow);
+      expect(result.answer).toContain("couldn’t verify the latest FCPS school status");
+      expect(result.sources).toHaveLength(1);
+      expect(result.sources[0]).toMatchObject({
+        href: "https://www.fcps.org/", reason: "Current school status unverified", confidence: "medium",
+      });
+      expect(result.intelligence?.confidence).toBe("medium");
+    }
   });
+
+  it.each(["2026-07-27T11:00:00.000Z", "2026-07-27T11:25:00.000Z"])(
+    "accepts an empty FCPS feed at the shared freshness boundaries (%s)", (checkedAt) => {
+      const result = schoolStatusAskResult({ available: true, checkedAt, data: [] }, {}, schoolNow);
+      expect(result.answer).toContain("no current closure, delay, or early-dismissal notice");
+      expect(result.sources[0]?.confidence).toBe("high");
+    },
+  );
 
   it("lets a newer reopening notice supersede an older closure", () => {
     const result = schoolStatusAskResult({
       available: true,
+      checkedAt: schoolCheck,
       data: [
         {
           id: "closed",
@@ -734,7 +761,7 @@ describe("civic Ask grounded results", () => {
           url: "https://www.fcps.org/alerts/reopened",
         },
       ],
-    });
+    }, {}, schoolNow);
 
     expect(result.answer).toContain("FCPS returns to normal operations");
     expect(result.answer).not.toContain("schools and offices are closed");

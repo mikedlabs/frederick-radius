@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import TRANSIT from "@/data/transit.json";
 import { formatMapTimestamp } from "@/components/map/mapContent";
+import { COUNTY_TRANSIT_BULLETIN_URL, countyTransitException } from "@/lib/transit-service-calendar";
+import { easternDayKey } from "@/lib/tz";
 import { readableTextOn } from "@/lib/color/readableText";
 import { providerTimeFrom, type StopArrivalsSnapshot } from "./useStopArrivals";
 import styles from "./TransitExperience.module.css";
@@ -242,13 +244,16 @@ export default function StopArrivalsPopup({
 
   const scheduleLink = <a href={COUNTY_TRANSIT_URL} target="_blank" rel="noopener noreferrer" className={styles.stopArrivalSchedule}>Check the official schedule</a>;
 
+  const exception = nowMs > 0 ? countyTransitException(easternDayKey(new Date(nowMs))) : null;
+  const cancelled = exception?.kind === "cancelled";
   return (
     <div className={styles.stopArrivals}>
       {showName && <strong className={styles.stopArrivalName}>{stop.name}</strong>}
-      {routes.length > 0 && <div className={styles.stopArrivalRoutes}>
+      {exception && <p className={styles.stopArrivalState}>{exception.text} <a className={styles.stopArrivalSchedule} href={COUNTY_TRANSIT_BULLETIN_URL}>Read the county transit bulletin (PDF)</a>.</p>}
+      {!cancelled && routes.length > 0 && <div className={styles.stopArrivalRoutes}>
         {routes.map((route) => <RouteChip key={route.id} route={route} />)}
       </div>}
-      {preds === null ? (
+      {cancelled ? null : preds === null ? (
         <p className={styles.stopArrivalState}>Checking for inbound buses…</p>
       ) : feedAvailable === false ? (
         <p className={styles.stopArrivalState}>Live arrivals are unavailable. {scheduleLink}.</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import {
   RotateCcw,
@@ -72,9 +72,8 @@ import {
  * home-area toggles and the Appearance pair, all 6px with an ink fill when
  * selected. The interests grid mirrors the /welcome step-3 layout
  * (intentionally, for recognition over recall).
- * The "Reset & re-onboard" affordance at the foot clears every
- * device-local pref + the onboarded cookie and sends the user back to
- * /welcome from a clean slate.
+ * Restart setup clears the onboarding choices. Appearance, phone feedback
+ * and saved items are independent of that flow.
  */
 
 // Mirrors INTEREST_OPTIONS in WelcomeFlow.tsx. Kept inline (not
@@ -107,6 +106,7 @@ export default function PreferencesPanel() {
   const [muni, setMuni] = useState<string | null>(null);
   const [interests, setInterestsState] = useState<Set<string>>(new Set());
   const [muniEditing, setMuniEditing] = useState(false);
+  const homeAreaTrigger = useRef<HTMLButtonElement>(null);
   const [communityOn, setCommunityOn] = useState(true);
   const [fit, setFit] = useState<AskFitContext>({});
   // The same store the header toggle reads, so both controls stay in step.
@@ -137,6 +137,7 @@ export default function PreferencesPanel() {
     }
     if (!slug) cancelPendingReturnBridgeValue("home-area");
     setMuniEditing(false);
+    homeAreaTrigger.current?.focus({ preventScroll: true });
   }, []);
 
   const toggleInterest = useCallback((slug: string) => {
@@ -186,7 +187,7 @@ export default function PreferencesPanel() {
     if (
       typeof window === "undefined" ||
       !window.confirm(
-        "Clear all your preferences and re-do the welcome flow? This won't delete saved places.",
+        "Restart welcome setup? This clears your home area, interests and preferences under What fits. You’ll choose visitor or resident again.",
       )
     )
       return;
@@ -206,12 +207,24 @@ export default function PreferencesPanel() {
       {/* HOME MUNICIPALITY */}
       <SettingsSection title="Your spot">
         <SettingsRow>
-          {!muniEditing ? (
+          <div
+            role="group"
+            aria-label="Home area"
+            onKeyDown={(event) => {
+              if (!muniEditing || event.key !== "Escape") return;
+              event.preventDefault();
+              setMuniEditing(false);
+              homeAreaTrigger.current?.focus({ preventScroll: true });
+            }}
+          >
             <button
               type="button"
+              ref={homeAreaTrigger}
+              aria-expanded={muniEditing}
+              aria-controls={muniEditing ? "settings-home-area-options" : undefined}
               onClick={() => {
                 haptic("light");
-                setMuniEditing(true);
+                setMuniEditing((open) => !open);
               }}
               // tap-44-y keeps the 44px target without a 44px box, so the
               // help line sits as close to this title as in the Sign in row.
@@ -226,7 +239,7 @@ export default function PreferencesPanel() {
                 className="inline-flex shrink-0 items-center text-[0.875rem] font-semibold"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                Change
+                {muniEditing ? "Close" : "Change"}
                 <ChevronRight
                   className="ml-0.5 h-4 w-4"
                   strokeWidth={2.25}
@@ -234,34 +247,35 @@ export default function PreferencesPanel() {
                 />
               </span>
             </button>
-          ) : (
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => changeMuni(null)}
-                aria-pressed={muni === null}
-                className={TOGGLE_CLASS}
-                style={toggleStyle(muni === null)}
-              >
-                All of the county
-              </button>
-              <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8.5rem),1fr))] gap-2">
-                {MUNICIPALITIES.map((m) => (
-                  <li key={m.slug} className="min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => changeMuni(m.slug)}
-                      aria-pressed={muni === m.slug}
-                      className={`${TOGGLE_CLASS} h-full`}
-                      style={toggleStyle(muni === m.slug)}
-                    >
-                      {m.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            {muniEditing && (
+              <div id="settings-home-area-options" className="mt-3 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => changeMuni(null)}
+                  aria-pressed={muni === null}
+                  className={TOGGLE_CLASS}
+                  style={toggleStyle(muni === null)}
+                >
+                  All of the county
+                </button>
+                <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8.5rem),1fr))] gap-2">
+                  {MUNICIPALITIES.map((m) => (
+                    <li key={m.slug} className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => changeMuni(m.slug)}
+                        aria-pressed={muni === m.slug}
+                        className={`${TOGGLE_CLASS} h-full`}
+                        style={toggleStyle(muni === m.slug)}
+                      >
+                        {m.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
           <p className={`${muniEditing ? "mt-2" : "mt-0.5"} ${ROW_HELP}`} style={helpStyle}>
             Sets where Today and the Map start from.
           </p>
@@ -432,7 +446,7 @@ export default function PreferencesPanel() {
         style={{ color: "var(--app-ink-2)" }}
       >
         <RotateCcw className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        Reset and re-do the welcome flow
+        Restart welcome setup
       </button>
     </div>
   );

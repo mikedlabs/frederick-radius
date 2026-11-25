@@ -13,6 +13,7 @@ import { ArrowLeft, X } from "lucide-react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { prefersReducedMotion } from "@/lib/motion";
+import styles from "./ToolsLayout.module.css";
 
 export type ToolDeckDialogProps = {
   open: boolean;
@@ -28,8 +29,7 @@ export type ToolDeckDialogProps = {
 /**
  * Responsive modal shell for the Tool Deck.
  *
- * One portal-backed dialog changes shape at the same `lg` breakpoint as the
- * app navigation: a bottom sheet below it and a right-side panel above it.
+ * One portal-backed dialog adapts to the available width and primary input.
  * Keeping one DOM tree prevents duplicate focus targets and accessible IDs.
  * Inside an existing Tools drawer, inline presentation reuses its containment
  * and handles Escape at the content boundary without a second modal listener.
@@ -178,11 +178,8 @@ export default function ToolDeckDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className={`absolute inset-x-0 bottom-0 flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-3)] outline-none transition-transform duration-[var(--app-dur-med)] ease-[var(--app-ease-out)] motion-reduce:transition-none lg:inset-y-0 lg:left-auto lg:right-0 lg:max-h-none lg:w-[30rem] lg:max-w-[calc(100vw-6rem)] lg:rounded-l-[var(--app-radius-lg)] lg:rounded-tr-none lg:border-l lg:border-t-0 ${
-          entered
-            ? "translate-y-0 lg:translate-x-0"
-            : "translate-y-full lg:translate-x-full lg:translate-y-0"
-        }`}
+        data-entered={entered}
+        className={`absolute flex flex-col overflow-hidden rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated-solid)] shadow-[var(--app-shadow-3)] outline-none transition-[transform,opacity] duration-[var(--app-dur-med)] ease-[var(--app-ease-out)] motion-reduce:transition-none ${styles.panel}`}
         style={{ borderColor: "var(--app-border)" }}
       >
         {/* No grab pill: this panel does not drag, so it does not promise to. */}

@@ -20,6 +20,7 @@ const creekPhoto = getOwnedPlacePhoto(creekSlug)!;
 const lockPhoto = CREDITED_LOCAL_PLACE_PHOTOS[lockSlug].image;
 const primarySlug = "joseph-dill-baker-memorial-carillon-bell-tower";
 const primaryPhoto = getOwnedPlacePhoto(primarySlug)!;
+const walkingPhoto = "/images/seasons/summer/SUMMER CARROL CREEK.jpg";
 const secondDiscoveryPhoto = getOwnedPlacePhoto("sophie-madigans-playground-frederick")!;
 const failureSignal = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
 const returnTo = "/search?q=Creek&in=frederick&kind=place";
@@ -179,7 +180,7 @@ async function prepare(context: BrowserContext, page: Page, baseURL: string | un
         evidence.failedImages.push(imagePath);
         return route.fulfill({ headers: { "Cache-Control": "no-store" }, contentType: "image/gif", body: failureSignal });
       }
-      if ([creekPhoto.src, lockPhoto.src, primaryPhoto.src, secondDiscoveryPhoto.src].includes(imagePath)) {
+      if ([creekPhoto.src, lockPhoto.src, primaryPhoto.src, secondDiscoveryPhoto.src, walkingPhoto].includes(imagePath)) {
         return route.fulfill({ headers: { "Cache-Control": "no-store" }, contentType: "image/jpeg", body: await readFile(`public${imagePath}`) });
       }
       return route.continue();
@@ -291,7 +292,7 @@ test("Today shows a real photograph on arrival while the local guides fit above 
   expect(geometry.quick.top).toBeGreaterThanOrEqual(geometry.explore.top);
   const quick = page.getByRole("group", { name: "Quick needs", exact: true });
   await expect(quick).toHaveCount(1);
-  await expect(page.getByRole("region", { name: "More ways to explore", exact: true }).getByRole("group", { name: "Quick needs", exact: true })).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "Practical information", exact: true }).getByRole("group", { name: "Quick needs", exact: true })).toHaveCount(1);
   await expect(quick.getByRole("link")).toHaveCount(4);
   const targets = [];
   for (const control of [page.getByRole("link", { name: "Find a place, service, event, or answer", exact: true }), todayArea(page), ...await quick.getByRole("link").all()]) targets.push(await target44(control));
@@ -310,10 +311,10 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   const { evidence } = await prepare(context, page, baseURL);
   await todayReady(page);
   const image = page.locator("[data-today-photo-lead] img");
-  await decoded(image, primaryPhoto.src);
+  await decoded(image, walkingPhoto);
   const textProbes = [
     { name: "Daypart heading", control: page.getByRole("heading", { level: 1 }) },
-    { name: "Area picker", control: todayArea(page) },
+    { name: "Area picker", control: todayArea(page).locator("span:visible") },
     { name: "Quick action words", control: page.getByRole("group", { name: "Quick needs", exact: true }).getByRole("link").first().locator("span") },
   ];
   const text = async () => Promise.all(textProbes.map(async ({ name, control }) => ({
@@ -342,7 +343,12 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
     previousBaseline = key;
     return root.px === 16 && stableBaseline >= 1;
   }, { message: "The actual16px root and control text settle before recording a100% baseline" }).toBe(true);
-  expect(normal.map(({ px }) => px), "normal fixed release labels are measured at100%, never an already-enlarged baseline").toEqual([32, 13, 14]);
+  // The area label shares the 0.875rem type of the other header controls.
+  expect(normal, "Actual visible labels at the default 16px root").toEqual([
+    { name: "Daypart heading", px: 22 },
+    { name: "Area picker", px: 14 },
+    { name: "Quick action words", px: 14 },
+  ]);
   await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
   await page.evaluate(() => document.fonts.ready);
   let enlarged = await text();
@@ -357,6 +363,25 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
       return root.px === 32 && normal.every((before, index) => Math.abs(enlarged[index].px / before.px - 2) < 0.005);
     }, { message: "The real32px root and every control's actual2x reading size must render" }).toBe(true);
     normal.forEach((before, index) => expect(enlarged[index].px / before.px, before.name).toBeCloseTo(2, 2));
+    for (const { name, control } of textProbes) {
+      await expect(control, name).toBeVisible();
+      const fit = await control.evaluate(label => {
+        const range = document.createRange();
+        range.selectNodeContents(label);
+        const lines = Array.from(range.getClientRects()).filter(rect => rect.width > 0 && rect.height > 0);
+        const owner = (label.closest("summary, a") ?? label).getBoundingClientRect();
+        const insideOwner = lines.every(line => line.left >= owner.left - 1 && line.right <= owner.right + 1);
+        for (let box: Element | null = label; box && box !== document.body; box = box.parentElement) {
+          const style = getComputedStyle(box), bounds = box.getBoundingClientRect();
+          const clipsX = /^(hidden|clip|scroll|auto)$/.test(style.overflowX);
+          const clipsY = /^(hidden|clip|scroll|auto)$/.test(style.overflowY);
+          if (lines.some(line => (clipsX && (line.left < bounds.left - 1 || line.right > bounds.right + 1))
+            || (clipsY && (line.top < bounds.top - 1 || line.bottom > bounds.bottom + 1)))) return false;
+        }
+        return lines.length > 0 && insideOwner;
+      });
+      expect(fit, `${name} shows its full text at 200%`).toBe(true);
+    }
   } finally {
     await attach(info, "text-growth-readiness", readiness);
   }
@@ -518,6 +543,27 @@ test("Today keeps exact local discovery and scoped tasks after its owner-approve
   expect(evidence.errors).toEqual([]);
 });
 
+const foodOrigin = "/today?in=brunswick&intent=coffee#find-radius";
+
+test.describe("Today food discovery before hydration", () => {
+  test.use({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+
+  test("an early tap opens scoped food and native Back restores the original section", async ({ context, page, baseURL }) => {
+    await prepare(context, page, baseURL);
+    await page.goto(foodOrigin, { waitUntil: "commit" });
+    await page.getByRole("link", { name: "Eat & drink", exact: true }).tap();
+    await expect(page).toHaveURL(url => {
+      const origin = new URL(url.searchParams.get("returnTo") ?? "/", url.origin);
+      return url.pathname === "/nearby" && url.searchParams.get("c") === "food" &&
+        url.searchParams.get("in") === "brunswick" && !url.searchParams.has("facet") &&
+        origin.pathname === "/today" && origin.search === "?in=brunswick&intent=coffee";
+    });
+    await page.goBack({ waitUntil: "commit" });
+    await expect(page).toHaveURL(new URL(foodOrigin, baseURL).href);
+    await expect(page.locator("#find-radius:target")).toBeVisible();
+  });
+});
+
 test("Today food discovery preserves the town, intent and native Back location", async ({ context, page, baseURL }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const { evidence } = await prepare(context, page, baseURL);
@@ -527,7 +573,7 @@ test("Today food discovery preserves the town, intent and native Back location",
       watchPosition: () => { throw new Error("An explicit town must not watch geolocation."); },
     } });
   });
-  const origin = "/today?in=brunswick&intent=coffee#find-radius";
+  const origin = foodOrigin;
   await todayReady(page, origin);
   const action = page.locator('[data-today-discovery-action="food"]');
   await expect(action).toHaveAccessibleName("Eat & drink");
@@ -535,18 +581,20 @@ test("Today food discovery preserves the town, intent and native Back location",
   await expect(named).toHaveCount(1);
   await expect(named).toHaveAttribute("data-today-geographic-place", lockSlug);
   await decoded(named.locator("img"), lockPhoto.src);
-  const href = new URL((await action.getAttribute("href"))!, "https://radius.test");
-  expect(href.pathname).toBe("/nearby"); expect(href.searchParams.get("c")).toBe("food"); expect(href.searchParams.get("facet")).toBeNull();
-  expect(href.searchParams.get("in")).toBe("brunswick"); expect(href.searchParams.get("returnTo")).toBe(origin);
-  await action.click();
-  await expect(page).toHaveURL(url => url.pathname === "/nearby" && url.searchParams.get("c") === "food" && url.searchParams.get("in") === "brunswick" && !url.searchParams.has("facet"));
+  // Only the browser receives the fragment. A decoded image can precede the
+  // client update that adds it to the link's returnTo.
+  const destination = `/nearby?${new URLSearchParams({ c: "food", in: "brunswick", returnTo: origin })}`;
+  await expect(action).toHaveAttribute("href", destination);
+  await action.tap();
+  await expect(page).toHaveURL(url => url.pathname === "/nearby" && url.searchParams.get("c") === "food" &&
+    url.searchParams.get("in") === "brunswick" && !url.searchParams.has("facet") && url.searchParams.get("returnTo") === origin);
   await page.goBack({ waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(url => `${url.pathname}${url.search}${url.hash}` === origin);
   await expect(page.locator('[data-today-discovery-action="food"]')).toBeVisible();
   await expect(page.locator("[data-today-geographic-place]")).toHaveCount(1);
   await expect(page.locator("[data-today-local-discovery]")).not.toContainText(/Sophie|Carillon|Find pizza/);
   expect(evidence.errors).toEqual([]);
-  await attach(info, "food-scope-back-continuity", { origin, destination: href.pathname + href.search, localPhoto: lockPhoto.src, widths: await assertWidth(page) });
+  await attach(info, "food-scope-back-continuity", { origin, destination, localPhoto: lockPhoto.src, widths: await assertWidth(page) });
 });
 
 test("Map makes the exact owned image prominent before metadata and keeps real Details Back focus at 320px", async ({ context, page, baseURL }, info) => {

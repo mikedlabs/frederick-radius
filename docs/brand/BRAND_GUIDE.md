@@ -41,7 +41,8 @@ Clear space around the mark should be at least the radius of its inner arc. Neve
 
 ### Primary lockups
 
-- The product header pairs the two-arc mark with a one-line `Frederick Radius` wordmark. On narrow phones with a county alert or status message, the mark can sit above the name to keep the navigation on one row. More tools groups the tools index and appearance switch. Search, area and active county alerts stay directly accessible on the screens that use them.
+- The shared masthead uses the existing white reverse two-arc Ripple and one-line `Frederick Radius` wordmark in Libre Caslon Display on Charcoal. On phones, the upper row holds the name and the labeled Find and More actions where they apply. A paper-toned strip below shows the selected area and a link labeled County status with its current state. Keep the full wording “Clear in checked feeds” visible when the sources support it.
+- Tablets and laptops use one row. Deep pages keep their Back control. The same hierarchy applies in light and dark appearance. More opens the tool directory and appearance controls.
 - The tagline lockup adds `FREDERICK COUNTY STARTS WHERE YOU ARE` below the wordmark.
 - Use the Deep Coral mark with the Charcoal wordmark on light surfaces. Use the White reverse lockup on Deep Coral, Catoctin Forest, Charcoal, or photography with enough contrast.
 - The app-icon tile is for launchers, avatars, and app-store use. Do not put the tile inside the normal product header.
@@ -137,10 +138,9 @@ its variable upright and real italic files, weights 100 through 900. Keep most
 text between 400 and 700. Its presence in a brand asset does not mean the
 product runtime is using Public Sans.
 
-Libre Caslon Display Regular sets the header wordmark in the top bar and is
-a rare editorial signature on a few specialty guide pages. No page title or
-content on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages,
-or event pages uses it; every title on those surfaces is heavy System sans. It has one upright Regular cut; do not
+Libre Caslon Display Regular sets the header wordmark, the single photographic
+cover story headline on Today, and selected specialty guide headlines. All other
+product titles and all controls, captions and data use System sans. It has one upright Regular cut; do not
 synthesize bold or italic. Keep it out of controls and dense data, and use it
 at 18 px or larger outside the wordmark.
 
@@ -254,7 +254,7 @@ the photograph, with the high, low, sunrise and sunset directly visible.
 - **Rows, not cards.** Ordinary content sits on the page ground as rows separated by a 1 px hairline (`--app-border`) or by space. Do not put a bordered, filled, or shadowed card around ordinary content, and do not add gradients or glows. A bordered surface is still right for form fields, menus, sheets, and floating layers over the map.
 - **Radius scale.** `--app-radius-sm` is 4 px, for small markers, focus outlines inside rows, and the coral time block. `--app-radius-md` is 6 px, for fields, buttons, menus, and row thumbnails. `--app-radius-lg` is 8 px, for sheets, drawers, and floating panels over the map. `--app-radius-xl` is 10 px, for a rare larger feature surface.
 - **Capsules.** A full capsule appears only on compact filter chips, status badges, and toggle switches. Buttons, navigation, rows, and informational tags are never capsules. An informational tag is plain text. A selected filter chip is filled ink (`--app-ink` with `--app-bg` text), never coral.
-- **Type carries the hierarchy.** Page titles are heavy System sans. Row titles are 17 px at weight 600. Meta lines are 14 px in muted ink. Section labels are 13 px uppercase with open letter spacing. Libre Caslon Display sets the header wordmark in the top bar and is a rare editorial signature on a few specialty guide pages; no page title or content on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, or event pages uses it.
+- **Type carries the hierarchy.** Page titles are heavy System sans. Row titles are 17 px at weight 600. Meta lines are 14 px in muted ink. Section labels are 13 px uppercase with open letter spacing. Libre Caslon Display is reserved for the wordmark, the photographic cover story on Today, and selected guide headlines.
 - **Flat chrome.** Top bar icons are unboxed ink glyphs. The bottom bar is flat and attached to the screen edge, and a 2 px Deep Coral rule marks the active tab.
 - **One bold moment per page.** A page may hold one solid Deep Coral block. Only Today and Events have one: on Today it is the coral name plate over the lead photograph, and on Events it is the lead event's time block. Do not add one to any other page. No other Deep Coral field appears on the page except the single filled coral action the view already has, such as Directions on a place page. The name plate is a solid block that overlaps the photograph's edge; it is not a color wash over the image.
 - **Events opens with Tonight and This weekend.** Give the evening one lead and the weekend up to two distinct picks. Keep the event name, Frederick-local time and attendance location beside the picture. Identify venue photos as venue photos and retain their required credits. A listing with no reviewed image can lead on its time and title.
@@ -335,9 +335,8 @@ Every product task should make three behaviors clear:
   someone understand the task.
 - System sans carries product page titles, section and row titles, labels,
   body copy, source, freshness, time, place, distance, controls, and data.
-  Libre Caslon Display is reserved for the header wordmark in the top bar and
-  a rare editorial signature on a few specialty guide pages. No page title or content on Today, Map, Events, Saved, Find, Tools,
-  Settings, Ask, place pages, or event pages uses it.
+  Libre Caslon Display is reserved for the header wordmark, the photographic
+  cover story headline on Today, and selected specialty guide headlines.
 - Deep Coral identifies the Radius shell, the one bold block on a page, and the
   single filled primary action. A chevron only appears when a row opens more
   information.

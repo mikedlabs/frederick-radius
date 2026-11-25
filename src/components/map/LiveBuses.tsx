@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { countyServiceCancelled } from "@/lib/transit-service-calendar";
 import { useLiveLayerGate, type LiveLayerGate } from "./liveLayerGate";
 import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
 import { BellRing, Bookmark, BookmarkCheck, BusFront } from "lucide-react";
@@ -360,7 +361,7 @@ function VisibleLiveBuses({
   gate?: LiveLayerGate;
   onHealthChange?: (snapshot: LiveBusLayerSnapshot) => void;
 }) {
-  const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
+  const [reportedVehicles, setVehicles] = useState<LiveVehicle[]>([]);
   const [feedStatus, setFeedStatus] = useState<FeedStatus>("loading");
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
@@ -385,6 +386,8 @@ function VisibleLiveBuses({
   // ("· 4 min") WITHOUT a Date.now() in render (react-hooks/purity). Starts 0
   // until the first poll/tick stamps it; etaLabel() suppresses ETAs at 0.
   const [nowMs, setNowMs] = useState(0);
+  const cancelled = countyServiceCancelled(nowMs);
+  const vehicles = useMemo(() => cancelled ? [] : reportedVehicles, [cancelled, reportedVehicles]);
   // Increments on each successful poll; drives the one-shot ripple + badge pop.
   const [pollSeq, setPollSeq] = useState(0);
   // Computed once on the client; never changes, so no effect/ref needed.

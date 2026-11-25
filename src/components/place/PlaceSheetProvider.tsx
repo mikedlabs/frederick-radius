@@ -16,6 +16,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { usePushRecentPlace } from "@/hooks/useRecentPlaces";
 import { browseReturnFromLocation, withBrowseReturnTo } from "@/lib/browse-return";
 import { readCachedGeoPosition } from "@/hooks/useGeolocation";
+import { roundCoord } from "@/lib/walkTime";
 import { haversineMeters, isInFrederickCountyArea, isValidCoord, type LngLat } from "@/lib/geo";
 import LazySheetFallback from "@/components/ui/LazySheetFallback";
 import { navigateAfterHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
@@ -67,7 +68,7 @@ function hasPlaceIdentity(place: PlaceCardData | InitialPlace, slug: string): bo
 
 function freshTravelOrigin(
   value: (LngLat & { timestamp?: number }) | null | undefined,
-): LngLat | null {
+): (LngLat & { expiresAt: number }) | null {
   if (
     !value ||
     !Number.isFinite(value.timestamp) ||
@@ -77,7 +78,7 @@ function freshTravelOrigin(
   ) {
     return null;
   }
-  return { lng: value.lng, lat: value.lat };
+  return { lng: roundCoord(value.lng), lat: roundCoord(value.lat), expiresAt: Number(value.timestamp) + TRAVEL_ORIGIN_MAX_AGE_MS };
 }
 
 export function PlaceSheetProvider({ children }: { children: ReactNode }) {
@@ -86,7 +87,21 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
   const [place, setPlace] = useState<PlaceCardData | null>(null);
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
   const [metadataUnavailable, setMetadataUnavailable] = useState(false);
-  const [travelOrigin, setTravelOrigin] = useState<LngLat | null>(null);
+  const [travelOrigin, setTravelOrigin] = useState<(LngLat & { expiresAt: number }) | null>(null);
+  useEffect(() => {
+    if (!travelOrigin) return;
+    const expire = () => {
+      if (Date.now() >= travelOrigin.expiresAt) setTravelOrigin(null);
+    };
+    const timer = setTimeout(expire, Math.max(0, travelOrigin.expiresAt - Date.now()));
+    window.addEventListener("pageshow", expire);
+    document.addEventListener("visibilitychange", expire);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("pageshow", expire);
+      document.removeEventListener("visibilitychange", expire);
+    };
+  }, [travelOrigin]);
   const [mapReturnTo, setMapReturnTo] = useState<string | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const historyLayerIdRef = useRef("");

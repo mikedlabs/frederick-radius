@@ -117,7 +117,7 @@ describe("TodayCard provider composition", () => {
     // A missing air-quality reading is routine evidence behind the forecast details.
     expect(html.slice(html.indexOf("</summary>"), html.indexOf("</details>"))).toContain("The air-quality reading is unavailable.");
     expect(html.slice(html.indexOf("</details>"))).not.toContain("The air-quality reading is unavailable.");
-    for (const fact of ["72°", "Mostly sunny", "NWS forecast · Frederick", "Oct 8, 2026, 7:35 AM EDT", "High 76°", "Sunset", "data-live-daylight", "The air-quality reading is unavailable."]) {
+    for (const fact of ["72°", "Mostly sunny", "NWS forecast · Frederick", "Oct 8, 2026, 7:35 AM EDT", "High 76°", "Sunset", "data-daylight-scale", "of daylight left", "The air-quality reading is unavailable."]) {
       expect(html).toContain(fact);
     }
     expect(html).toMatch(/datetime="2026-10-08T11:35:00.000Z"/i);
@@ -133,7 +133,7 @@ describe("TodayCard provider composition", () => {
     const html = renderToStaticMarkup(await TodayCard({ density: "masthead" }));
     expect(html).toContain('data-weather-density="masthead"');
     expect(html).toContain('data-weather-state="unavailable"');
-    expect(html).toContain("The NWS forecast is briefly unavailable.");
+    expect(html).toContain("Forecast unavailable");
     expect(html).toContain('href="/pulse?open=weather"');
     expect(html).not.toContain("<details");
     expect(html).not.toContain("70°");

@@ -6,6 +6,8 @@ import AppMapClient, {
   type EventPin,
   type MapLineFC,
 } from "@/components/map/AppMapClient";
+import AmenityFallbackList from "./AmenityFallbackList";
+import CountyLocator from "./CountyLocator";
 import type { MapPinPlace, MarcStationPin, TransitStopPin } from "@/components/map/types";
 import {
   EMPTY_DEFERRED_BROWSE_LAYERS,
@@ -33,6 +35,7 @@ import {
   getScope,
   parseScope,
   scopeCentroid,
+  scopeTownSlug,
   subscribeScopeChange,
   SCOPE_PARAM,
   type Scope,
@@ -520,14 +523,32 @@ export default function BrowseMapClient({
   }
 
   if (placeLoad.status === "error") {
+    const retryPlaces = () => {
+      resetMapPlacesRequest();
+      setPlaceLoad({ status: "loading", places: [] });
+      setPlaceAttempt((attempt) => attempt + 1);
+    };
+    if (initialAmenityGroups?.length) {
+      return (
+        <div className="h-full overflow-y-auto bg-[var(--app-bg)] pb-24">
+          <AmenityFallbackList
+            groups={initialAmenityGroups}
+            amenities={amenities}
+            extraAmenities={extraAmenities}
+            town={scopeTownSlug(explicitScope ?? activeScope)}
+            onRetry={retryPlaces}
+          />
+        </div>
+      );
+    }
     return (
       <div
-        role="alert"
-        className="grid h-full place-items-center px-6 text-center"
+        className="h-full overflow-y-auto px-4 py-4"
         style={{ background: "var(--app-bg-sunken)" }}
       >
-        <div className="max-w-sm">
-          <p
+        <div className="mx-auto max-w-lg">
+          <CountyLocator town={scopeTownSlug(explicitScope ?? activeScope)} />
+          <p role="alert"
             className="font-serif text-lg font-semibold"
             style={{ color: "var(--app-ink)" }}
           >
@@ -544,11 +565,7 @@ export default function BrowseMapClient({
               background: "var(--app-bg-elevated-solid)",
               color: "var(--app-ink)",
             }}
-            onClick={() => {
-              resetMapPlacesRequest();
-              setPlaceLoad({ status: "loading", places: [] });
-              setPlaceAttempt((attempt) => attempt + 1);
-            }}
+            onClick={retryPlaces}
           >
             Try again
           </button>
@@ -608,6 +625,7 @@ export default function BrowseMapClient({
       initialBounds={initialBounds}
       cameraMinZoom={FREDERICK_BROWSE_MIN_ZOOM}
       cameraMaxBounds={FREDERICK_BROWSE_MAX_BOUNDS}
+      fallbackTown={scopeTownSlug(explicitScope ?? activeScope)}
       initialAmenityGroups={initialAmenityGroups}
       // The map dock (MapDock) — the one instrument that replaced the
       // intent banner, sub strip, Open-now pill, and Layers drawer. The

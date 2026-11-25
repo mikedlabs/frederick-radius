@@ -408,7 +408,7 @@ export default function TransitServiceAlerts() {
                     nowMs - state.checkedAt,
                   )}`
                 : state.kind === "available-empty"
-                  ? "No provider bulletin posted"
+                  ? "No additional alert in the live feed"
                   : `${state.alerts.length} ${
                       state.alerts.length === 1 ? "bulletin" : "bulletins"
                     } · ${freshness}`}

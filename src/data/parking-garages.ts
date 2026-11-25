@@ -5,12 +5,14 @@
  *   https://www.cityoffrederickmd.gov/1342/Garage-Parking
  *
  * Rates and payment procedures were rechecked against the City's published
- * garage page in July 2026. ParkMobile belongs to ON-STREET parking; it is not
+ * garage page November 24, 2026. ParkMobile belongs to ON-STREET parking; it is not
  * listed as a garage payment method. Garage patrons take their ticket with
  * them, pay at a first-level pay station, and use the validated ticket at the
  * exit. Pay stations accept cash, coin, and cards; exit stations accept cards
  * or a ticket already validated at a pay station.
  */
+import { easternDayKey } from "@/lib/tz";
+
 export type ParkingGarage = {
   slug: string;
   name: string;
@@ -35,16 +37,48 @@ export type ParkingGarage = {
   notes?: string;
 };
 
+export const CITY_GARAGE_URL = "https://www.cityoffrederickmd.gov/1342/Garage-Parking";
+export const CITY_STREET_URL = "https://www.cityoffrederickmd.gov/1341/Street-Parking";
+export const CITY_GARAGE_HOURLY_DOLLARS = 1;
+
 /** Uniform rate schedule for all five City garages. */
 export const PARKING_RATE_SCHEDULE = {
-  hourly: "$1 / hour",
-  dailyMax: "$12 / day",
+  hourly: `$${CITY_GARAGE_HOURLY_DOLLARS} / hour`,
+  dailyMax: "$12 weekday maximum",
   daytimeMax: "$12 max",
   nighttimeMax: "$5 max",
   freeWindow: "Free Sundays 8 AM – 2 PM",
   acceptsCashAndCredit: true,
-  summary: "$1/hr · $12/day max · $5 max overnight · free Sun 8 AM–2 PM",
+  summary: "$1/hr · $12 weekday maximum · $5 weekday nights and weekend days · free Sundays 8 AM–2 PM",
 } as const;
+
+export const CITY_HOLIDAY_PARKING_URL = "https://www.cityoffrederickmd.gov/1346/Special-Parking-Programs";
+export const HOLIDAY_WEEKEND_PARKING = "On later holiday weekends through New Year’s Day, City garages are free from Saturday at 8 AM until Monday at 6 AM.";
+
+export function showHolidayParking(date: Date): boolean {
+  const day = easternDayKey(date);
+  return day >= "2026-11-23" && day <= "2027-01-01";
+}
+
+export function thanksgivingParkingWeek(date: Date): boolean {
+  const day = easternDayKey(date);
+  return day >= "2026-11-23" && day <= "2026-11-29";
+}
+
+export function garageRateHeadline(date: Date): string {
+  if (thanksgivingParkingWeek(date)) return "Free Nov 26–29";
+  if (showHolidayParking(date)) return "Free holiday weekends Sat 8 AM–Mon 6 AM through New Year’s Day";
+  return PARKING_RATE_SCHEDULE.summary;
+}
+
+export function garageRateSummary(date: Date): string {
+  const headline = garageRateHeadline(date);
+  return headline === PARKING_RATE_SCHEDULE.summary ? headline : `${headline} · standard rates: ${PARKING_RATE_SCHEDULE.summary}`;
+}
+
+export function isCityGarage(slug: string): boolean {
+  return PARKING_GARAGES.some((garage) => garage.slug === slug);
+}
 
 export const PARKING_OFFICE = {
   address: "2 S Court St, Frederick, MD 21701",

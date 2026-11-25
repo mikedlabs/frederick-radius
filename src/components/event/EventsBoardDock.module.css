@@ -2,8 +2,11 @@
 .pane:global(.eb-pane) {
   background: var(--app-bg-elevated-solid);
   top: calc(100% - var(--events-toolbar-offset, 0px));
+  display: flex;
+  flex-direction: column;
 }
 .scroll:global(.eb-pane-scroll) {
+  min-height: 0;
   overscroll-behavior-y: contain;
 }
 .toolbar[data-filter-paused="true"] {
@@ -70,4 +73,40 @@
   .overview:global(.eb-dock) :global(.eb-head) {
     grid-template-areas: "title display" "dates dates" "filters filters" "count count";
   }
+}
+
+/* Only the choices scroll. The apply action stays available on every tab. */
+.actions {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 15px;
+  border-top: 1px solid var(--app-border);
+  background: var(--app-bg-elevated-solid);
+}
+.actions button {
+  min-height: 44px;
+  padding: 8px 18px;
+  border-radius: var(--app-radius-md);
+  background: var(--app-brand-press);
+  color: var(--app-on-brand);
+  font-weight: 650;
+}
+.views:global(.eb-lensseg) {
+  flex-wrap: wrap;
+}
+.views:global(.eb-lensseg) button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  min-width: 44px;
+  width: auto;
+  padding-inline: 7px;
+  font-size: 12px;
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .actions button { width: 100%; }
+  .views:global(.eb-lensseg) svg { display: none; }
 }

@@ -174,7 +174,7 @@ describe("photo-forward discovery card contracts", () => {
 
   it("keeps approved publisher artwork source-specific and outside the factual open-event target", () => {
     render({ ...candidate, source: "dfp", hero_image: "https://ik.imagekit.io/vibemap/offline-publisher-layout.jpg",
-      source_url: "https://downtownfrederick.org/vm-event/offline-publisher-layout/", hero_image_attribution: undefined }, "free-reviewed", "discovery");
+      source_url: "https://downtownfrederick.org/vm-event/offline-publisher-layout/", hero_image_record: "https://downtownfrederick.org/vm-event/offline-publisher-layout/", hero_image_attribution: undefined }, "free-reviewed", "discovery");
     expect(host.querySelector('[data-event-media="artwork"]')).not.toBeNull();
     expect(host.querySelector("img")?.getAttribute("src")).toBe("https://ik.imagekit.io/vibemap/offline-publisher-layout.jpg");
     const credit = host.querySelector("[data-event-photo-credit]")!;

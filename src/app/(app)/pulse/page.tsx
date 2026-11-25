@@ -36,24 +36,22 @@ import LocalNewsBriefView from "@/components/news/LocalNewsBriefView";
 import { pulseNewsTile } from "@/components/news/pulse-news-tile";
 import { getCivicPressReleasesResult, officialCivicNews, policeReleases, featuredPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getMarcBoard, getMarcAlerts, marcClockMinutes } from "@/lib/integrations/marcTrains";
-import { airQualityObservedAt, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
+import { airQualityObservedAt, getFrederickAirReport, pickWorstAqi, type AqiObservation } from "@/lib/integrations/airnow";
 import { getFrederickStockings } from "@/lib/integrations/dnrTrout";
 import { getCampDavidTfr } from "@/lib/integrations/faaTfr";
 import NextTrainBoard from "@/components/transit/NextTrainBoard";
 import {
   getFrederickWaterSitesWithHistoryResult,
   readingTrend,
-  type WaterSite,
   type WaterSitesResult,
 } from "@/lib/integrations/usgsWater";
 import {
   classifyFlood,
   currentFloodCoverage,
-  nwsGaugeUrl,
 } from "@/lib/integrations/floodStage";
-import MetricCard from "@/components/live-data/MetricCard";
-import FloodGauge from "@/components/live-data/FloodGauge";
-import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
+import RiverGaugeExplorer from "@/components/rivers/RiverGaugeExplorer";
+import { riverCoverageSummary } from "@/lib/rivers/gaugeHistory";
+import { AIRPORT_STATE_LABEL, getAreaAirportStatus } from "@/lib/integrations/faa-airports";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { getCurrentSituationSnapshot } from "@/lib/live/currentSituation";
 import { getRoadIntelligenceSnapshot } from "@/lib/live/roadIntelligence";
@@ -75,6 +73,8 @@ import PulseBoard, {
   type PulseHero,
   type PulseHeroChip,
 } from "@/components/pulse/PulseBoard";
+import { pressBulletinCoverage } from "@/lib/pulse/press-coverage";
+import PulseOfficialLinks from "@/components/pulse/PulseOfficialLinks";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import BusesReveal from "@/components/pulse/BusesReveal";
 import { compareAlertPriority } from "@/lib/alert-priority";
@@ -221,22 +221,6 @@ function riverLocationOf(name: string): string {
   const prefix = m[1].toLowerCase();
   return `${prefix.charAt(0).toUpperCase()}${prefix.slice(1)} ${titleCaseRiver(m[2].trim())}`;
 }
-/** Group gauges under one waterway, most-gauged river first. */
-function groupByRiver(sites: WaterSite[]): Array<{ river: string; sites: WaterSite[] }> {
-  const m = new Map<string, WaterSite[]>();
-  for (const s of sites) {
-    const bucket = m.get(s.river.toUpperCase());
-    if (bucket) bucket.push(s);
-    else m.set(s.river.toUpperCase(), [s]);
-  }
-  return [...m.entries()]
-    .map(([river, list]) => ({
-      river: titleCaseRiver(river),
-      sites: list.sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    .sort((a, b) => b.sites.length - a.sites.length);
-}
-
 /**
  * Race a feed against a fallback: resolves to the feed's value, or the
  * fallback if the feed rejects OR is slower than `ms`. Bounds the ~10-feed
@@ -306,16 +290,17 @@ export default async function PulsePage() {
     newsResult,
     pressResult,
     riversResult,
-    airports,
+    airportReport,
     forecast,
     marcBoardResult,
     marcAlerts,
     troutStockings,
     campDavidTfr,
+    regionalAirReport,
   ] = await Promise.all([
     // Today, Map, Ask, the global status, and Pulse all begin with the same
     // normalized conditions. Only Pulse-exclusive feeds are fetched below.
-    getCurrentSituationSnapshot(),
+    getCurrentSituationSnapshot({ waitForSources: true }),
     getRoadIntelligenceSnapshot(),
     getOfficialSignalsSnapshot(),
     withTimeout<FixItIssuesResult>(getFixItIssuesResult(15), FEED_MS, {
@@ -361,8 +346,7 @@ export default async function PulsePage() {
       FEED_MS,
       { data: [], available: false },
     ),
-    // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
-    withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
+    withTimeout(getAreaAirportStatus(), FEED_MS, null),
     // Current conditions for the leading Weather tile (the full panel is its
     // tap-to-open body). Same cached NWS call PulseWeatherPanel makes.
     withTimeout(getNwsForecast(FREDERICK_CENTER), FEED_MS, null),
@@ -383,8 +367,10 @@ export default async function PulsePage() {
     // Camp David airspace (FAA TFR list). Renders ONLY when the P-40 ring is
     // expanded — the quiet explanation for Thurmont's helicopter days.
     withTimeout(getCampDavidTfr(), FEED_MS, null),
+    withTimeout(getFrederickAirReport(), FEED_MS, null),
   ]);
 
+  const regionalAirForecast = regionalAirReport?.forecast;
   const fixit = fixitResult.data;
   const fixitOpenCount = fixitResult.openCount;
   const fixitAcknowledgedCount = fixitResult.acknowledgedCount;
@@ -530,8 +516,9 @@ export default async function PulsePage() {
   // One place decides what the civic feed could actually tell us, so the
   // police strip, the blotter, and the road-work tile cannot disagree.
   const press = pressResult.data.items;
-  const civicAvailable =
-    pressResult.available && !pressResult.data.sourceHealth.degraded;
+  const officialNews = officialCivicNews(pressResult.data, nowMs);
+  const pressCoverage = pressBulletinCoverage(officialNews, pressResult.data.sourceHealth);
+  const civicAvailable = pressCoverage.availability === "current";
   const policeItems = policeReleases(press);
   const breakingPolice = featuredPoliceRelease(policeItems, nowMs);
   const latestPolice = policeItems[0] ?? null;
@@ -592,7 +579,6 @@ export default async function PulsePage() {
   // A countywide water tile cannot use whichever gauge happens to render
   // first. Compare every fresh forecast-point reading against its official NWS
   // categories, then let the worst current category drive the hierarchy.
-  const riverGroups = groupByRiver(rivers);
   const worstFlood = floodCoverage.worst;
   const floodActive = Boolean(
     worstFlood && worstFlood.category.key !== "normal",
@@ -601,7 +587,8 @@ export default async function PulsePage() {
   // These are meaningful changes, but they are not county emergencies. Keep a
   // distinct operational state so Pulse cannot say "All quiet" above a MARC
   // alert, airport delay, or expanded Camp David restriction.
-  const airportIssues = airports.filter((airport) => airport.state !== "clear");
+  const airports = airportReport?.airports ?? [];
+  const airportIssues = airports.filter((airport) => airport.state !== "not_listed");
   const operationalBriefing = pulseOperationalBriefing({
     marcAlerts: marcAlerts.length,
     airportIssues: airportIssues.map((airport) => airport.name),
@@ -732,8 +719,8 @@ export default async function PulsePage() {
     heroLine = operationalBriefing.line;
     heroSub = operationalBriefing.sub;
   } else if (!leadCandidate && heroDegraded) {
-    heroLine = "The available feeds show no major disruptions.";
-    heroSub = "Some live checks are unavailable. Radius will retry them automatically.";
+    heroLine = "Some county conditions are unconfirmed.";
+    heroSub = "Check official notices before making weather or travel plans. Radius will check for updates automatically.";
   } else if (leadCandidate?.id === "air" && aqiWorst) {
     heroTone = aqiWorst.category.id >= 4 ? "danger" : "warning";
     heroLeadKey = "air";
@@ -874,31 +861,22 @@ export default async function PulsePage() {
   // higher, the worst current official category takes the face immediately.
   const riverPeekSite = floodActive
     ? worstFlood?.site
-    : riverGroups[0]?.sites.find((site) => site.gageHeightFt != null);
+    : rivers.find((site) => site.id === "01643000" && site.gageHeightFt != null) ?? rivers.find((site) => site.gageHeightFt != null);
   const riverPeekDir = riverPeekSite ? readingTrend(riverPeekSite.gageHistory) : null;
   const riverPeekCategory = riverPeekSite
     ? classifyFlood(riverPeekSite.gageHeightFt, riverPeekSite.floodStages)
     : null;
   const riverPeekName = riverPeekSite
     ? titleCaseRiver(riverPeekSite.river)
-    : riverGroups[0]?.river;
+    : undefined;
   const riverPeek = riverPeekSite
     ? `${riverPeekName} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft${riverPeekDir ? ` · ${riverPeekDir}` : ""}`
     : undefined;
 
-  // Airports — BWI / Dulles / Reagan. An empty `airports` means the FAA feed
-  // was unreachable, so the tile self-hides rather than claim a status we
-  // couldn't read; otherwise each airport is "on time" unless the feed lists a
-  // delay / ground stop / closure. The peek carries the first delayed airport.
-  const airportPeek = airportIssues[0]
-    ? `${airportIssues[0].name} ${
-        airportIssues[0].state === "closure"
-          ? "closed"
-          : airportIssues[0].state === "ground_stop"
-            ? "ground stop"
-            : "delays"
-      }`
-    : undefined;
+  const firstAirportNotice = airportIssues[0];
+  const airportPeek = firstAirportNotice
+    ? `${firstAirportNotice.code} · ${AIRPORT_STATE_LABEL[firstAirportNotice.state]}`
+    : "BWI · IAD · DCA";
 
   // The dashboard tiles. Each carries an at-a-glance datum + its feed's full
   // detail (`body`), rendered server-side here so the client shell only owns
@@ -915,19 +893,17 @@ export default async function PulsePage() {
   // These reference feeds used to stack as their own text-heavy sections below
   // the board; they now live INSIDE the dashboard as tap-to-open tiles, so the
   // whole page is one unified, visual grid. Built server-side like every tile.
-  const officialNews = officialCivicNews(pressResult.data);
   const newsBody = (
     <LocalNewsBriefView news={newsResult} headlineLimit={6} officialLimit={6} showHeading={false} official={officialNews} />
   );
 
   const policeBody = (
     <div className="space-y-3">
-      {!civicAvailable && (
-        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          The City and County newsrooms could not be reached, so recent releases
-          are unknown right now. The official calls-for-service map below is
-          unaffected.
-        </p>
+      {pressCoverage.note && (
+        <>
+          {emptyNote(pressCoverage.note)}
+          <PulseOfficialLinks topic="newsrooms" />
+        </>
       )}
       {breakingPolice && (
         <div className="space-y-1.5">
@@ -963,7 +939,7 @@ export default async function PulsePage() {
           className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)] active:scale-[0.99]"
           style={{ background: "var(--app-cool)" }}
         >
-          Open the official CFS map
+          View calls for service
           <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
         </a>
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
@@ -974,16 +950,18 @@ export default async function PulsePage() {
     </div>
   );
 
-  // The empty branch here was unreachable while the tile was gated on
-  // advisories.length, and it says "reported right now" — a claim only worth
-  // making when the newsrooms actually answered.
-  const roadworkBody = advisories.length > 0
-    ? <PoliceBlotter items={advisories} now={nowMs} />
-    : civicAvailable
-      ? emptyNote("No road work or closures are reported right now.")
-      : emptyNote(
-          "The City and County newsrooms could not be reached, so road work is unknown right now.",
-        );
+  const roadworkBody = (
+    <>
+      {advisories.length > 0 && <PoliceBlotter items={advisories} now={nowMs} />}
+      {civicAvailable && advisories.length === 0 && emptyNote("No recent road-work notices in the City or County newsroom.")}
+      {pressCoverage.note && (
+        <>
+          {emptyNote(pressCoverage.note)}
+          <PulseOfficialLinks topic="roadwork" />
+        </>
+      )}
+    </>
+  );
 
   // MARC — the soonest upcoming departure across the county stations powers
   // the tile head (predicted time when the realtime feed has it, else
@@ -1212,18 +1190,29 @@ export default async function PulsePage() {
           key: "air",
           label: "Air quality",
           iconName: "Wind",
-          countLabel: "No fresh reading",
+          countLabel: regionalAirForecast ? "Regional forecast" : "No fresh reading",
           accent: "var(--app-warning)",
           active: false,
           attention: false,
-          degraded: true,
-          reading: true,
+          degraded: !regionalAirForecast,
+          availability: regionalAirForecast ? "partial" : "unavailable",
           kind: "status",
           sourceLabel: "AirNow · EPA",
-          peek: "No fresh Frederick reading",
+          peek: regionalAirForecast ? `${regionalAirForecast.reportingArea} · ${regionalAirForecast.parameter} AQI ${regionalAirForecast.aqi} forecast` : "No fresh Frederick reading",
           body: (
             <>
-              {emptyNote("AirNow did not return a fresh Frederick observation. Radius will check again automatically.")}
+              {emptyNote("No fresh Frederick air-quality observation is available.")}
+              {regionalAirForecast && (
+                <p className="mt-2 text-sm leading-relaxed">
+                  {regionalAirForecast.reportingArea} regional forecast for{" "}
+                  <time dateTime={regionalAirForecast.validDate}>
+                    {new Date(`${regionalAirForecast.validDate}T12:00:00Z`).toLocaleDateString("en-US", {
+                      timeZone: "America/New_York", month: "short", day: "numeric",
+                    })}
+                  </time>
+                  {` is ${regionalAirForecast.parameter} AQI ${regionalAirForecast.aqi} (${regionalAirForecast.category.name}).`}
+                </p>
+              )}
               <a
                 href="https://www.airnow.gov/?city=Frederick&state=MD&country=USA"
                 target="_blank"
@@ -1299,7 +1288,10 @@ export default async function PulsePage() {
             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           </a>
         </>
-      ) : emptyNote(outageDisplay.quietDetail),
+      ) : <>
+        {emptyNote(outageDisplay.quietDetail)}
+        <PulseOfficialLinks topic="power" />
+      </>,
     },
     // ── The rest → compact status tiles ──
     {
@@ -1559,11 +1551,12 @@ export default async function PulsePage() {
               meta={[timeAgo(a.published_at)]}
             />
           ))
-        : emptyNote(
-            schoolsAvailable
+        : <>
+            {emptyNote(schoolsAvailable
               ? "No school closures or delays are reported right now."
-              : "FCPS closure and delay data could not be loaded right now.",
-          ),
+              : "Radius could not verify school closures or delays.")}
+            {!schoolsAvailable && <PulseOfficialLinks topic="schools" />}
+          </>,
     },
     {
       key: "fixit",
@@ -1798,7 +1791,7 @@ export default async function PulsePage() {
             emptyNote(
               officialAlertsCheckComplete
                 ? "No current notice appears in the official feeds Radius checked."
-                : "At least one official alert feed could not be checked. Open weather.gov or the City and County alert pages before relying on this result.",
+                : "Radius could not verify all current alerts. Check the issuing agencies for notices.",
             )}
 
           {officialAlertsDegraded &&
@@ -1816,6 +1809,7 @@ export default async function PulsePage() {
                 notices shown here may not be complete.
               </p>
             )}
+          {officialAlertsDegraded && <PulseOfficialLinks topic="alerts" />}
         </div>
       ),
     },
@@ -1854,145 +1848,71 @@ export default async function PulsePage() {
               unit: `ft · ${
                 floodActive && riverPeekCategory
                   ? riverPeekCategory.label.toLowerCase()
-                  : riverPeekDir ?? "steady"
+                  : riverPeekDir ?? "gauge height"
               }`,
             },
           }
         : { peek: riverPeek }),
-      sourceLabel: "USGS Water Services",
-      body: rivers.length > 0
-        ? (
-          <div className="space-y-4">
-            {riverGroups.map((g) => (
-              <div key={g.river} className="space-y-2">
-                <p className="flex items-baseline gap-1.5 px-0.5">
-                  <span className="font-sans text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                    {g.river}
-                  </span>
-                  <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                    {g.sites.length} {g.sites.length === 1 ? "gauge" : "gauges"}
-                  </span>
-                </p>
-                <ul className="space-y-2.5">
-                  {g.sites.map((s) => {
-                    const hasHeight = s.gageHeightFt != null;
-                    const dir = readingTrend(s.gageHistory) ?? readingTrend(s.streamflowHistory);
-                    const flood = classifyFlood(s.gageHeightFt, s.floodStages);
-                    const trendTone: "neutral" | "good" | "warning" =
-                      dir === "rising" ? "warning" : dir === "falling" ? "good" : "neutral";
-                    const trendLabel =
-                      dir === "rising" ? "Rising" : dir === "falling" ? "Falling" : dir === "steady" ? "Steady" : "Current";
-                    // A flood category (action+) outranks the trend on the pill —
-                    // on a water board, "how close to flooding" beats "rising".
-                    const status: { label: string; tone: "neutral" | "good" | "warning" | "danger" } =
-                      flood && flood.key !== "normal"
-                        ? { label: flood.label, tone: flood.tone === "danger" ? "danger" : "warning" }
-                        : { label: trendLabel, tone: trendTone };
-                    const value = hasHeight ? s.gageHeightFt!.toFixed(2) : (s.streamflowCfs ?? 0).toLocaleString();
-                    const unit = hasHeight ? "ft" : "ft³/s";
-                    const trend = hasHeight ? s.gageHistory?.map((r) => r.value) : s.streamflowHistory?.map((r) => r.value);
-                    const secondary = hasHeight && s.streamflowCfs != null
-                      ? `Flow ${s.streamflowCfs.toLocaleString()} ft³/s`
-                      : null;
-                    const gaugeObservedAt = s.gageHistory?.at(-1)?.at ?? s.observedAt;
-                    const ago = gaugeObservedAt ? timeAgo(gaugeObservedAt) : "";
-                    return (
-                      <li key={s.id}>
-                        <MetricCard
-                          title={riverLocationOf(s.name) || titleCaseRiver(s.name)}
-                          value={value}
-                          unit={unit}
-                          trend={trend}
-                          animatedTrend
-                          accent="var(--app-cool)"
-                          trendStroke="var(--app-cool)"
-                          status={status}
-                          meta={
-                            ago || secondary ? (
-                              <>
-                                {ago}
-                                {ago && secondary && <span className="mx-1.5 opacity-50">·</span>}
-                                {secondary}
-                              </>
-                            ) : undefined
-                          }
-                          footer={
-                            flood && s.floodStages && s.gageHeightFt != null ? (
-                              <FloodGauge current={s.gageHeightFt} stages={s.floodStages} category={flood} animated />
-                            ) : undefined
-                          }
-                          href={
-                            s.floodStages
-                              ? nwsGaugeUrl(s.floodStages.nws)
-                              : `https://waterdata.usgs.gov/monitoring-location/${s.id}/`
-                          }
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-            <Link
-              href="/rivers"
-              className="inline-flex items-center gap-1 px-1 pt-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-cool)" }}
-            >
-              See 24-hour trends and the gauge map
-              <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+      sourceLabel: "USGS Water Data",
+      body: (
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--app-ink-2)]">{riverCoverageSummary(floodCoverage, rivers.length)}</p>
+          <RiverGaugeExplorer sites={rivers} initialGauge={riverPeekSite?.id} end={requestNow.toISOString()} />
+          <Link href="/rivers" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--app-link)] underline">
+            Open the river gauge page <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          </Link>
+          <div>
+            <Link href="/map?show=roads" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--app-link)] underline">
+              See county-mapped high-water areas <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
-            <Link
-              href="/map?show=roads"
-              className="inline-flex items-center gap-1 px-1 text-[12px] font-semibold"
-              style={{ color: "var(--app-cool)" }}
-            >
-              See County-mapped high-water context
-              <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </Link>
-            <p className="px-1 pt-0.5 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Gauge readings are live. The high-water map is static risk
-              context and does not report current flooding.
-            </p>
+            <p className="text-xs leading-relaxed text-[var(--app-ink-2)]">The county map shows historical risk. Check the official gauge for recent water levels.</p>
           </div>
-        )
-        : emptyNote("River gauge readings are briefly unavailable."),
+        </div>
+      ),
     },
-    ...(airports.length > 0
-      ? [{
-          // BWI / Dulles / Reagan. The accent goes amber + the tile tints only
-          // when there's an actual delay; an "on time" day stays a calm cool
-          // tile. Not part of the hero situation roll-up (a flight delay isn't
-          // a county emergency) — the peek names the delayed airport.
-          key: "airports",
-          label: "Airports",
-          iconName: "Plane",
-          countLabel: airportIssues.length > 0 ? `${airportIssues.length} delayed` : "On time",
-          accent: airportIssues.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
-          active: airportIssues.length > 0,
-          attention: false,
-          kind: "status",
-          sourceLabel: "FAA",
-          peek: airportPeek ?? "BWI · IAD · DCA",
-          body: (
-            <div className="space-y-1.5">
-              {airports.map((a) => (
-                <Row
-                  key={a.code}
-                  tone={
-                    a.state === "closure" || a.state === "ground_stop"
-                      ? "danger"
-                      : a.state === "delay"
-                        ? "warning"
-                        : "muted"
-                  }
-                  title={a.name}
-                  meta={[a.code, a.state === "clear" ? "On time" : a.detail ?? a.state.replace("_", " ")]}
-                />
+    {
+      key: "airports",
+      label: "Airports",
+      iconName: "Plane",
+      countLabel: !airportReport
+        ? "Status unavailable"
+        : airportIssues.length > 0
+          ? `${airportIssues.length} ${airportIssues.length === 1 ? "airport" : "airports"} with notices`
+          : "No FAA notices listed",
+      accent: airportIssues.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
+      active: airportIssues.length > 0,
+      attention: false,
+      degraded: !airportReport,
+      kind: "status",
+      sourceLabel: "FAA",
+      peek: airportPeek,
+      body: (
+        <div className="space-y-1.5">
+          {airportReport ? (
+            <>
+              <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+                FAA update · <time dateTime={airportReport.updatedAt}>{new Intl.DateTimeFormat("en-US", {
+                  timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+                }).format(new Date(airportReport.updatedAt))}</time>
+              </p>
+              {airports.map((airport) => (
+                <Row key={airport.code} tone={airport.state === "not_listed" ? "muted" : "warning"}
+                  title={airport.name} meta={[airport.code, AIRPORT_STATE_LABEL[airport.state], ...(airport.detail ? [airport.detail] : [])]} />
               ))}
-            </div>
-          ),
-        } as PulseTile]
-      : []),
+              {airports.some(airport => airport.state === "closure") && (
+                <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+                  A closure notice may cover only certain hours or aircraft. Check the FAA notice for its scope.
+                </p>
+              )}
+            </>
+          ) : emptyNote("A current FAA airport report could not be verified.")}
+          <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
+            Check your airline for your flight’s departure or arrival time.
+          </p>
+        </div>
+      ),
+      action: { href: "https://nasstatus.faa.gov/", label: "View FAA airport status" },
+    },
     // MARC Brunswick Line — the county's commuter rail, beside the live bus map.
     // Calm cool tile (informational transit, not a hero "situation"); a service
     // alert tints it amber. The head shows the soonest departure, the body the
@@ -2081,12 +2001,10 @@ export default async function PulsePage() {
         ? "Breaking release"
         : blotter.length > 0
           ? `${blotter.length} ${blotter.length === 1 ? "release" : "releases"}`
-          : civicAvailable
-            ? "CFS map"
-            : "Feed unavailable",
+          : civicAvailable ? "Calls for service map" : "Check newsrooms",
       accent: "var(--app-cool)",
       active: Boolean(breakingPolice),
-      degraded: !civicAvailable,
+      availability: pressCoverage.availability,
       // The dedicated breaking strip already keeps this release prominent.
       // Do not duplicate it in the board's "Happening now" row when another
       // higher-priority signal owns the masthead.
@@ -2096,9 +2014,7 @@ export default async function PulsePage() {
       peek:
         breakingPolice?.title ??
         latestPolice?.title ??
-        (civicAvailable
-          ? undefined
-          : "The City and County newsrooms could not be reached."),
+        pressCoverage.note ?? undefined,
       body: policeBody,
     },
     // Road work is carried by the same feed, so it must not silently VANISH
@@ -2110,20 +2026,18 @@ export default async function PulsePage() {
           key: "roadwork",
           label: "Road work",
           iconName: "TrafficCone",
-          countLabel: civicAvailable
+          countLabel: advisories.length > 0 || civicAvailable
             ? `${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`
-            : "Feed unavailable",
+            : "Check road closures",
           accent: "var(--app-cool)",
           active: false,
           attention: false,
-          degraded: !civicAvailable,
+          availability: pressCoverage.availability,
           kind: "status",
           sourceLabel: "City + County advisories",
           peek:
             advisories[0]?.title ??
-            (civicAvailable
-              ? undefined
-              : "The City and County newsrooms could not be reached."),
+            pressCoverage.note ?? undefined,
           body: roadworkBody,
         } as PulseTile]
       : []),
@@ -2136,7 +2050,9 @@ export default async function PulsePage() {
           ? `${liveIncidentSnapshot.totalCount} ${
               liveIncidentSnapshot.totalCount === 1 ? "public report" : "public reports"
             }`
-          : "No road reports to map",
+          : liveIncidentSnapshot.scannerAvailable === false
+            ? "Road incident reports could not be checked"
+            : "No incidents with a mapped location",
       accent: "var(--app-cool)",
       active: activeRoadIncidents.length > 0,
       attention: false,
@@ -2327,8 +2243,8 @@ const SOURCE_HOMES: Record<string, string | undefined> = {
   "FCG FixIT · SeeClickFix": "https://www.frederickcountymd.gov/8235/FCG-FixIT",
   "Google News · Frederick County": "https://news.google.com/search?q=Frederick%20County%20Maryland",
   "Frederick PD · City + County": "https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map",
-  "USGS Water Services": "https://waterdata.usgs.gov/md/nwis/rt",
-  FAA: "https://www.fly.faa.gov/",
+  "USGS Water Data": "https://api.waterdata.usgs.gov/ogcapi/v1/collections/monitoring-locations/items?state_code=24&county_code=021&site_type_code=ST&f=html&limit=200",
+  FAA: "https://nasstatus.faa.gov/",
   "FAA TFR": "https://tfr.faa.gov/",
   "Maryland DNR": "https://dnr.maryland.gov/fisheries/pages/stocking/index.aspx",
   PulsePoint: "https://web.pulsepoint.org/",

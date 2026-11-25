@@ -94,7 +94,7 @@ for (const width of [320, 375, 390, 430]) {
     test.setTimeout(90_000);
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/contacts", { waitUntil: "domcontentloaded" });
-    let { dialog } = await openFind(page);
+    const { dialog, launcher } = await openFind(page);
     const input = dialog.getByRole("searchbox");
     const responsePending = page.waitForResponse(response => {
       const url = new URL(response.url());
@@ -121,10 +121,23 @@ for (const width of [320, 375, 390, 430]) {
     })).toBe(true);
     await expect(image).toHaveCSS("object-position", "50% 100%");
     expect(new URL(await image.getAttribute("src") ?? "", page.url()).searchParams.get("url")).toBe(photo);
-    const firstBox = (await first.boundingBox())!;
-    const inputBox = (await input.boundingBox())!;
-    expect(firstBox.y - (inputBox.y + inputBox.height)).toBeLessThanOrEqual(20);
-    const view = first.getByRole("link", { name: "View place", exact: true });
+    // The app names the search area and can disclose incomplete event coverage
+    // before the lead place. Keep each gap tight without counting those messages as whitespace.
+    const area = dialog.locator("[data-find-area]");
+    await expect(area).toHaveText("Whole county");
+    const notice = dialog.locator("[data-search-event-coverage]");
+    const sections = [dialog.locator(".search-field-shell"), area];
+    if (await notice.isVisible()) sections.push(notice);
+    sections.push(first);
+    let previous = (await sections[0].boundingBox())!;
+    for (const section of sections.slice(1)) {
+      const box = (await section.boundingBox())!;
+      const gap = box.y - previous.y - previous.height;
+      expect(gap).toBeGreaterThanOrEqual(-1);
+      expect(gap).toBeLessThanOrEqual(20);
+      previous = box;
+    }
+    const view = first.getByRole("link", { name, exact: true });
     await expect(view).toHaveAttribute("href", `/places/${slug}`);
     for (const control of [view, first.getByRole("link", { name: "Map", exact: true })]) {
       const bounds = (await control.boundingBox())!;
@@ -140,11 +153,12 @@ for (const width of [320, 375, 390, 430]) {
     await expect(page.getByRole("heading", { level: 1, name, exact: true })).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/contacts$/);
-    const reopened = await openFind(page);
-    dialog = reopened.dialog;
+    await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("searchbox")).toHaveValue(name);
+    await expect(view).toHaveAttribute("href", "/places/" + slug);
+    await expect(view).toBeFocused();
     await dialog.getByRole("button", { name: "Close Find", exact: true }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(reopened.launcher).toBeFocused();
+    await expect(launcher).toBeFocused();
   });
 }

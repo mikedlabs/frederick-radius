@@ -11,7 +11,7 @@ export default function InTheStreetsWorkspace() {
       <nav aria-label="Breadcrumb" className="text-xs px-2 pt-2">
         <Link href="/today" className="inline-flex items-center gap-1.5 px-2 py-3.5 -mx-2 -my-3.5 hover:underline text-[var(--app-ink-3)] transition-colors active:text-[var(--app-brand)]">
           <ArrowLeft className="w-3.5 h-3.5" />
-          Back to Today
+          Today
         </Link>
       </nav>
 

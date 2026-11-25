@@ -112,11 +112,13 @@ Renamed routes 301 to their canonical destinations via `next.config.ts`: `/now` 
 ```bash
 npm install
 npm run dev      # http://localhost:3000
-npm run build    # production build; verifies all routes generate
+npm run build    # build the production app and check its rendered output
 npm run lint
 npm test         # vitest unit tests
 npm run test:e2e # Playwright E2E
 ```
+
+The build opens the production Today page on a temporary local port and checks the county, saved Brunswick, an explicit Mount Airy link, and Nearby. It verifies the area shown before JavaScript starts and the CSS those documents link in order. This check runs with external network access blocked.
 
 ### Optional environment variables
 

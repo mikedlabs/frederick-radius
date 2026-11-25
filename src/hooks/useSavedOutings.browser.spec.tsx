@@ -6,7 +6,7 @@ import { installSavedLocks } from "../../tests/helpers/saved-locks";
 import { encodeSpec } from "@/lib/plan/plan-token";
 import { MAX_SAVED_OUTINGS, SAVED_OUTINGS_KEY } from "@/lib/saved-outings";
 import { SAVED_TRANSIT_STOPS_KEY, SAVED_TRANSIT_BUSES_KEY } from "@/components/transit/transitRiderModel";
-import { refreshSavedOutings, removeOuting, saveOuting, useSavedOutings } from "./useSavedOutings";
+import { refreshSavedOutings, removeOuting, restoreRemovedOuting, saveOuting, useSavedOutings } from "./useSavedOutings";
 
 const persistence = vi.hoisted(() => ({ persist: vi.fn() }));
 vi.mock("@/lib/persistence", () => ({ ensurePersistentStorage: persistence.persist }));
@@ -50,6 +50,15 @@ describe("confirmed browser-local outing writes", () => {
     expect(output().textContent).toBe("Our date");
     expect(locks.names).toEqual([SAVED_OUTINGS_KEY]);
     expect(persistence.persist).toHaveBeenCalledTimes(1);
+  });
+  it("undoes removal at its original position and retains another tab’s newer save", async () => {
+    await act(async () => { await saveOuting(token(1), "First"); await saveOuting(token(2), "Second"); await saveOuting(token(3), "Third"); });
+    const original = stored();
+    const removed = await act(async () => removeOuting(token(2)));
+    await act(async () => saveOuting(token(4), "Fourth"));
+    await act(async () => { await restoreRemovedOuting(removed!); await restoreRemovedOuting(removed!); });
+    expect(stored().slice(1)).toEqual(original);
+    expect(stored()[0].title).toBe("Fourth");
   });
   it("makes duplicate saves and removals idempotent instead of reversing a newer intent", async () => {
     await act(async () => saveOuting(token(), "Our date"));

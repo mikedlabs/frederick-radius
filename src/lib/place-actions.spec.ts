@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Place } from "@/data/places";
+import { PARKING_GARAGES } from "@/data/parking-garages";
+import { actionsForPlace, appleMapsDirections, googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { groupPlaceActions, placeActions } from "./place-actions";
 
 function restaurant(overrides: Partial<Place> = {}): Place {
@@ -23,6 +25,18 @@ function restaurant(overrides: Partial<Place> = {}): Place {
 }
 
 describe("place commerce actions", () => {
+  it.each(PARKING_GARAGES)("offers driving directions and the City's garage payment instructions for $slug", ({ slug }) => {
+    const place = restaurant({ slug, category: "parking", parkmobile_zone: "needs_verification" });
+    const sheet = placeActions(place);
+    expect(groupPlaceActions(sheet, "parking").primary?.href).toContain("travelmode=driving");
+    for (const actions of [sheet, actionsForPlace(place)]) {
+      expect(actions.find(action => action.key === "garage-rates")?.href).toBe("/parking#garage-basics-heading");
+      expect(actions.some(action => action.href.includes("parkmobile"))).toBe(false);
+    }
+    expect(new URL(appleMapsDirections(place.geom.lat, place.geom.lng, place.name, "driving")).searchParams.get("dirflg")).toBe("d");
+    expect(new URL(googleMapsDirections(place.geom.lat, place.geom.lng, "driving")).searchParams.get("travelmode")).toBe("driving");
+  });
+
   it("labels and demotes generic provider searches", () => {
     const actions = placeActions(
       restaurant({ website: "https://restaurant.example" }),

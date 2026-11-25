@@ -1,5 +1,6 @@
 "use client";
 
+import { rememberListItem, restoreListItem, type RemovedListItem } from "@/lib/removed-list-item";
 import { useSyncExternalStore } from "react";
 import { ensurePersistentStorage } from "@/lib/persistence";
 import { decodeSavedPlanToken } from "@/lib/plan/plan-token";
@@ -77,7 +78,10 @@ export function savedOutingErrorDescription(error: unknown): string {
   return error instanceof SavedOutingError ? error.message : "Radius could not confirm this device change. Please try again.";
 }
 
-async function mutate(token: string, title?: string): Promise<void> {
+export type RemovedOuting = RemovedListItem<SavedOuting>;
+const outingId = (outing: SavedOuting) => outing.token;
+
+async function mutate(token: string, title?: string, restore?: RemovedOuting): Promise<RemovedOuting | undefined> {
   const spec = decodeSavedPlanToken(token);
   if (!spec || spec.s.length === 0 || (title !== undefined && !validOutingTitle(title))) {
     throw new SavedOutingError("This outing could not be saved. Open it again and review its choices.");
@@ -85,20 +89,27 @@ async function mutate(token: string, title?: string): Promise<void> {
   if (typeof window === "undefined" || !navigator.locks?.request) {
     throw new SavedOutingError("This browser cannot safely coordinate saved outings. Try a current browser.");
   }
-  await navigator.locks.request(SAVED_OUTINGS_KEY, () => {
+  return navigator.locks.request(SAVED_OUTINGS_KEY, () => {
     let previous = snapshot.outings;
     try {
       const raw = window.localStorage.getItem(SAVED_OUTINGS_KEY);
       const outings = parseSavedOutings(raw);
       previous = outings;
-      const existing = outings.some((outing) => outing.token === token);
+      const index = outings.findIndex((outing) => outing.token === token);
+      const existing = index >= 0;
       if (title !== undefined && !existing && outings.length >= MAX_SAVED_OUTINGS) {
         publish(raw, outings);
         throw new SavedOutingError(`You can keep ${MAX_SAVED_OUTINGS} outings on this device. Remove one from Saved before adding another.`);
       }
-      const next = title !== undefined
-        ? existing ? outings : [{ token, title, saved_at: new Date().toISOString() }, ...outings]
-        : outings.filter((outing) => outing.token !== token);
+      const removed = title === undefined && existing ? rememberListItem(outings, index, outingId) : undefined;
+      let next = outings;
+      if (removed) next = outings.filter((outing) => outing.token !== token);
+      else if (restore) {
+        // If both original neighbors are gone, newer saves still belong above it.
+        const older = outings.findIndex(outing => Date.parse(outing.saved_at) < Date.parse(restore.item.saved_at));
+        next = restoreListItem(outings, restore, outingId, older < 0 ? outings.length : older);
+      }
+      else if (title !== undefined && !existing) next = [{ token, title, saved_at: new Date().toISOString() }, ...outings];
       if (next.length === outings.length) {
         // Idempotent intent: the current device read already confirms the state.
         publish(raw, outings);
@@ -109,6 +120,7 @@ async function mutate(token: string, title?: string): Promise<void> {
       if (window.localStorage.getItem(SAVED_OUTINGS_KEY) !== encoded) throw new Error("Device readback failed");
       publish(encoded, next);
       if (title !== undefined) ensurePersistentStorage();
+      return removed;
     } catch (error) {
       if (error instanceof SavedOutingError) throw error;
       unavailable(previous);
@@ -118,9 +130,12 @@ async function mutate(token: string, title?: string): Promise<void> {
   });
 }
 
-export function saveOuting(token: string, title: string): Promise<void> {
-  return mutate(token, title);
+export async function saveOuting(token: string, title: string): Promise<void> {
+  await mutate(token, title);
 }
-export function removeOuting(token: string): Promise<void> {
+export async function restoreRemovedOuting(removed: RemovedOuting): Promise<void> {
+  await mutate(removed.item.token, removed.item.title, removed);
+}
+export function removeOuting(token: string): Promise<RemovedOuting | undefined> {
   return mutate(token);
 }

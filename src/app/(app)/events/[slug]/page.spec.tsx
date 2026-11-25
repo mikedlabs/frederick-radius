@@ -62,7 +62,7 @@ describe("event detail planner entry", () => {
 
 describe("event detail artwork presentation", () => {
   it("keeps publisher artwork after a separate title and published time, without a photo crop", async () => {
-    const published = { ...event, source: "ticketmaster", hero_image: "https://s1.ticketm.net/dam/a/component-event.jpg" } as EventWithMeta;
+    const published = { ...event, source: "ticketmaster", source_url: "https://www.ticketmaster.com/event/12345", hero_image: "https://s1.ticketm.net/dam/a/component-event.jpg" } as EventWithMeta;
     mocks.resolve.mockResolvedValue({ kind: "live", event: published });
     const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
     const nodes = elements(page);
@@ -99,11 +99,11 @@ describe("event detail source row", () => {
   };
 
   it("hides the inline official link on desktop when the desktop row's action is the official page", async () => {
-    mocks.resolve.mockResolvedValue({ kind: "live", event: { ...event, venue_place_slug: undefined } });
+    mocks.resolve.mockResolvedValue({ kind: "live", event: { ...event, venue_place_slug: undefined, geo_confidence: "area", address: "" } });
     const page = await EventPage({ params: Promise.resolve({ slug: event.slug }), searchParams: Promise.resolve({}) });
     expect(sourceLinkWrappers(page).map(node => node.props.className)).toEqual(["lg:hidden"]);
     const official = elements(page).filter(node => node.props.href === event.source_url);
-    expect(official.some(node => elements(node.props.children as ReactNode).some(child => child.props.children === "Official page") || (Array.isArray(node.props.children) && (node.props.children as unknown[]).includes("Official page")))).toBe(true);
+    expect(official.some(node => elements(node.props.children as ReactNode).some(child => child.props.children === "Event listing on example.org") || (Array.isArray(node.props.children) && (node.props.children as unknown[]).includes("Event listing on example.org")))).toBe(true);
   });
 
   it("keeps the inline official link at every width when the desktop row leads with another action", async () => {
@@ -172,6 +172,23 @@ describe("event detail where and the phone bar", () => {
     expect(barCell(nodes, "Tickets")?.props.primary).toBe(true);
     expect(barCell(nodes, "Directions")?.props.primary).toBe(false);
     expect(calendarCell(nodes)?.props.barVariant).toBe("quiet");
+  });
+
+  it("prioritizes published locations for a multi-site outing and names its one mapped venue", async () => {
+    mocks.venue.mockReturnValue({ name: "Heritage Frederick", geom: event.geom });
+    const multi = { ...event, venue_name: "Heritage Frederick", source_url: "https://downtownfrederick.org/calendar/museums",
+      description: "This self-guided program spans various historic locations and museums." };
+    const nodes = await render(multi);
+    expect(barCell(nodes, "Check locations")?.props).toMatchObject({ href: multi.source_url, primary: true });
+    expect(barCell(nodes, "Directions")).toBeUndefined();
+    expect(renderToStaticMarkup(whereLink(nodes)!)).toContain("Directions to Heritage Frederick");
+    expect(nodes.some(node => node.props["aria-label"] === "Plan this visit")).toBe(false);
+  });
+
+  it("keeps an RSVP ahead of multi-site logistics on phone", async () => {
+    const nodes = await render({ ...event, description: "Activities at multiple venues.", rsvp_url: "https://publisher.example/register" });
+    expect(barCell(nodes, "RSVP")?.props).toMatchObject({ primary: true, href: "https://publisher.example/register" });
+    expect(barCell(nodes, "Directions")).toBeUndefined();
   });
 
   it("fills Add to calendar when there is no address, precise location or ticket", async () => {
@@ -306,6 +323,6 @@ describe("event detail navigation loads destinations on intent", () => {
       expect(link.props.prefetch, String(link.props.href)).toBe(false);
       expect(link.props.href).toMatch(/^\//);
     }
-    expect(links.some(node => node.props.href === (state === "scheduled" ? "/places/venue" : "/events?lens=today"))).toBe(true);
+    expect(links.some(node => node.props.href === (state === "scheduled" ? "/places/venue?returnTo=%2Fevents%2Fcurrent-concert" : "/events?lens=today"))).toBe(true);
   });
 });

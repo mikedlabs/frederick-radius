@@ -147,10 +147,13 @@ describe("primary tab palette contrast", () => {
       const paragraphs = [...template.content.querySelectorAll<HTMLParagraphElement>("p")];
       const facts = paragraphs.filter((node) => ["Free", "Arts & culture"].includes(node.textContent!));
       expect(facts).toHaveLength(2);
-      const links = [...template.content.querySelectorAll<HTMLAnchorElement>("a")].filter((node) => /See full page|Check event details/.test(node.textContent!));
+      const links = [...template.content.querySelectorAll<HTMLAnchorElement>("a")].filter((node) => {
+        const href = node.getAttribute("href");
+        return href?.split("?")[0] === `/events/${detailEvent.slug}` || href === detailEvent.source_url;
+      });
       expect(links).toHaveLength(2);
       for (const node of [...facts, ...links]) {
-        expect(expressionContrast(values, node.style.color, "var(--app-bg-elevated-solid)"), node.textContent).toBeGreaterThanOrEqual(4.5);
+        expect(expressionContrast(values, node.style.color, node.style.background || "var(--app-bg-elevated-solid)"), node.textContent).toBeGreaterThanOrEqual(4.5);
       }
       const title = template.content.querySelector<HTMLHeadingElement>("header h2");
       expect(title?.textContent).toBe(detailEvent.title);

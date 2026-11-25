@@ -1,4 +1,5 @@
 import "server-only";
+import { isJojosWineSpecial, JOJOS_WINE_SPECIAL } from "@/data/jojos-wine-special";
 import { EVENT_BY_SLUG, type Event } from "@/data/events";
 import { archivedEventsBySlugs, type ArchivedEventBatchResolution } from "@/lib/events/event-identity";
 import { servedEventBySlug } from "@/lib/events/served-event-snapshot";
@@ -27,6 +28,13 @@ const UNAVAILABLE = {
 
 function evidenceFor(current: Event, now: Date): PlanEventEvidence[string] {
   const event = applyEventNotices([current], now)[0];
+  if (isJojosWineSpecial(event)) {
+    return { notice: {
+      code: "does_not_fit",
+      message: `This saved listing is a weekly restaurant special. ${JOJOS_WINE_SPECIAL.dateNote}`,
+      event_href: `/events/${event.slug}`,
+    } };
+  }
   // A cancelled private booking must not leak its name or detail route. Strip
   // only lifecycle markers before checking the normal public eligibility.
   if (!isPublicEvent({ ...event, status: "scheduled", title: stripStatusMarker(event.title) })) {
@@ -64,7 +72,9 @@ export async function resolvePlanEventEvidence(
   if (!requested.length) return {};
   const now = options.now ?? new Date();
   const readers = options.sources ?? sources;
-  const timeoutMs = Math.min(1_500, Math.max(1, options.timeoutMs ?? 1_000));
+  // Include time waiting for the pooled connection on a cold server. A
+  // confirmed deletion or a missed deadline must still leave the stop unscheduled.
+  const timeoutMs = Math.min(3_000, Math.max(1, options.timeoutMs ?? 2_500));
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {

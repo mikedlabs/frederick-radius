@@ -4,6 +4,20 @@ Frederick Radius has many capabilities, but people should not have to choose a
 tool before they can get an answer. Product surfaces organize those
 capabilities around the task a person is trying to complete.
 
+## Actions, scope and return paths
+
+Give the action that advances the current visit the strongest emphasis. Name the
+provider on an outbound event listing and the mapped destination for directions.
+A fixed section link names the section. Browser Back and the shell’s Back control
+restore the actual origin. A link to more details within Radius uses an internal
+navigation arrow. The home link has one accessible name across all destinations.
+
+Live information includes its observation time and source. A missing value keeps
+its recovery action available. Filters with several independent choices keep a
+draft until the visitor shows the results. Cancel discards the draft. Shortcuts
+outside that panel apply immediately. Removing an individual choice retains the
+other filters and location scope.
+
 ## Permanent destinations
 
 The mobile navigation keeps four stable destinations:
@@ -12,6 +26,14 @@ The mobile navigation keeps four stable destinations:
 - **Map** answers where something is and what is nearby.
 - **Events** answers what is scheduled.
 - **Saved** holds what the person chose to keep.
+
+The shared phone header uses two rows. The Charcoal masthead holds the white
+Ripple and Frederick Radius name alongside labeled Find and More actions where
+they apply. In the paper-toned strip beneath it, the area control names the current scope. County status always shows its name and
+the countywide state, even when the visitor has selected one town. A clear
+report reads “Clear in checked feeds.” Both rows work in dark appearance.
+Tablets and laptops use a single row. On deep pages, Back returns to the
+visitor’s previous context.
 
 An ordinary primary-tab tap resumes that tab's last safe root URL and reading
 position in the current browser session. Reselecting an active root keeps the

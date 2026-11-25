@@ -274,6 +274,7 @@ if (!LIVE) {
       const expired = dated({ ...fair, slug: "offline-discovery-ended", title: "Concluded fixture" }, next24 - 36 * hour, next24 - 34 * hour);
       const { evidence, goto } = await prepare(context, page, baseURL, [tonight, ...weekend, expired]);
       await goto("/events?in=frederick");
+      await expect(page.locator('[data-events-complete="true"][data-events-interaction-ready="true"]')).toBeVisible({ timeout: 45_000 });
       const overview = page.locator("[data-events-overview]");
       const evening = overview.getByRole("region", { name: "Tonight", exact: true });
       const upcoming = overview.getByRole("region", { name: "This weekend", exact: true });
@@ -307,26 +308,71 @@ if (!LIVE) {
       if (width === 390) {
         const tabs = page.getByRole("navigation", { name: "Primary", exact: true }).filter({ visible: true });
         const tabTop = await tabs.evaluate(node => node.getBoundingClientRect().top);
-        const firstLines = await upcoming.getByRole("heading", { level: 3 }).evaluateAll(nodes =>
-          nodes.map(node => node.getBoundingClientRect().top + parseFloat(getComputedStyle(node).lineHeight)));
-        expect(firstLines).toHaveLength(weekend.length);
-        expect(Math.max(...firstLines), "Each weekend pick needs a readable title above the tab bar").toBeLessThanOrEqual(tabTop);
+        const when = evening.locator("[data-event-row-when]");
+        await expect(when).toContainText(/6:00\s*PM/i);
+        const day = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "America/New_York" }).format(new Date(tonight.starts_at));
+        await expect(when).toContainText(day);
+        for (const fact of [pick, when]) {
+          const box = (await fact.boundingBox())!;
+          expect(box.y).toBeGreaterThanOrEqual(0);
+          expect(box.y + box.height).toBeLessThanOrEqual(tabTop);
+        }
+        const rows = await upcoming.locator("article").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().toJSON()));
+        expect(rows).toHaveLength(weekend.length);
+        expect(rows[0].width).toBeCloseTo((await upcoming.boundingBox())!.width, 0);
+        expect(rows[1].width).toBeCloseTo(rows[0].width, 0);
+        expect(rows[1].left).toBeCloseTo(rows[0].left, 0);
+        expect(rows[1].top).toBeGreaterThanOrEqual(rows[0].bottom);
+
       }
 
       await nativeTarget(pick);
       const browseUrl = page.url();
       await expect(pick).toHaveAttribute("href", "/events/" + tonight.slug);
-      await pick.tap();
+      await expect(pick).toHaveAccessibleDescription(/Frederick time.*6:00 PM to .*12:00 AM/i);
+      if (width === 390) {
+        const rail = evening.locator("[data-event-time-rail]");
+        await rail.evaluate(node => node.scrollIntoView({ block: "center", behavior: "instant" }));
+        const box = (await rail.boundingBox())!;
+        await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      } else {
+        await pick.focus();
+        await pick.press("Enter");
+      }
       const dialog = page.getByRole("dialog", { name: tonight.title, exact: true });
       await expect(dialog).toBeVisible();
       expect(evidence.eventReads).toContain(tonight.slug);
       await expect.poll(() => page.evaluate(() => window.history.state?.__frederickRadiusLayer)).toMatch(/^event-sheet:/);
-      await expect(dialog.getByRole("link", { name: "See full page", exact: true })).toBeVisible();
+      await expect(dialog.getByRole("link", { name: "Event details in Radius", exact: true })).toBeVisible();
       await page.goBack();
       await expect(dialog).toHaveCount(0);
       await expect(page).toHaveURL(browseUrl);
       await expect(pick).toBeFocused();
       await expect(upcoming.getByRole("link", { name: weekend[1].title })).toBeVisible();
+      if (width === 390) {
+        const tabs = page.getByRole("navigation", { name: "Primary", exact: true }).filter({ visible: true });
+        const tabTop = await tabs.evaluate(node => node.getBoundingClientRect().top);
+        // Native Back can finish restoring the previous scroll position after
+        // focus returns. Verify the actual row is fully reachable after that.
+        await expect(async () => {
+          await licensed.evaluate(node => node.scrollIntoView({ block: "center", behavior: "instant" }));
+          const rowBox = (await licensed.boundingBox())!;
+          expect(rowBox.y).toBeGreaterThanOrEqual(0);
+          expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(tabTop);
+        }).toPass({ timeout: 5000 });
+        const rights = licensed.locator("details[data-overview-photo-rights]");
+        await rights.locator("summary").tap();
+        await expect(rights.getByRole("link", { name: /CC BY-SA/ })).toBeVisible();
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+        await rights.locator("summary").tap();
+        const second = licensed.getByRole("link", { name: weekend[1].title, exact: true });
+        await nativeTarget(second);
+        await second.tap();
+        await expect(page.getByRole("dialog", { name: weekend[1].title, exact: true })).toBeVisible();
+        await page.goBack();
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+        await expect(second).toBeFocused();
+      }
       const openTonight = width === 390;
       const section = openTonight ? evening : upcoming;
       await section.getByRole("button", { name: openTonight ? "See all events tonight" : "See all events this weekend" }).tap();
@@ -381,7 +427,7 @@ if (!LIVE) {
       await expect(save).toHaveAttribute("aria-pressed", "true");
       const committed = await page.evaluate((key) => localStorage.getItem(key), SAVED_KEY);
       expect(JSON.parse(committed!)).toEqual([{ type: "event", id: events[0].slug, saved_at: expect.any(String) }]);
-      const full = dialog.getByRole("link", { name: "See full page", exact: true });
+      const full = dialog.getByRole("link", { name: "Event details in Radius", exact: true });
       const fullHref = new URL((await full.getAttribute("href"))!, page.url());
       expect(fullHref.pathname).toBe(`/events/${events[0].slug}`);
       expect(fullHref.searchParams.get("returnTo")).toBe(`${origin.pathname}${origin.search}`);
@@ -529,7 +575,7 @@ if (!LIVE) {
     await trigger.tap();
     const dialog = page.getByRole("dialog", { name: record!.title, exact: true });
     await expect(dialog).toBeVisible();
-    const full = dialog.getByRole("link", { name: "See full page", exact: true });
+    const full = dialog.getByRole("link", { name: "Event details in Radius", exact: true });
     // Let real document prefetches settle before leaving in WebKit. Aborting
     // intercepted in-flight RSC reads can surface as engine access-control errors.
     await page.waitForLoadState("networkidle", { timeout: 10_000 });

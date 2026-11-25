@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { FROSTY_FRIDAY, TENTH_WARD_CONCERT } from "@/data/thanksgiving-events";
+import * as notices from "@/lib/events/notices";
+import { weekendGuide } from "@/lib/today/local-outing-guides";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +16,7 @@ vi.mock("@/lib/db/client", () => ({
 import {
   EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
   loadEventArchiveSnapshot,
+  loadHolidayGuideStatus,
   hydrateTodayEventSnapshot,
   loadTodayEventSnapshot,
   TODAY_EVENT_SNAPSHOT_MAX_AGE_MS,
@@ -86,6 +90,45 @@ describe("Today durable event snapshot", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("checks both Friday morning and evening occurrences outside the scheduled-only board", async () => {
+    const now = new Date("2026-11-27T13:30:00Z");
+    const sql = vi.fn().mockResolvedValue([
+      { url: FROSTY_FRIDAY.url, recent: false, withdrawn: true, slugs: [FROSTY_FRIDAY.slug] },
+      { url: TENTH_WARD_CONCERT.url, recent: true, withdrawn: false, slugs: [TENTH_WARD_CONCERT.slug] },
+    ]);
+    mocks.getSql.mockReturnValue(sql);
+    const status = await loadHolidayGuideStatus(now);
+    const [strings, ...args] = sql.mock.calls[0];
+    expect(args).toEqual(expect.arrayContaining([FROSTY_FRIDAY.startsAt, TENTH_WARD_CONCERT.startsAt, TENTH_WARD_CONCERT.syndicatedUrl]));
+    expect(strings.join(" ")).toContain("c.event_status in ('cancelled','postponed')");
+    expect(strings.join(" ")).toContain("t.reason = 'cancelled'");
+    const guide = weekendGuide(now, [], status);
+    expect(guide.stops.map(stop => stop.title)).toEqual([TENTH_WARD_CONCERT.title]);
+    expect(guide.stops[0].statusNote).toBeUndefined();
+  });
+
+  it("keeps an explicit notice during an archive outage and identifies remaining picks as manually checked", async () => {
+    const now = new Date("2026-11-24T16:00:00Z");
+    const ownerNotice = vi.spyOn(notices, "activeEventNotices").mockReturnValue([{
+      slug: "updated-festival-slug", status: "postponed", headline: "Festival postponed",
+      source_url: FROSTY_FRIDAY.url, expires: "2026-11-27",
+    }]);
+    try {
+      mocks.getSql.mockReturnValue(vi.fn().mockRejectedValue(new Error("unavailable")));
+      const status = await loadHolidayGuideStatus(now);
+      const guide = weekendGuide(now, [], status);
+      expect(guide.stops.map(stop => stop.title)).toEqual([TENTH_WARD_CONCERT.title]);
+      expect(guide.stops[0].statusNote).toContain("Schedule checked Nov 24");
+    } finally {
+      ownerNotice.mockRestore();
+    }
+  });
+
+  it("does not query expired guide picks", async () => {
+    expect(await loadHolidayGuideStatus(new Date(TENTH_WARD_CONCERT.endsAt))).toEqual({});
+    expect(mocks.getSql).not.toHaveBeenCalled();
   });
 
   it("hydrates a current archive without degrading its trust signal", () => {

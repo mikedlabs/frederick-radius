@@ -45,6 +45,7 @@ const ROUTES = [
   "/contacts",
   "/access",
   "/pulse",
+  "/rivers",
   "/transit",
   "/compass",
   "/places/brewers-alley-frederick",

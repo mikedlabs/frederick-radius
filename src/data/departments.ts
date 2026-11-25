@@ -39,15 +39,18 @@ export type DepartmentContact = {
   phone?: string;
 };
 
-/** US phone → display form: "301-600-1380", "1-800-222-1222", "555-1234". */
-export function formatPhone(digits: string): string {
-  const d = digits.replace(/\D/g, "");
-  if (d.length === 11 && d.startsWith("1"))
-    return `1-${d.slice(1, 4)}-${d.slice(4, 7)}-${d.slice(7)}`;
-  if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
-  if (d.length === 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
-  return digits;
-}
+export { formatPhone } from "@/lib/format/usPhone";
+
+export const FREDERICK_HEALTH_URGENT_CARE_URL = "https://www.frederickhealth.org/services/urgent-care/";
+
+export const POISON_CONTROL = {
+  slug: "poison-control",
+  jurisdiction: "emergency",
+  name: "Poison Control",
+  about: "Someone swallowed, breathed, or got something on their skin. 24/7.",
+  website: "https://www.poison.org/",
+  phone: "18002221222",
+} satisfies DepartmentContact;
 
 // ─── Emergency + health ─────────────────────────────────────────────────
 // Always at the top. National numbers; no source link other than the
@@ -69,14 +72,7 @@ const EMERGENCY: DepartmentContact[] = [
     website: "https://988lifeline.org/",
     phone: "988",
   },
-  {
-    slug: "poison-control",
-    jurisdiction: "emergency",
-    name: "Poison Control",
-    about: "Someone swallowed, breathed, or got something on their skin. 24/7.",
-    website: "https://www.poison.org/",
-    phone: "18002221222",
-  },
+  POISON_CONTROL,
   {
     slug: "frederick-health-hospital",
     jurisdiction: "emergency",
