@@ -1,0 +1,13 @@
+.frame {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: var(--discovery-photo-ratio, 2.5);
+  background: var(--app-bg-sunken);
+}
+.frame img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}

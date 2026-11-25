@@ -542,6 +542,8 @@ describe("DaypartNeeds", () => {
     expect(daypartLeadReason([pick])).toBe("Radius has this marked as a local favorite.");
     expect(daypartLeadReason([{ ...pick, confidence: "confirmed", fact: "Open until 4pm", distance: "4 min walk" }], { includeEditorialLabels: false }))
       .toBe("It is open until 4pm and is a 4-minute walk from you.");
+    const factualPick = { ...pick, confidence: "confirmed" as const, fact: "Open until 4pm", distance: "4 min walk" };
+    expect(daypartLeadReason([factualPick], { includeEditorialLabels: false, factsAlreadyShown: true })).toBeNull();
     const html = renderToStaticMarkup(createElement(DaypartNeeds, {
       variant: "brief", rows: [{ category: "coffee", label: "Coffee", href: "/places?category=coffee", picks: [pick] }],
     }));

@@ -186,29 +186,55 @@ export function pulseStatusWord({
 }
 
 function PulseSourceChecks({ summary }: { summary: CountyStatusSummary }) {
-  if (!summary.checks?.length) return null;
+  const checks = summary.checks;
+  if (!checks?.length) return null;
   const stateLabel = { current: "Verified for this snapshot", stale: "Earlier source data", unavailable: "Unable to verify", disabled: "Not connected" };
   const timeLabel = { retrieval: "Last source check", provider: "Published", observation: "Observed" };
+  const states = [
+    { state: "current", label: "verified" },
+    { state: "stale", label: "earlier" },
+    { state: "unavailable", label: "unavailable" },
+    { state: "disabled", label: "not connected" },
+  ] as const;
+  const counts = { current: 0, stale: 0, unavailable: 0, disabled: 0 };
+  for (const check of checks) counts[check.state] += 1;
   return (
-    <details data-pulse-source-checks className="mt-3 text-[12px]">
-      <summary className="min-h-11 cursor-pointer content-center font-semibold">Source checks</summary>
-      <p>These checks cover weather, schools, roads, outages, fire and rescue, air quality and civic notices. Times below show when a source was checked, a notice was published or a reading was taken.</p>
-      <dl className="mt-2 space-y-2">
-        {summary.checks.map((check, index) => {
-          const time = formatPulseSourceTime(check.asOf);
-          return (
-            <div key={`${check.source}:${index}`}>
-              <dt className="font-semibold">{check.source}</dt>
-              <dd>
-                {stateLabel[check.state]} · {time && check.asOfBasis ? (
-                  <>{timeLabel[check.asOfBasis]} <time dateTime={check.asOf ?? undefined}>{time}</time></>
-                ) : "Source time unavailable"}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
-    </details>
+    <section className={styles.coverage} aria-label="Sources in this update">
+      <h2 className={styles.coverageTitle}>
+        <span className="sr-only">{counts.current} of {checks.length} sources verified in this update</span>
+        <span aria-hidden className={styles.coverageFigure}><strong>{counts.current}</strong><span>/{checks.length}</span></span>
+        <span aria-hidden>sources verified<br />in this update</span>
+      </h2>
+      <div aria-hidden className={styles.coverageStrip}>
+        {states.map(({ state }) => Array.from({ length: counts[state] }, (_, index) => (
+          <span key={`${state}-${index}`} data-state={state} />
+        )))}
+      </div>
+      <ul className={styles.coverageLegend}>
+        {states.filter(({ state }) => state !== "current" && counts[state] > 0).map(({ state, label }) => (
+          <li key={state}><i aria-hidden data-state={state} /><span><strong>{counts[state]}</strong> {label}</span></li>
+        ))}
+      </ul>
+      <details data-pulse-source-checks className={styles.coverageDetails}>
+        <summary className="min-h-11 cursor-pointer content-center font-semibold">Source checks</summary>
+        <p>These checks cover weather, schools, roads, outages, fire and rescue, air quality and civic notices. Times below show when a source was checked, a notice was published or a reading was taken.</p>
+        <dl className="mt-2 space-y-2">
+          {checks.map((check, index) => {
+            const time = formatPulseSourceTime(check.asOf);
+            return (
+              <div key={`${check.source}:${index}`}>
+                <dt className="font-semibold">{check.source}</dt>
+                <dd>
+                  {stateLabel[check.state]} · {time && check.asOfBasis ? (
+                    <>{timeLabel[check.asOfBasis]} <time dateTime={check.asOf ?? undefined}>{time}</time></>
+                  ) : "Source time unavailable"}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      </details>
+    </section>
   );
 }
 
@@ -242,6 +268,7 @@ export type PulseTile = {
   /** A direct measurement. Do not add a visual fill unless the provider
    * publishes a meaningful threshold for that exact value. */
   gauge?: { value: number; unit: string; decimals?: number; comma?: boolean };
+  readingGraphic?: ReactNode;
   feature?: { temp: number; condition: string; hl?: string };
   action?: { href: string; label: string };
   body: ReactNode;
@@ -639,6 +666,7 @@ function PulseSmartBlock({
         onClick={event => onOpen(event.currentTarget)}
         data-pulse-key={tile.key}
         aria-haspopup="dialog"
+        aria-describedby={tile.readingGraphic ? `pulse-history-${tile.key}` : undefined}
         aria-label={`${tile.label}: ${accessibleReading}. ${state}. Source: ${tile.sourceLabel}`}
         className={styles.reading}
         style={{
@@ -682,6 +710,7 @@ function PulseSmartBlock({
           </span>
         )}
 
+        {tile.readingGraphic && <span id={`pulse-history-${tile.key}`}>{tile.readingGraphic}</span>}
         <span className={styles.readingFooter}>
           <span className={styles.readingSource}>Source · {tile.sourceLabel}</span>
           <ArrowRight aria-hidden className={styles.rowArrow} />
@@ -1102,7 +1131,6 @@ export default function PulseBoard({
   return (
     <PulseInteractionReady.Provider value={interactionReady}>
       <header data-pulse-briefing data-pulse-interaction-ready={String(interactionReady)} className={styles.briefing}>
-        <span aria-hidden className={styles.countyRelief} />
         <div className={styles.briefingTop}>
           <div className={styles.status} style={{ "--pulse-tone": heroColor } as CSSProperties}>
             <span aria-hidden className={styles.statusIcon}>
@@ -1129,42 +1157,40 @@ export default function PulseBoard({
           </div>
           <div className={styles.freshness}><PulseFreshness renderedAt={hero.renderedAt} /></div>
         </div>
-        <h1 className={styles.headline}>{earlierRoadLead ? `Earlier MDOT report: ${hero.line}` : hero.line}</h1>
-        <p className={styles.summary}>{earlierRoadLead ? `Current road conditions are unverified. Earlier report guidance: ${hero.sub}` : hero.sub}</p>
-        {earlierRoadCount > 0 && (
-          <p className="mt-3 text-[12px]">Earlier road checks listed {earlierRoadCount} {earlierRoadCount === 1 ? "update" : "updates"}. {currentRoadCount > 0 ? "Some road sources remain unverified." : "Current road conditions are unverified."}</p>
-        )}
-        {(hero.leadMeta || primaryAction) && (
-          <div className={styles.briefingAction}>
-            {hero.leadMeta && (
-              <p className={styles.leadMeta}>
-                <Clock aria-hidden className="h-4 w-4 shrink-0" />
-                {earlierRoadLead ? `Earlier report details: ${hero.leadMeta}` : hero.leadMeta}
-              </p>
-            )}
-            {primaryAction && (
-              <Button
-                variant="secondary"
-                disabled={!interactionReady}
-                data-decision-action="open-status-details"
-                onClick={event => openTile(primaryAction.key, event.currentTarget)}
-                className={styles.leadButton}
-                style={{ backgroundColor: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}
-                iconRight={<ArrowRight aria-hidden className="h-4 w-4" />}
-              >
-                {lead ? (hero.actionLabel ?? "See what this means") : "Check official alerts"}
-              </Button>
-            )}
-          </div>
-        )}
-        {hero.countyStatus && (
-          <>
-            {!hero.countyStatus.ok && (lead || !hero.degraded || hero.operational) && (
-              <p className="mt-3 text-[12px]">Some county conditions could not be verified.</p>
-            )}
-            <PulseSourceChecks summary={hero.countyStatus} />
-          </>
-        )}
+        <div className={styles.briefingStory}>
+          <h1 className={styles.headline}>{earlierRoadLead ? `Earlier MDOT report: ${hero.line}` : hero.line}</h1>
+          <p className={styles.summary}>{earlierRoadLead ? `Current road conditions are unverified. Earlier report guidance: ${hero.sub}` : hero.sub}</p>
+          {earlierRoadCount > 0 && (
+            <p className="mt-3 text-[12px]">Earlier road checks listed {earlierRoadCount} {earlierRoadCount === 1 ? "update" : "updates"}. {currentRoadCount > 0 ? "Some road sources remain unverified." : "Current road conditions are unverified."}</p>
+          )}
+          {(hero.leadMeta || primaryAction) && (
+            <div className={styles.briefingAction}>
+              {hero.leadMeta && (
+                <p className={styles.leadMeta}>
+                  <Clock aria-hidden className="h-4 w-4 shrink-0" />
+                  {earlierRoadLead ? `Earlier report details: ${hero.leadMeta}` : hero.leadMeta}
+                </p>
+              )}
+              {primaryAction && (
+                <Button
+                  variant="secondary"
+                  disabled={!interactionReady}
+                  data-decision-action="open-status-details"
+                  onClick={event => openTile(primaryAction.key, event.currentTarget)}
+                  className={styles.leadButton}
+                  style={{ backgroundColor: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}
+                  iconRight={<ArrowRight aria-hidden className="h-4 w-4" />}
+                >
+                  {lead ? (hero.actionLabel ?? "See what this means") : "Check official alerts"}
+                </Button>
+              )}
+            </div>
+          )}
+          {hero.countyStatus && !hero.countyStatus.ok && (lead || !hero.degraded || hero.operational) && (
+            <p className="mt-3 text-[12px]">Some county conditions could not be verified.</p>
+          )}
+        </div>
+        {hero.countyStatus && <PulseSourceChecks summary={hero.countyStatus} />}
       </header>
 
       {breaking}

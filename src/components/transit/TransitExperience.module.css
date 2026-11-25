@@ -1,11 +1,12 @@
-/* The transit workspace uses the shared Brand 1.4 tokens. Its route line is
-   decorative identity, never a map, a vehicle position, or service progress. */
+/* Transit uses the official static route paths for its network preview. */
 .page { min-width: 0; container: transit-page / inline-size; }
 .masthead { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 1rem; padding: .75rem 0 1.5rem; border-bottom: 1px solid var(--app-border); }
 .masthead h1 { margin: .35rem 0 .65rem; font-size: clamp(2.5rem, 7vw, 4.75rem); line-height: .98; letter-spacing: -.065em; font-weight: 750; color: var(--app-ink); overflow-wrap: anywhere; }
 .masthead p { max-width: 35rem; font-size: .9375rem; line-height: 1.55; color: var(--app-ink-2); }
 .masthead .kicker { display: flex; align-items: center; gap: .5rem; font-size: .75rem; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--app-ink-2); }
-.mastheadGraphic { width: clamp(7rem, 18vw, 12rem); height: auto; color: var(--app-brand); pointer-events: none; align-self: center; }
+.mastheadGraphic { display: grid; justify-items: center; width: clamp(6rem, 18vw, 12rem); max-width: 100%; align-self: center; color: var(--app-brand); font-size: .76rem; font-weight: 650; text-decoration: underline; }
+.mastheadGraphic svg { height: clamp(4rem, 10vw, 6.5rem); background: var(--app-surface-muted, var(--app-bg)); border: 1px solid var(--app-border); border-radius: var(--app-radius-sm); }
+.liveNetwork h2 { scroll-margin-top: 7rem; }
 .workspace { display: grid; min-width: 0; gap: 1.5rem; margin-top: 1.5rem; align-items: start; }
 .stopFinder { min-width: 0; padding: 1.25rem; border: 1px solid var(--app-border); border-radius: 1.5rem; background: var(--app-bg-elevated-solid); box-shadow: 0 12px 36px -26px color-mix(in srgb, var(--app-ink) 24%, transparent); }
 .finderHeader { display: flex; align-items: flex-start; gap: .875rem; margin-bottom: 1rem; }
@@ -147,7 +148,8 @@
 }
 @media (max-width: 36rem) {
   .masthead { grid-template-columns: minmax(0, 1fr); gap: .875rem; padding-bottom: 1rem; }
-  .mastheadGraphic { width: 8rem; height: 1.5rem; justify-self: end; }
+  .mastheadGraphic { width: 6.5rem; justify-self: start; }
+  .masthead:has(.mastheadGraphic) { grid-template-columns: minmax(0, 1fr) minmax(4rem, 6.5rem); align-items: center; }
   .stopFinder { padding: 1rem; border-radius: 1.25rem; }
   .boardingBody { padding: .875rem; }
   .finderIcon { width: 2.5rem; height: 2.5rem; }

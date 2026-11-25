@@ -6,6 +6,8 @@ import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { getScope, parseScope, scopeLabel as areaLabel, scopeToParam, scopeTownSlug, subscribeScopeChange } from "@/lib/scope";
 import TodayHeadlineCard from "./TodayHeadlineCard";
+import { EventWeekendCalendar } from "./EventWeekendCalendar";
+import EventStartScale from "./EventStartScale";
 import choiceStyles from "./TodayEventChoices.module.css";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import { parseRecoveryEventVisual, type EventCardVisual } from "@/components/event/eventVisuals";
@@ -98,6 +100,7 @@ export function TodayEventBriefCard({ event, visual, lead = false }: { event: To
     <p id={`today-choice-facts-${event.slug}`} className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
       {event.venue}{event.free ? " · Free" : event.price ? ` · ${event.price}` : ""}
     </p>
+    {lead && !visual && <EventStartScale start={event.time} end={event.endTime} />}
   </div>;
   // Every choice is a ruled row. The lead may carry a wide picture; a later
   // row keeps its approved picture as a small square at the right edge.
@@ -161,11 +164,13 @@ export function TodayEventsRecoveryView({
   failed = false,
   scopeLabel = areaLabel("county"),
   eventsHref = "/events",
+  weekendFriday,
 }: {
   response: TodayEventResponse | null;
   failed?: boolean;
   scopeLabel?: string;
   eventsHref?: string;
+  weekendFriday?: string;
 }) {
   const events = response?.events ?? [];
   const healthyEmpty = response?.partial === false && events.length === 0;
@@ -195,9 +200,7 @@ export function TodayEventsRecoveryView({
           style={{ borderColor: "var(--app-border)" }}
         >
           <div className="min-w-0">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
-              Events today
-            </p>
+            <h2 className={choiceStyles.recoveryHeading}>Events today</h2>
             <p role="status" className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
               {status}
             </p>
@@ -213,6 +216,7 @@ export function TodayEventsRecoveryView({
             <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
           </Link>
         </div>
+        {weekendFriday && <EventWeekendCalendar friday={weekendFriday} eventsHref={eventsHref} />}
       </section>
     );
   }
@@ -252,11 +256,12 @@ export function TodayEventsRecoveryView({
  * passive recovery is not an explicit visitor refresh and must not consume
  * the separate, rate-limited cache-bypass allowance.
  */
-function RecoverTodayEvents({ initialResponse, requestPath = "/api/today/events", scopeLabel = areaLabel("county"), eventsHref = "/events" }: {
+function RecoverTodayEvents({ initialResponse, requestPath = "/api/today/events", scopeLabel = areaLabel("county"), eventsHref = "/events", weekendFriday }: {
   initialResponse?: TodayEventResponse;
   requestPath?: string;
   scopeLabel?: string;
   eventsHref?: string;
+  weekendFriday?: string;
 }) {
   const [state, setState] = useState<RecoveryState>(initialResponse ? { status: "ready", response: initialResponse } : { status: "loading" });
 
@@ -299,13 +304,13 @@ function RecoverTodayEvents({ initialResponse, requestPath = "/api/today/events"
       response={initialResponse ?? (state.status === "ready" ? state.response : null)}
       failed={!initialResponse && state.status === "failed"}
       scopeLabel={scopeLabel}
-      eventsHref={eventsHref}
+      eventsHref={eventsHref} weekendFriday={weekendFriday}
     />
   );
 }
 
 const subscribeScope = (onChange: () => void) => subscribeScopeChange(() => onChange());
-function ScopedTodayEvents({ initialResponse }: { initialResponse?: TodayEventResponse }) {
+function ScopedTodayEvents({ initialResponse, weekendFriday }: { initialResponse?: TodayEventResponse; weekendFriday?: string }) {
   const stored = useSyncExternalStore(subscribeScope, getScope, () => null);
   const params = useSearchParams();
   const scope = parseScope(params.get("in")) ?? stored;
@@ -313,9 +318,9 @@ function ScopedTodayEvents({ initialResponse }: { initialResponse?: TodayEventRe
   const suffix = town && scope ? `?in=${encodeURIComponent(scopeToParam(scope))}` : "";
   // Events follow a town; Near me still reads the whole county's program.
   const scopeLabel = areaLabel(town ? scope : "county");
-  return <RecoverTodayEvents key={suffix} requestPath={`/api/today/events?v=visual-choices-1${suffix ? `&${suffix.slice(1)}` : ""}`} initialResponse={town ? undefined : initialResponse} scopeLabel={scopeLabel} eventsHref={`/events${suffix}`} />;
+  return <RecoverTodayEvents key={suffix} weekendFriday={weekendFriday} requestPath={`/api/today/events?v=visual-choices-1${suffix ? `&${suffix.slice(1)}` : ""}`} initialResponse={town ? undefined : initialResponse} scopeLabel={scopeLabel} eventsHref={`/events${suffix}`} />;
 }
 
-export default function TodayEventsRecovery({ initialResponse, scoped = false }: { initialResponse?: TodayEventResponse; scoped?: boolean } = {}) {
-  return scoped ? <Suspense fallback={<TodayEventsRecoveryView response={initialResponse ?? null} />}><ScopedTodayEvents initialResponse={initialResponse} /></Suspense> : <RecoverTodayEvents initialResponse={initialResponse} />;
+export default function TodayEventsRecovery({ initialResponse, scoped = false, weekendFriday }: { initialResponse?: TodayEventResponse; scoped?: boolean; weekendFriday?: string } = {}) {
+  return scoped ? <Suspense fallback={<TodayEventsRecoveryView response={initialResponse ?? null} weekendFriday={weekendFriday} />}><ScopedTodayEvents initialResponse={initialResponse} weekendFriday={weekendFriday} /></Suspense> : <RecoverTodayEvents initialResponse={initialResponse} weekendFriday={weekendFriday} />;
 }

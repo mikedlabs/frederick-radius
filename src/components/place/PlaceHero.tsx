@@ -5,6 +5,7 @@ import { currentSkyPalette } from "@/components/today/SkyHero";
 import { nextSunHint } from "@/lib/sun";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import PlaceHeroMedia from "@/components/place/PlaceHeroMedia";
+import type { LngLat } from "@/lib/geo";
 import type { CSSProperties } from "react";
 import type { GooglePhotoAttribution } from "@/lib/integrations/google-places";
 
@@ -16,6 +17,7 @@ type Props = {
   aspectRatio?: "16/10" | "16/9" | "4/3" | "1/1";
   size?: "card" | "hero";
   priority?: boolean;
+  location?: LngLat & { town: string };
   /** Canonical provider photo, eligible only with its individual attribution. */
   photoSrc?: string;
   photoAttribution?: GooglePhotoAttribution;
@@ -26,7 +28,7 @@ type Props = {
 export default function PlaceHero({
   slug, name, category,
   aspectRatio = "16/10", size = "hero", priority = false, photoSrc,
-  photoAttribution, photoAttributions, googleMapsUri,
+  photoAttribution, photoAttributions, googleMapsUri, location,
 }: Props) {
   const cat = CATEGORY_BY_SLUG[category];
   // The category color reaches the seal and the pill as one custom property,
@@ -58,6 +60,8 @@ export default function PlaceHero({
       width={width}
       height={height}
       size={size}
+      location={location}
+      slug={slug}
       priority={priority}
       googleMapsUri={googleMapsUri}
       skyTop={sky?.top}

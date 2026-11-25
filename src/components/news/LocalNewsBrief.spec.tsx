@@ -59,6 +59,17 @@ describe("compact local news composition", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("prints the publisher’s Eastern date even when UTC has advanced to the next day", async () => {
+    providers.news.mockResolvedValue({ items: [{ ...HEADLINES[0], published_at: "2026-10-09T01:05:00.000Z" }], status: "available" });
+    const doc = documentOf(await renderBrief());
+    const link = doc.querySelector("ol a")!;
+    const mark = link.querySelector("[data-publication-dateline]")!;
+    expect([...mark.children].map((part) => part.textContent)).toEqual(["Oct", "8", "2026"]);
+    expect(mark.getAttribute("aria-hidden")).toBe("true");
+    expect(link.querySelector("time")?.getAttribute("datetime")).toBe("2026-10-09T01:05:00.000Z");
+    expect(link.querySelector("time")?.textContent).toContain("Published Oct 8, 2026, 9:05 PM EDT");
+  });
+
   it("keeps official civic updates separate from police and safety advisory lanes", async () => {
     providers.press.mockResolvedValue({
       items: [{ ...PRESS[0], title: "Safety advisory fixture", lane: "advisory" },

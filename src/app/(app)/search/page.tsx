@@ -6,7 +6,10 @@ import { formatHoursLine } from "@/lib/hours";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { loadEventArchiveSnapshot, EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS } from "@/lib/loaders/todayEventSnapshot";
 import { searchEventsFromSnapshot, searchEventCoverageMessage, searchEventRecoveryHref, searchEventRecoveryLabel, type SearchEventCoverage } from "@/lib/search/event-coverage";
-import { resolveDecisionContext, SCOPE_COOKIE, scopeLabel } from "@/lib/scope";
+import { parseScope, resolveDecisionContext, SCOPE_COOKIE, scopeLabel } from "@/lib/scope";
+import PlaceTownSummary, { countPlaceTowns } from "@/components/places/PlaceTownSummary";
+import FindStart from "@/components/search/FindStart";
+import { queryWithoutSearchArea } from "@/lib/search/refinement";
 import SearchRefinements from "@/components/search/SearchRefinements";
 import { withBrowseReturnTo } from "@/lib/browse-return";
 import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLead } from "@/components/search/SearchPlaceVisual";
@@ -261,7 +264,8 @@ export default async function SearchPage({
   // Cap at 50 results to keep the page scannable; if more rows match
   // a power user can refine the query.
   const cookieStore = await cookies();
-  const context = resolveDecisionContext({ scopeRaw: scopeParam ?? cookieStore.get(SCOPE_COOKIE)?.value ?? "county", homeMuniRaw: null });
+  const scope = parseScope(scopeParam ?? cookieStore.get(SCOPE_COOKIE)?.value) ?? "county";
+  const context = resolveDecisionContext({ scopeRaw: scope, homeMuniRaw: null });
   // Complete resident tasks already lead with their authoritative local
   // action and suppress unrelated matches. Decide that before awaiting an
   // event archive whose results this view would discard.
@@ -502,54 +506,23 @@ export default async function SearchPage({
         </section>
       )}
 
-      {!query && (
-        <div className="space-y-3">
-          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            Start with
-          </p>
-          {/* Answer-style prompts — the same "Ask Radius" register as Today.
-              Each one ROUTES to a real surface that actually answers it
-              (a curated collection, a category, the weekend view, open-now
-              on the map) rather than running a dead text query. Only intents
-              with an honest destination are listed — no prompt that leads to
-              an empty result. */}
-          <ul
-            className="grid grid-cols-2 overflow-hidden border-y"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            {[
-              { label: "Open right now", href: "/open-now" },
-              { label: "Coffee nearby", href: "/nearby?c=coffee" },
-              { label: "This weekend", href: "/events?lens=weekend" },
-              { label: "Out with kids", href: "/collections/kid-energy-burners" },
-              { label: "Walkable date night", href: "/collections/walkable-date-night" },
-              { label: "Rainy-day ideas", href: "/collections/rainy-day-frederick" },
-            ].map((p) => (
-              <li key={p.label} className="border-b odd:border-r" style={{ borderColor: "var(--app-border)" }}>
-                <Link
-                  href={p.href}
-                  className="flex min-h-[52px] items-center gap-2 px-3 py-2 text-[14px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  <span className="min-w-0 flex-1">{p.label}</span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {!query && <FindStart town={town ?? null} nearMe={scope === "nearme"} />}
 
       {query && !eventCoverageMessage && rankedHits.length === 0 && govAnswers.length === 0 && civicAnswers.length === 0 && (
-        <div className="space-y-2 border-y px-2 py-8 text-center text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          <p>There are no matches for &ldquo;{query}&rdquo;. Try a shorter search or add a town.</p>
+        <section aria-label="No matching results" className="space-y-2 border-y py-5 text-sm" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+          <h2 className="text-lg font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>There are no matches for &ldquo;{query}&rdquo;{town ? ` in ${MUNICIPALITY_BY_SLUG[town]?.name ?? town}` : ""}.</h2>
+          <p>Try a shorter search or a different name.</p>
+          {town && <Link className="inline-flex min-h-11 items-center gap-2 font-semibold" style={{ color: "var(--app-link)" }}
+            href={`/search?${new URLSearchParams({ q: queryWithoutSearchArea(query), in: "county", ...(kind !== "all" ? { kind } : {}) })}`}>
+            Search the whole county <ArrowRight size={16} aria-hidden />
+          </Link>}
           <p>
             Need a government office?{" "}
             <Link href="/contacts" className="font-semibold underline underline-offset-2" style={{ color: "var(--app-ink-2)" }}>
               Every service and who to call
             </Link>
           </p>
-        </div>
+        </section>
       )}
 
       {query && !suppressLocalHits && (
@@ -576,6 +549,10 @@ export default async function SearchPage({
           </p>
           {hasPlaceHits && <Link href={mapHref} className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold" style={{ color: "var(--app-link)" }}><MapPin className="h-4 w-4" aria-hidden />View on map</Link>}
           </div>
+          {!town && !primaryPhotos.size && hasPlaceHits && <PlaceTownSummary
+            label="Matching places by town"
+            tally={countPlaceTowns(rankedHits.flatMap(hit => hit.type === "place" ? [hit.place] : []))}
+          />}
           <ul
             className="reveal-up overflow-hidden border-y"
             style={{ borderColor: "var(--app-border)" }}

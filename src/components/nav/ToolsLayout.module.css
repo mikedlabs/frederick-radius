@@ -9,9 +9,64 @@
   gap: 1rem;
 }
 
+.chapterGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem .875rem;
+  margin-bottom: .5rem;
+}
+
+.chapter { min-width: 0; }
+.chapterToggle {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 0 .5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+}
+.chapterToggle:focus-visible { outline: 2px solid var(--app-brand); outline-offset: 3px; }
+.chapterToggle:hover .chapterTitle, .chapterToggle[aria-expanded="true"] .chapterTitle { color: var(--app-link); }
+
+.chapterScene {
+  display: block;
+  overflow: hidden;
+  background: var(--app-bg-sunken);
+  aspect-ratio: 2.15;
+}
+.chapterScene img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.chapterTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .25rem;
+  margin-top: .5rem;
+  font-size: clamp(1rem, 3.4cqi, 1.25rem);
+  font-weight: 650;
+  line-height: 1.15;
+}
+.chapterTitle svg { width: 1rem; height: 1rem; flex: none; align-self: center; }
+.chapterCaption {
+  display: block;
+  margin-top: .25rem;
+  color: var(--app-ink-3);
+  font-size: .75rem;
+  line-height: 1.4;
+}
+@container tools-hub (max-width: 18.5rem) {
+  .chapterGrid { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+  .chapterToggle {
+    display: grid;
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+    gap: .2rem .625rem;
+    align-items: center;
+  }
+  .chapterScene { grid-row: span 2; width: 100%; aspect-ratio: 1.2; }
+  .chapterTitle, .chapterCaption { margin-top: 0; }
+}
 @container tools-hub (min-width: 40rem) {
   .hubColumns {
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 27%);
     gap: clamp(1.25rem, 4cqi, 2.5rem);
   }
 

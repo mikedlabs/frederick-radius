@@ -162,6 +162,9 @@ describe("Tools request-to-action flow", () => {
     const initial = document.createElement("div"); initial.innerHTML = renderToString(<CompassHub />);
     expect(initial.querySelector<HTMLAnchorElement>("[data-compass-find]")?.getAttribute("href")).toBe("/search");
     for (const control of initial.querySelectorAll<HTMLButtonElement>("button")) expect(control.disabled).toBe(true);
+    const photos = Array.from(initial.querySelectorAll<HTMLImageElement>("[data-tool-scene] img"));
+    expect(photos).toHaveLength(4);
+    for (const photo of photos) expect(photo.alt).toMatch(/Zoe|Carroll Creek|City Hall|Sophie & Madigan/);
     expect(initial.querySelectorAll('[aria-expanded="true"]')).toHaveLength(0);
   });
   it("restores only a valid chapter while retaining scope, query and history state", async () => {

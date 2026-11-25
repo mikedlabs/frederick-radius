@@ -2,7 +2,7 @@
 
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import { townAccent } from "@/lib/townAccent";
-import { useEffect, useMemo, useState } from "react";
+import { useSyncExternalStore, useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted, type SavedRef } from "@/hooks/useSaved";
 import { useSavedOutings } from "@/hooks/useSavedOutings";
 import SavedOutings from "./SavedOutings";
@@ -59,6 +59,10 @@ import { isUpcomingEvent } from "@/lib/events/visible";
 import Passport from "@/components/saved/Passport";
 import type { ReactNode } from "react";
 import { withBrowseReturnTo } from "@/lib/browse-return";
+import DiscoveryPlacePhoto from "@/components/places/DiscoveryPlacePhoto";
+import { getScope, scopeTownSlug, subscribeScopeChange } from "@/lib/scope";
+import PlaceTownSummary from "@/components/places/PlaceTownSummary";
+import discoveryStyles from "./SavedDiscovery.module.css";
 import { useSavedJourney } from "./useSavedJourney";
 
 type SavedSortKey = "town" | "category" | "recent" | "az" | "distance" | "open";
@@ -1045,6 +1049,7 @@ export default function SavedList({
               {places.length}
             </span>
           </header>
+          {!placeRefreshFailed && missingPlaceSlugs.length === 0 && <PlaceTownSummary tally={townTally} label="Saved places by town" />}
           <SavedWallet
             places={places}
             savedAt={savedAtBySlug}
@@ -1510,8 +1515,12 @@ export default function SavedList({
 /** Honest and never a dead end: one sentence, then the two places where saves
  * begin. The app shell already exposes the rest of Radius. */
 export function EmptyState() {
+  const scope = useSyncExternalStore(subscribeScopeChange, getScope, () => null);
+  const town = scopeTownSlug(scope);
+  const showCarillon = scope !== "nearme" && (!town || town === "frederick");
   return (
-    <div data-saved-empty-state="true" className="max-w-sm space-y-4 py-2">
+    <div data-saved-empty-state="true" className={discoveryStyles.empty}>
+      <div className={discoveryStyles.emptyCopy}>
       <p
         className="font-sans text-[18px] font-semibold leading-snug"
         style={{ color: "var(--app-ink)" }}
@@ -1547,6 +1556,12 @@ export function EmptyState() {
           Find a bus or stop
         </Link>
       </div>
+      </div>
+      {showCarillon && <Link href={withBrowseReturnTo("/places/joseph-dill-baker-memorial-carillon-bell-tower", "/my-radius")} className={discoveryStyles.suggestion}>
+        <span className={discoveryStyles.suggestionLabel}>Explore a place in Frederick City</span>
+        <DiscoveryPlacePhoto slug="joseph-dill-baker-memorial-carillon-bell-tower" sizes="(max-width: 736px) 100vw, 450px" />
+        <span className={discoveryStyles.suggestionTitle}>Baker Park’s memorial carillon <ArrowRight aria-hidden size={17}/></span>
+      </Link>}
     </div>
   );
 }

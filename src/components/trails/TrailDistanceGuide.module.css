@@ -1,0 +1,14 @@
+.guide { padding-block: .3rem .6rem; border-block: 1px solid var(--app-border); }
+.controls { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: .4rem 1rem; }
+.controls h2 { font-size: 1.25rem; font-weight: 700; color: var(--app-ink); }
+.controls label { display: grid; gap: .2rem; min-width: 0; max-width: 100%; color: var(--app-ink-2); font-size: .85rem; font-weight: 600; }
+.controls select { min-height: 2.75rem; width: 100%; padding: .4rem; border: 1px solid var(--app-ink-3); background: var(--app-bg); border-radius: var(--app-radius-sm); color: var(--app-ink); font: inherit; }
+.trails { padding: 0; margin: .5rem 0 0; list-style: none; }
+.trails li + li { border-top: 1px solid var(--app-border); }
+.trails a { display: grid; gap: .24rem; padding: .55rem .15rem; color: var(--app-ink); }
+.row { display: flex; align-items: baseline; justify-content: space-between; gap: .65rem; line-height: 1.2; }
+.row > span { flex: none; font-variant-numeric: tabular-nums; color: var(--app-positive); font-weight: 650; }
+.track { height: .38rem; border-radius: .25rem; background: var(--app-border); overflow: hidden; }
+.track > span { display: block; height: 100%; background: var(--app-positive); }
+.meta { font-size: .8rem; color: var(--app-ink-2); }
+@media (min-width: 720px) { .trails { max-width: 50rem; } .controls { max-width: 50rem; } }

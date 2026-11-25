@@ -341,20 +341,23 @@ function leadDistanceClause(distance: string | null | undefined): string | null 
  * the live answer cannot state either one. */
 export function daypartLeadReason(
   picks: readonly DaypartPick[],
-  { includeEditorialLabels = true }: { includeEditorialLabels?: boolean } = {},
+  { includeEditorialLabels = true, factsAlreadyShown = false }: { includeEditorialLabels?: boolean; factsAlreadyShown?: boolean } = {},
 ): string | null {
   const lead = picks[0];
   if (!lead) return null;
   const availability = leadAvailabilityClause(lead);
   const distance = leadDistanceClause(lead.distance);
-  if (availability && distance) return `${availability} and is ${distance}.`;
-  if (availability) return `${availability}.`;
-  if (distance) return `It is ${distance}.`;
+  if (!factsAlreadyShown) {
+    if (availability && distance) return `${availability} and is ${distance}.`;
+    if (availability) return `${availability}.`;
+    if (distance) return `It is ${distance}.`;
+  }
 
   // A curation tag alone does not explain a concrete benefit in the brief
   // answer. Full comparison surfaces retain their existing editorial labels.
   const reasons = (lead.decisionReasons ?? []).filter((reason) =>
-    includeEditorialLabels || !["local-favorite", "hidden-gem"].includes(reason.id));
+    (includeEditorialLabels || !["local-favorite", "hidden-gem"].includes(reason.id)) &&
+    !(factsAlreadyShown && ((reason.id === "availability" && availability) || (reason.id === "proximity" && distance))));
   const priority = [
     "availability",
     "proximity",
@@ -810,6 +813,7 @@ function DaypartNeedsShelf({
   // evidence, so reserve "Why it leads" for a current place that truly leads.
   const leadReason = openingSoonFirst ? null : daypartLeadReason(decisionPicks, {
     includeEditorialLabels: variant !== "brief",
+    factsAlreadyShown: variant === "brief",
   });
   const hasVisibleRecommendation =
     visiblePicks.length > 0 || Boolean(active.openingSoon);
@@ -956,7 +960,7 @@ function DaypartNeedsShelf({
                     ? "true"
                     : undefined
                 }
-                className="shelf-rail today-answer-shelf mt-2 gap-2.5 pb-1"
+                className={`shelf-rail today-answer-shelf mt-2 gap-2.5 pb-1 ${variant === "brief" ? styles.singlePick : ""}`}
               >
                 {visiblePicks.map((place, index) => (
                   <li

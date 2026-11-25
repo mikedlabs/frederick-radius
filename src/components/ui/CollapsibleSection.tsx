@@ -37,10 +37,13 @@ export default function CollapsibleSection({
   storageKey,
   defaultOpen = false,
   mountOnOpen = false,
+  preview,
   children,
   className = "",
 }: {
   title: string;
+  /** Noninteractive artwork for the closed chapter, such as its local date. */
+  preview?: ReactNode;
   /** Optional count shown beside the title (e.g. "6 picks"). */
   count?: number;
   /** Unit label for the count ("picks", "events"). */
@@ -114,9 +117,11 @@ export default function CollapsibleSection({
       disabled={!mounted}
       aria-expanded={mounted ? open : defaultOpen}
       aria-controls={contentId}
+      aria-label={preview ? ariaTitle : undefined}
       className="tap-44 flex w-full items-center justify-between gap-2 px-1 py-1.5 text-left transition active:opacity-70"
     >
-      <span className="flex items-baseline gap-2">
+      <span className="flex min-w-0 items-center gap-2">
+        {preview}
         <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>{title}</span>
         {typeof count === "number" && !countAriaOnly && (
           <span

@@ -3,13 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { Beer, CalendarDays, ChevronRight, Radio, Truck, type LucideIcon } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import {
   todayFoodTruckStopDetail,
   type TodayFoodTruckStopSummary,
 } from "@/lib/food-trucks/today-summary";
 import BREWERY_MARKS from "@/data/brewery-marks.json";
 import FOOD_TRUCK_MARKS from "@/data/food-truck-marks.json";
+import styles from "./TodayGuideIndex.module.css";
 
 type Mark = {
   file: string;
@@ -28,32 +29,24 @@ const BREWERY_PREVIEW = [
   BREWERY_MARKS["rockwell-brewery-frederick"],
 ] satisfies Mark[];
 
-function MarkStack({ marks, label }: { marks: Mark[]; label: string }) {
+function MarkStack({ marks }: { marks: Mark[] }) {
   return (
-    <span className="flex w-[72px] shrink-0 items-center pl-1" aria-label={label}>
-      {marks.map((mark, index) => (
+    <span className={styles.marks} aria-hidden="true">
+      {marks.map((mark) => (
         <span
           key={mark.file}
-          className="-ml-1 grid h-9 w-9 place-items-center overflow-hidden rounded-full border bg-white first:ml-0"
-          style={{
-            borderColor: "var(--app-bg-elevated)",
-            background:
-              mark.plate === "dark"
-                ? "var(--app-ink)"
-                : mark.plate === "light"
-                  ? "#fffdf8"
-                  : "var(--app-bg-sunken)",
-            boxShadow: "0 2px 8px color-mix(in srgb, var(--app-ink) 10%, transparent)",
-            zIndex: marks.length - index,
-          }}
+          className={styles.mark}
+          data-plate={mark.plate}
         >
-          <span className="relative h-7 w-7">
-            <Image src={mark.file} alt="" fill sizes="28px" className="object-contain" />
-          </span>
+          <Image src={mark.file} alt="" fill sizes="54px" className="object-contain" />
         </span>
       ))}
     </span>
   );
+}
+
+export function LocalGuideMarks() {
+  return <MarkStack marks={[FOOD_TRUCK_PREVIEW[1], BREWERY_PREVIEW[0]]} />;
 }
 
 export function foodTruckGuideCopy(
@@ -90,38 +83,26 @@ function GuideRow({
   title,
   detail,
   marks,
-  Icon,
-  divided = false,
+  kind,
 }: {
   href: string;
   title: string;
   detail: string;
   marks: Mark[];
-  Icon: LucideIcon;
-  divided?: boolean;
+  kind: "food" | "beer";
 }) {
   return (
     <Link
       href={href}
       prefetch={false}
-      className="tap-44 group flex min-h-[68px] items-center gap-3 px-3 py-2.5"
-      style={{ borderTop: divided ? "1px solid var(--app-border)" : undefined }}
+      className={styles.guide}
+      data-guide-kind={kind}
     >
-      <MarkStack marks={marks} label={`${title} business marks`} />
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5 text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-          <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.1} />
-          {title}
-        </span>
-        <span className="mt-0.5 block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          {detail}
-        </span>
+      <span className={styles.art}><MarkStack marks={marks} /></span>
+      <span className={styles.copy}>
+        <span className={styles.title}>{title}<ArrowUpRight size={18} aria-hidden /></span>
+        <span className={styles.detail}>{detail}</span>
       </span>
-      <ChevronRight
-        aria-hidden
-        className="h-4 w-4 shrink-0 opacity-35 transition-transform group-hover:translate-x-0.5 group-hover:opacity-70"
-        strokeWidth={2.25}
-      />
     </Link>
   );
 }
@@ -171,13 +152,7 @@ export function TodayFoodTruckGuide({
       title="Food trucks"
       detail={foodTruck.detail}
       marks={FOOD_TRUCK_PREVIEW}
-      Icon={
-        foodTruck.state === "live"
-          ? Radio
-          : foodTruck.state === "scheduled"
-            ? CalendarDays
-            : Truck
-      }
+      kind="food"
     />
   );
 }
@@ -202,10 +177,7 @@ export default function TodayLocalGuides({
 }: TodayLocalGuidesProps = {}) {
   return (
     <section className="mt-6" aria-label="Local guides">
-      <div
-        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
-        style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
-      >
+      <div className={styles.index}>
         {foodTruckGuide ?? <TodayFoodTruckGuide foodTruckCount={foodTruckCount} />}
         <GuideRow
           href="/beer"
@@ -214,8 +186,7 @@ export default function TodayLocalGuides({
             ? `Browse ${breweryCount} breweries and current taproom listings.`
             : "Browse local breweries and current taproom listings."}
           marks={BREWERY_PREVIEW}
-          Icon={Beer}
-          divided
+          kind="beer"
         />
       </div>
     </section>

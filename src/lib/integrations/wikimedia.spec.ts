@@ -22,7 +22,9 @@ describe("credited local photograph metadata adapter", () => {
     }
     for (const [slug, photo] of Object.entries(TOWN_PHOTOS)) {
       expect(new URL(photo.licenseUrl!).hostname, slug).toBe("creativecommons.org");
-      expect(photo.edited, slug).toBe(false);
+      expect(photo.localSrc, slug).toMatch(/^\/(?:images\/towns|place-photos)\//);
+      expect(photo.edited, slug).toBe(true);
+      expect(photo.modifications, slug).toBeTruthy();
     }
     expect(getLandmarkPhoto("catoctin-furnace-thurmont")?.edited).toBe(true);
     expect(getLandmarkPhoto("cunningham-falls-state-park-thurmont")?.edited).toBe(true);

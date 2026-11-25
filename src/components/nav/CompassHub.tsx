@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -41,6 +42,7 @@ import {
 } from "@/data/radius-tools";
 import { CITY_AERIAL_IMAGERY_LICENSE_CONFIRMED } from "@/lib/feature-access";
 import { haptic } from "@/lib/haptics";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 import { requestFind } from "@/lib/findBridge";
 import { rememberNativeRequest } from "@/components/search/native-request-return";
 import { useNativeRequestReturn } from "@/components/search/useNativeRequestReturn";
@@ -148,6 +150,15 @@ export const COMPASS_INTENT_DEFINITIONS = [
 
 type CompassIntentId = (typeof COMPASS_INTENT_DEFINITIONS)[number]["id"];
 type CompassDeckView = ToolDeckGroupId | CompassIntentId | "all";
+
+// Named local archive photographs establish each chapter's subject. They do
+// not depict today's opening hours, conditions or available services.
+const CHAPTER_SCENES: Record<CompassIntentId, { slug: string; caption: string }> = {
+  "go-out": { slug: "zoes-chocolate-company", caption: "Zoe’s Chocolate Co. · winter" },
+  "get-around": { slug: "carroll-creek-linear-park-frederick", caption: "Carroll Creek paths" },
+  "local-help": { slug: "city-hall-8", caption: "Frederick City Hall · winter" },
+  "explore-yours": { slug: "sophie-madigans-playground-frederick", caption: "Sophie & Madigan’s Playground" },
+};
 
 function isCompassIntentId(value: string): value is CompassIntentId {
   return COMPASS_INTENT_DEFINITIONS.some((intent) => intent.id === value);
@@ -1349,52 +1360,61 @@ function CompassIntentBoard({
     window.history.replaceState(window.history.state, "", url);
   };
   const itemById = new Map(groups.flatMap((group) => group.items.map((item) => [item.id, item] as const)));
-  const intentColor: Record<CompassIntentId, string> = {
-    "go-out": "var(--app-accent-text)",
-    "get-around": "var(--app-cool-text)",
-    "local-help": "var(--app-cool-text)",
-    "explore-yours": "var(--app-forest-text)",
-  };
-
   return (
     <section aria-labelledby="compass-browse-heading">
       <h2 id="compass-browse-heading" className="sr-only">
         Browse by task
       </h2>
-      <ul>
+      <ul className={styles.chapterGrid}>
         {intents.map((intent) => {
           const actions = intent.featuredIds.flatMap((id) => {
             const item = itemById.get(id);
             return item ? [item] : [];
           });
           if (actions.length === 0) return null;
+          const scene = CHAPTER_SCENES[intent.id];
+          const photo = getOwnedPlacePhoto(scene.slug);
           const open = expanded === intent.id;
           const contentId = `compass-intent-${intent.id}`;
           const line = liveLineForIntent(intent.id, liveKeys);
           return (
-            <li key={intent.id} className="border-b" style={{ borderColor: "var(--app-border)" }}>
+            <li key={intent.id} className={styles.chapter}>
               <section data-compass-intent={intent.id}>
                 <button
                   type="button"
                   disabled={!ready}
                   aria-expanded={open}
                   aria-controls={contentId}
+                  aria-label={intent.label}
                   onClick={() => {
                     haptic("light");
                     chooseChapter(open ? null : intent.id);
                     track("compass_intent_toggle", { intent: intent.id, open: !open });
                   }}
-                  className="flex min-h-14 w-full items-center gap-3 py-2 text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
+                  className={styles.chapterToggle}
                 >
-                  <intent.icon className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: intentColor[intent.id] }} aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[17px] font-semibold leading-tight">{intent.label}</span>
+                  {photo && (
+                    <span data-tool-scene className={styles.chapterScene}>
+                      <Image
+                        src={photo.src}
+                        alt={photo.alt}
+                        width={photo.width}
+                        height={photo.height}
+                        loading={intent.id === "go-out" ? "eager" : "lazy"}
+                        sizes="(min-width: 768px) 280px, 50vw"
+                        style={{ objectPosition: photo.objectPosition }}
+                      />
+                    </span>
+                  )}
+                  <span className={styles.chapterTitle}>
+                    <span>{intent.label}</span>
+                    <ChevronDown className={open ? "rotate-180" : undefined} strokeWidth={2} aria-hidden />
                   </span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
+                  {photo && <span className={styles.chapterCaption}>{scene.caption}</span>}
                 </button>
                 <div id={contentId} hidden={!open}>
-                  {line ? <p className="mb-1 pl-8 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</p> : null}
-                  <ul className="pb-1 pl-8">
+                  {line ? <p className="mb-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</p> : null}
+                  <ul className="pb-1">
                     {actions.map((item) => (
                       <li key={item.id}>
                         <Link
@@ -1420,7 +1440,7 @@ function CompassIntentBoard({
                       onOpen(intent.id);
                     }}
                     disabled={!ready}
-                    className="mb-2 ml-8 min-h-11 px-1 py-2 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+                    className="mb-2 min-h-11 px-1 py-2 text-left text-[13px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
                     style={{ color: "var(--app-ink-2)" }}
                   >
                     {intent.moreLabel}

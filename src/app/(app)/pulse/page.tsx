@@ -49,6 +49,7 @@ import {
   classifyFlood,
   currentFloodCoverage,
 } from "@/lib/integrations/floodStage";
+import PulseRiverTrace from "@/components/pulse/PulseRiverTrace";
 import RiverGaugeExplorer from "@/components/rivers/RiverGaugeExplorer";
 import { riverCoverageSummary } from "@/lib/rivers/gaugeHistory";
 import { AIRPORT_STATE_LABEL, getAreaAirportStatus } from "@/lib/integrations/faa-airports";
@@ -1837,6 +1838,9 @@ export default async function PulsePage() {
         : floodCoverage.status,
       // Only a real gauge height is a reading; "No data" is an absence.
       reading: riverPeekHeight != null,
+      readingGraphic: riverPeekSite?.gageHistory && riverPeekSite.gageHistory.length > 1 ? (
+        <PulseRiverTrace name={riverPeekSite.name} readings={riverPeekSite.gageHistory} end={requestNow.toISOString()} />
+      ) : undefined,
       // A site without an official NWS flood stage still shows its height and
       // trend as plain text. No display invents a denominator.
       kind: riverHasStage ? "gauge" : "status",

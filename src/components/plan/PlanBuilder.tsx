@@ -667,6 +667,22 @@ export default function PlanBuilder({
           )}
           {plan.stops.length > 0 && (
             <div className="relative">
+              {plan.stops.length > 1 && (
+                <nav className={styles.sequence} aria-label="Jump to a planned stop">
+                  <h2>Stop sequence</h2>
+                  <ol>
+                    {plan.stops.map(stop => (
+                      <li key={stop.order}>
+                        <a href={`#plan-stop-${stop.order}`}>
+                          <span className={styles.sequenceMarker} aria-hidden="true">{stop.order}</span>
+                          <time dateTime={stop.at}>{clock(stop.at)}</time>
+                          <span className={styles.sequenceName}>{stop.place?.name ?? stop.event?.title}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ol>
+                </nav>
+              )}
               <ol className={`${styles.stopList} pl-10`} style={plan.stops.length === 1 ? { gridTemplateColumns: "minmax(0, 1fr)" } : undefined} aria-label="Plan stops, in order">
                 {plan.stops.map((stop, index) => (
                   <Stop
@@ -1129,7 +1145,7 @@ function Stop({
   };
 
   return (
-    <li className={`${styles.stopEntry} relative`} data-plan-stop style={{ "--plan-stop-delay": `${Math.min(stop.order - 1, 5) * 55}ms` } as CSSProperties}>
+    <li id={`plan-stop-${stop.order}`} tabIndex={-1} aria-labelledby={`plan-stop-title-${stop.order}`} className={`${styles.stopEntry} relative`} data-plan-stop style={{ "--plan-stop-delay": `${Math.min(stop.order - 1, 5) * 55}ms` } as CSSProperties}>
       {stop.travel_from_previous_min && (
         <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
           {stop.travel_mode === "walk" ? <Footprints className="h-3.5 w-3.5" aria-hidden /> : <Navigation className="h-3.5 w-3.5" aria-hidden />}
@@ -1156,7 +1172,7 @@ function Stop({
               </span>
             </div>
             <Link href={href} className={`${styles.stopDestination} group mt-1.5 block`}>
-              <h3 className="font-serif text-[19px] font-semibold leading-tight tracking-tight group-hover:underline" style={{ color: "var(--app-ink)" }}>
+              <h3 id={`plan-stop-title-${stop.order}`} className="font-serif text-[19px] font-semibold leading-tight tracking-tight group-hover:underline" style={{ color: "var(--app-ink)" }}>
                 {name}
               </h3>
               {where && (

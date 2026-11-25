@@ -219,3 +219,7 @@
     width: 17.5rem;
   }
 }
+
+/* A single recommendation has no horizontal continuation: an edge fade hid
+   the first letters of the actual venue name and primary action. */
+.singlePick:global(.shelf-rail) { mask-image: none; }

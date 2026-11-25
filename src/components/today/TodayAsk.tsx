@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Clock3, MapPin, Search, Route, Building2 } from "lucide-react";
+import { ArrowRight, Search } from "lucide-react";
 import { requestFind } from "@/lib/findBridge";
 import { haptic } from "@/lib/haptics";
+import PracticalIllustration from "./PracticalIllustration";
 import BrowsePlacesDisclosure from "./BrowsePlacesDisclosure";
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useId, useSyncExternalStore, type ReactNode } from "react";
 import { getScope, scopeToParam, subscribeScopeChange } from "@/lib/scope";
 import styles from "./TodayAsk.module.css";
 
@@ -106,6 +107,7 @@ export function TodayQuickNeeds({
   showShortcuts?: boolean;
 }) {
   const scope = useSyncExternalStore(subscribeScopeChange, getScope, () => null);
+  const id = useId();
   const planHref = `/ask?q=${encodeURIComponent("Plan the next two hours")}${scope ? `&in=${scopeToParam(scope)}` : ""}`;
   return (
     <div data-today-quick-needs className={styles.find}>
@@ -114,33 +116,29 @@ export function TodayQuickNeeds({
         role="group"
         aria-label="Quick needs"
       >
-        <Link
-          href="/open-now"
-          prefetch={false}
-          className={styles.shortcut}
-        >
-          <Clock3 strokeWidth={1.8} aria-hidden />
-          <span>
-            Open now
-          </span>
+        <Link href="/open-now" prefetch={false} className={styles.shortcut}
+          aria-labelledby={`${id}-hours`} aria-describedby={`${id}-hours-detail`}>
+          <PracticalIllustration kind="hours" />
+          <span className={styles.toolCaption}><strong id={`${id}-hours`}>Open now</strong>
+            <small id={`${id}-hours-detail`}>Places by their listed hours</small></span>
         </Link>
-        <Link
-          href="/amenities"
-          prefetch={false}
-          className={styles.shortcut}
-        >
-          <MapPin strokeWidth={1.8} aria-hidden />
-          <span>
-            Public essentials
-          </span>
+        <Link href="/amenities" prefetch={false} className={styles.shortcut}
+          aria-labelledby={`${id}-essentials`} aria-describedby={`${id}-essentials-detail`}>
+          <PracticalIllustration kind="essentials" />
+          <span className={styles.toolCaption}><strong id={`${id}-essentials`}>Public essentials</strong>
+            <small id={`${id}-essentials-detail`}>Restrooms, water &amp; seating</small></span>
         </Link>
-        <Link href={planHref} prefetch={false} className={styles.shortcut}>
-          <Route strokeWidth={1.8} aria-hidden />
-          <span>Plan a few hours</span>
+        <Link href={planHref} prefetch={false} className={styles.shortcut}
+          aria-labelledby={`${id}-outing`} aria-describedby={`${id}-outing-detail`}>
+          <PracticalIllustration kind="outing" />
+          <span className={styles.toolCaption}><strong id={`${id}-outing`}>Plan a few hours</strong>
+            <small id={`${id}-outing-detail`}>Ask for a two-hour outing</small></span>
         </Link>
-        <Link href="/contacts" prefetch={false} className={styles.shortcut}>
-          <Building2 strokeWidth={1.8} aria-hidden />
-          <span>Local services</span>
+        <Link href="/contacts" prefetch={false} className={styles.shortcut}
+          aria-labelledby={`${id}-services`} aria-describedby={`${id}-services-detail`}>
+          <PracticalIllustration kind="services" />
+          <span className={styles.toolCaption}><strong id={`${id}-services`}>Local services</strong>
+            <small id={`${id}-services-detail`}>City &amp; county contacts</small></span>
         </Link>
       </div> : null}
 

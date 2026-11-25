@@ -1,4 +1,5 @@
 import { useId, type ReactNode } from "react";
+import Link from "next/link";
 import COUNTY from "@/data/county-boundary.json";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { LngLat } from "@/lib/geo";
@@ -43,7 +44,9 @@ const labels: Record<string, { dx: number; dy: number; anchor?: "end" }> = {
 const townPoints = MUNICIPALITIES.map((town) => ({ ...town, ...project(town.centroid.lng, town.centroid.lat) }));
 const placeNames = townPoints.filter((town) => labels[town.slug]).map((town) => town.name).join(", ");
 
-export default function CountyLocator({ town, point }: LocatorArea) {
+type LocatorCover = { title: string; href?: string; action?: string };
+
+export default function CountyLocator({ town, point, cover }: LocatorArea & { cover?: LocatorCover }) {
   const id = useId();
   const center = townPoints.find((item) => item.slug === town || item.name === town);
   const selected = point && Number.isFinite(point.lng) && Number.isFinite(point.lat) ? point : null;
@@ -55,10 +58,11 @@ export default function CountyLocator({ town, point }: LocatorArea) {
     ? `${kind}: ${name}${shown ? "" : " (outside this view)"}`
     : "Frederick County, Maryland";
   return (
-    <figure className={styles.figure} data-county-locator>
+    <figure className={`${styles.figure}${cover ? ` ${styles.cover}` : ""}`} data-county-locator>
       <figcaption className={styles.caption}>
-        <span className={styles.label}>County locator</span>
-        <span className={styles.name}>{shown && <span className={styles.selectedKey} aria-hidden="true" />}{context}</span>
+        <span className={styles.label}>{cover ? "County map" : "County locator"}</span>
+        <span className={styles.name}>{shown && <span className={styles.selectedKey} aria-hidden="true" />}{cover?.title ?? context}</span>
+        {cover?.href && cover.action && <Link prefetch={false} className={styles.coverLink} href={cover.href}>{cover.action}<span aria-hidden="true"> ↗</span></Link>}
       </figcaption>
       <svg viewBox="0 0 348 250" preserveAspectRatio="xMidYMid meet" className={styles.map}
         role="img" aria-labelledby={`${id}-title ${id}-desc`}>
