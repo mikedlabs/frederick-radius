@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sheetScrimOpacity } from "./BottomSheet";
+import { sheetOffsetPx, sheetScrimOpacity } from "./BottomSheet";
 
 /**
  * The entrance and exit animate the sheet in percent of its own height while
@@ -43,5 +43,31 @@ describe("sheet scrim follows the sheet", () => {
     expect(sheetScrimOpacity("100%", 0)).toBe(0);
     expect(sheetScrimOpacity("0%", 0)).toBe(0.45);
     expect(sheetScrimOpacity("not a length", panel)).toBe(0.45);
+  });
+});
+
+/**
+ * A drag starts from this number. Motion converts the entrance's "0%" itself
+ * only while it holds a layout measurement, and it drops that measurement when
+ * the sheet renders just after a window resize. The drag then started from the
+ * string and wrote "0%6" as a position.
+ */
+describe("sheet offset reads as pixels below rest", () => {
+  it("passes pixels through and reads the resting percentage as zero", () => {
+    expect(sheetOffsetPx(42, 717)).toBe(42);
+    expect(sheetOffsetPx("42px", 717)).toBe(42);
+    expect(sheetOffsetPx("0%", 717)).toBe(0);
+  });
+
+  it("converts a percentage of the panel's own height", () => {
+    expect(sheetOffsetPx("100%", 717)).toBe(717);
+    expect(sheetOffsetPx("37.5%", 400)).toBe(150);
+    expect(sheetOffsetPx("-0.5%", 400)).toBe(-2);
+  });
+
+  it("has no finite answer for an offset on an unmeasured panel", () => {
+    expect(sheetOffsetPx("37.5%", 0)).toBe(Number.POSITIVE_INFINITY);
+    expect(sheetOffsetPx("0%", 0)).toBe(0);
+    expect(sheetOffsetPx("not a length", 717)).toBe(0);
   });
 });
