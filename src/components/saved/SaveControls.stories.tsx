@@ -363,7 +363,7 @@ export const RaisedEventSourceNote: Story = {
     )).toBeVisible());
     // The shared chip, the same wording the event page and place sheet use.
     await expect(canvas.getByText("Event checked at source · 2h ago")).toBeVisible();
-    const source = canvas.getByRole("link", { name: /Official event page/ });
+    const source = canvas.getByRole("link", { name: /Event listing on weinbergcenter\.org/ });
     await expect(source).toHaveAttribute("href", "https://weinbergcenter.org/events/evening-concert");
     await expect(source).toHaveAttribute("target", "_blank");
   },

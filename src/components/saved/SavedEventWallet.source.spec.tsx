@@ -39,7 +39,7 @@ function markup(events: Event[]) {
 }
 
 describe("saved event wallet source note", () => {
-  it("shows the publisher and a safe official page link", () => {
+  it("shows the publisher and a provider-named listing link", () => {
     const html = markup([event()]);
     expect(html).toContain("data-event-listing-note");
     expect(html).toContain("This listing comes from Weinberg Center for the Arts.");
@@ -47,7 +47,9 @@ describe("saved event wallet source note", () => {
     // after hydration, so the server markup never carries a stale age.
     expect(html).not.toContain("checked at source");
     expect(html).toContain('href="https://weinbergcenter.org/events/sample-show"');
-    expect(html).toContain("Official event page");
+    // The label names the provider. An aggregator's page is not "official".
+    expect(html).toContain("Event listing on weinbergcenter.org");
+    expect(html).not.toContain("Official event page");
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');
   });
@@ -55,14 +57,20 @@ describe("saved event wallet source note", () => {
   it("omits the note when the saved row has no source", () => {
     const html = markup([event({ source: undefined, source_url: "javascript:alert(1)", last_verified_at: undefined })]);
     expect(html).not.toContain("data-event-listing-note");
-    expect(html).not.toContain("Official event page");
+    expect(html).not.toContain("data-event-source-link");
     expect(html).not.toContain("javascript:");
+  });
+
+  it("leaves out the link for a raw feed address, as the event page does", () => {
+    const html = markup([event({ source_url: "https://weinbergcenter.org/events/feed.ics" })]);
+    expect(html).toContain("This listing comes from Weinberg Center for the Arts.");
+    expect(html).not.toContain("data-event-source-link");
   });
 
   it("never links a javascript: source URL", () => {
     const html = markup([event({ source_url: "javascript:alert(1)" })]);
     expect(html).toContain("This listing comes from Weinberg Center for the Arts.");
-    expect(html).not.toContain("Official event page");
+    expect(html).not.toContain("data-event-source-link");
     expect(html).not.toContain("javascript:");
   });
 });

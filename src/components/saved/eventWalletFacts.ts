@@ -21,7 +21,6 @@
 import type { Event } from "@/data/events";
 import { eventDateBlock } from "@/lib/events/format";
 import { eventSourceLabel } from "@/lib/events/source-label";
-import { publicSourceUrl } from "@/lib/events/decision-verification";
 import { isEventLiveNow, isEventToday } from "@/lib/eventWhenLabel";
 
 export type EventLipFact = {
@@ -78,15 +77,12 @@ export function eventPriceLabel(e: Event): string | null {
 export type EventListingInput = {
   source?: string | null;
   organizer?: string | null;
-  source_url?: string | null;
   is_verified?: boolean;
 };
 
 export type EventListingNote = {
   /** One complete sentence naming who published or holds the listing. */
   sentence: string;
-  /** http(s) publisher page, or null when the stored URL is missing or unsafe. */
-  sourceUrl: string | null;
 };
 
 function publisherName(source: string, organizer?: string | null): string | null {
@@ -101,25 +97,25 @@ function publisherName(source: string, organizer?: string | null): string | null
  * Radius-authored rows say who selected or checked them. The check time is
  * not part of this sentence: the card renders the shared FreshnessChip from
  * `last_verified_at` beside it, so Saved, the event page and the place sheet
- * print one freshness wording.
+ * print one freshness wording. The outbound link is not part of it either:
+ * the card takes its address and label from `eventDetailDestinations`, the
+ * same rule the event page and sheet use.
  */
 export function eventListingNote(event: EventListingInput): EventListingNote | null {
   const source = event.source?.trim();
   if (!source) return null;
-  const sourceUrl = publicSourceUrl(event.source_url) ?? null;
 
   if (source === "seed") {
-    return { sentence: "Frederick Radius selected this listing.", sourceUrl };
+    return { sentence: "Frederick Radius selected this listing." };
   }
   if (source === "manual") {
     return {
       sentence: event.is_verified
         ? "Frederick Radius checked this listing against its source."
         : "Frederick Radius has this listing on file.",
-      sourceUrl,
     };
   }
   const publisher = publisherName(source, event.organizer);
   if (!publisher) return null;
-  return { sentence: `This listing comes from ${publisher}.`, sourceUrl };
+  return { sentence: `This listing comes from ${publisher}.` };
 }

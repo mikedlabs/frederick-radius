@@ -64,13 +64,9 @@ describe("eventWhenParts: title-cased date + honest clock", () => {
 });
 
 describe("eventListingNote: who published the listing, never a check time", () => {
-  it("names the publisher and keeps its http(s) page", () => {
-    expect(eventListingNote({
-      source: "weinberg",
-      source_url: "https://weinbergcenter.org/events/show",
-    })).toEqual({
+  it("names the publisher", () => {
+    expect(eventListingNote({ source: "weinberg" })).toEqual({
       sentence: "This listing comes from Weinberg Center for the Arts.",
-      sourceUrl: "https://weinbergcenter.org/events/show",
     });
   });
 
@@ -85,17 +81,6 @@ describe("eventListingNote: who published the listing, never a check time", () =
     expect(eventListingNote({ source: "venue-extract" })?.sentence).toBe(
       "This listing comes from the venue's own page.",
     );
-  });
-
-  it("drops a javascript: or malformed publisher URL", () => {
-    expect(eventListingNote({
-      source: "ticketmaster",
-      source_url: "javascript:alert(1)",
-    })).toEqual({
-      sentence: "This listing comes from Ticketmaster.",
-      sourceUrl: null,
-    });
-    expect(eventListingNote({ source: "county", source_url: "not a url" })?.sourceUrl).toBeNull();
   });
 
   it("distinguishes a Radius-selected listing from a checked or unchecked manual row", () => {

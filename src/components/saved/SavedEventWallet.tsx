@@ -40,6 +40,7 @@ import { walletFocusAfterRemoval } from "@/components/saved/SavedWallet";
 import { useToggleSave, savedChangeDescription } from "@/hooks/useSaved";
 import { eventLipFact, eventListingNote, eventPriceLabel, eventWhenParts } from "@/components/saved/eventWalletFacts";
 import EventSourceLink from "@/components/event/EventSourceLink";
+import { eventDetailDestinations } from "@/lib/events/detail-destinations";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { statusLabel } from "@/lib/event-status";
 import { withBrowseReturnTo } from "@/lib/browse-return";
@@ -108,6 +109,8 @@ function Card({
   const when = eventWhenParts(event);
   const price = eventPriceLabel(event);
   const listingNote = eventListingNote(event);
+  // The same link rule and provider-named label as the event page and sheet.
+  const { sourceHref, sourceLabel } = eventDetailDestinations(event);
   const saved = savedDateLabel(savedAt);
   const hasGeom =
     Boolean(event.geom) && Number.isFinite(event.geom.lat) && Number.isFinite(event.geom.lng);
@@ -242,9 +245,9 @@ function Card({
               </p>
               <FreshnessChip iso={event.last_verified_at ?? undefined} subject="Event" />
             </div>
-            {listingNote.sourceUrl ? (
+            {sourceHref && sourceLabel ? (
               <div className="mt-1 text-[13px]">
-                <EventSourceLink href={listingNote.sourceUrl} label="Official event page" />
+                <EventSourceLink href={sourceHref} label={sourceLabel} />
               </div>
             ) : null}
           </div>
