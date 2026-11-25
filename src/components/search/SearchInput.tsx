@@ -34,7 +34,8 @@ export default function SearchInput({
   useNativeRequestReturn({ target: "search-input", inputKind: "search", inputRef, renderedQuery: defaultValue, onDraft: setQ });
 
   useEffect(() => {
-    if (!defaultValue) inputRef.current?.focus();
+    // A visitor can already have reached a server-rendered link before hydration.
+    if (!defaultValue && document.activeElement === document.body) inputRef.current?.focus();
   }, [defaultValue]);
 
   return (

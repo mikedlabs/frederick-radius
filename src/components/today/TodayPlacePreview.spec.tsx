@@ -197,6 +197,18 @@ describe("Today place preview exact media and actions", () => {
     expectActions(place);
   });
 
+  it("uses the confirmed closing time for the placard and removes the hands when the hours are uncertain", async () => {
+    const place = pick({ fact: "Open until 5:30pm", confidence: "confirmed" });
+    await act(async () => root.render(<TodayPlacePreview place={place} category="restaurant" />));
+    const clock = container.querySelector('[data-place-hours-sign="clock"]')!;
+    expect(clock.textContent).toContain("Closes");
+    expect(clock.querySelector('path[transform="rotate(165 32 32)"]')).not.toBeNull();
+    expect(clock.querySelector('path[transform="rotate(180 32 32)"]')).not.toBeNull();
+    await act(async () => root.render(<TodayPlacePreview place={{ ...place, confidence: "likely" }} category="restaurant" />));
+    expect(container.querySelector('[data-place-hours-sign="clock"]')).toBeNull();
+    expect(container.querySelector('[data-place-hours-sign="status"]')?.textContent).toContain("Check hours");
+  });
+
   it("never turns a missing opening fact into an open-now claim in the cached action fallback", () => {
     const place = pick({ confidence: "confirmed", fact: null });
     routing.suspend = true;

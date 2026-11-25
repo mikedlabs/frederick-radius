@@ -185,6 +185,10 @@ export const SourceCheckTimes: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const disclosure = canvas.getByText("Newsroom source checks", { exact: true });
+    await expect(disclosure.closest("details")).not.toHaveAttribute("open");
+    await userEvent.click(disclosure);
+    await expect(disclosure.closest("details")).toHaveAttribute("open");
     const checks = canvas.getByRole("list", { name: "Official newsroom source checks" });
     await expect(checks).toBeVisible();
     await expect(within(checks).getByText("Checked Oct 12, 2026, 8:00 AM EDT")).toBeVisible();
@@ -219,6 +223,10 @@ export const SubscriptionProvenance: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const disclosure = canvas.getByText("Newsroom source checks", { exact: true });
+    await expect(disclosure.closest("details")).not.toHaveAttribute("open");
+    await userEvent.click(disclosure);
+    await expect(disclosure.closest("details")).toHaveAttribute("open");
     const checks = canvas.getByRole("list", { name: "Official newsroom source checks" });
     await expect(within(checks).getByText(/City newsroom/)).toBeVisible();
     await expect(within(checks).getByText(/City releases/)).toBeVisible();

@@ -10,7 +10,7 @@ type PreviewLine = { routeId: string; color: string; path: string };
 
 /** A bounded north-up diagram of the same committed lines passed to the map.
  * No streets, live markers, inferred stop locations, network or device access. */
-export function buildTransitNetworkPreview(shapes: LineFC): PreviewLine[] {
+export function buildTransitNetworkPreview(shapes: LineFC, width = WIDTH): PreviewLine[] {
   if (shapes.source !== "official-gtfs" || shapes.features.length > 128) return [];
   const lines: Array<{ routeId: string; color: string; points: number[][] }> = [];
   let pointCount = 0;
@@ -39,25 +39,26 @@ export function buildTransitNetworkPreview(shapes: LineFC): PreviewLine[] {
   const spanX = (east - west) * longitudeScale;
   const spanY = north - south;
   if (Math.max(spanX, spanY) <= 0) return [];
-  const scale = Math.min((WIDTH - PADDING * 2) / (spanX || Number.MIN_VALUE), (HEIGHT - PADDING * 2) / (spanY || Number.MIN_VALUE));
+  const scale = Math.min((width - PADDING * 2) / (spanX || Number.MIN_VALUE), (HEIGHT - PADDING * 2) / (spanY || Number.MIN_VALUE));
   const centerX = (west + east) / 2;
   const centerY = (south + north) / 2;
   return lines.map(({ routeId, color, points }) => ({
     routeId, color,
-    path: points.map(([lng, lat], index) => `${index === 0 ? "M" : "L"}${((lng - centerX) * longitudeScale * scale + WIDTH / 2).toFixed(2)},${((centerY - lat) * scale + HEIGHT / 2).toFixed(2)}`).join(" "),
+    path: points.map(([lng, lat], index) => `${index === 0 ? "M" : "L"}${((lng - centerX) * longitudeScale * scale + width / 2).toFixed(2)},${((centerY - lat) * scale + HEIGHT / 2).toFixed(2)}`).join(" "),
   }));
 }
 
-export default function TransitNetworkPreview({ shapes }: { shapes: LineFC }) {
-  const lines = buildTransitNetworkPreview(shapes);
+export default function TransitNetworkPreview({ shapes, compact = false }: { shapes: LineFC; compact?: boolean }) {
+  const width = compact ? HEIGHT : WIDTH;
+  const lines = buildTransitNetworkPreview(shapes, width);
   if (lines.length === 0) return null;
   return <div className="w-full">
-    <svg aria-hidden="true" focusable="false" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="mx-auto block h-44 w-full max-w-xl" data-transit-static-network>
+    <svg aria-hidden="true" focusable="false" viewBox={`0 0 ${width} ${HEIGHT}`} className={compact ? "block h-full w-full" : "mx-auto block h-44 w-full max-w-xl"} data-transit-static-network={compact ? undefined : true}>
       {lines.map((line, index) => <g key={`${line.routeId}:${index}`} fill="none" strokeLinecap="round" strokeLinejoin="round">
-        <path d={line.path} stroke="var(--app-ink)" strokeOpacity=".12" strokeWidth="5" />
-        <path d={line.path} stroke={line.color} strokeWidth="3" />
+        <path d={line.path} stroke="var(--app-ink)" strokeOpacity=".12" strokeWidth={compact ? 2.5 : 5} vectorEffect={compact ? "non-scaling-stroke" : undefined} />
+        <path d={line.path} stroke={line.color} strokeWidth={compact ? 1.4 : 3} vectorEffect={compact ? "non-scaling-stroke" : undefined} />
       </g>)}
     </svg>
-    <p className="text-[11px] font-medium" style={{ color: "var(--app-ink-2)" }}>Official route diagram · not live</p>
+    {!compact && <p className="text-[11px] font-medium" style={{ color: "var(--app-ink-2)" }}>Official route diagram · not live</p>}
   </div>;
 }

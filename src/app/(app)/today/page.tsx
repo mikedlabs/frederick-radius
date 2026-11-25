@@ -6,6 +6,7 @@ import TodayCard from "@/components/today/TodayCard";
 import { WeatherPending } from "@/components/today/TodayWeatherView";
 import TodayPlanTonightLink from "@/components/today/TodayPlanTonightLink";
 import { easternDayKey } from "@/lib/tz";
+import { buildHorizonBounds } from "@/lib/eventHorizon";
 import OnNowBand from "@/components/today/OnNowBand";
 import KeysScore from "@/components/today/KeysScore";
 import LocalSportsScoreboard from "@/components/today/LocalSportsScoreboard";
@@ -21,7 +22,8 @@ import FromYourSaved from "@/components/today/FromYourSaved";
 
 import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import PoolsToday from "@/components/today/PoolsToday";
-import TodayLocalGuides, { TodayFoodTruckGuide } from "@/components/today/TodayLocalGuides";
+import TodayLocalGuides, { LocalGuideMarks, TodayFoodTruckGuide } from "@/components/today/TodayLocalGuides";
+import guideIndex from "@/components/today/TodayGuideIndex.module.css";
 import { BREWERIES } from "@/data/beers";
 import { FOOD_TRUCKS } from "@/data/food-trucks";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
@@ -313,6 +315,10 @@ export default async function HomePage({ searchParams }: {
 
       <CollapsibleSection
         title="Plan the rest"
+        preview={<span aria-hidden="true" className={guideIndex.date}>
+          <span>{now.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short" })}</span>
+          <b>{now.toLocaleDateString("en-US", { timeZone: "America/New_York", day: "numeric" })}</b>
+        </span>}
         storageKey="fr.today.plan-rest"
         defaultOpen={false}
         headingLevel={2}
@@ -341,6 +347,7 @@ export default async function HomePage({ searchParams }: {
           immediate decision. Their dedicated routes remain available. */}
       <CollapsibleSection
         title="More local guides"
+        preview={<LocalGuideMarks />}
         storageKey="fr.today.more-ideas"
         defaultOpen={false}
         mountOnOpen
@@ -480,5 +487,6 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     parseRecoveryEventVisual(eventCardVisual(event, { venuePhotos: "free-reviewed" })),
   );
   const initialResponse = snapshot.sourceHealth.degraded && events.length === 0 ? undefined : { events, partial: snapshot.sourceHealth.degraded };
-  return <TodayEventsRecovery initialResponse={initialResponse} scoped />;
+  const weekendFriday = easternDayKey(new Date(buildHorizonBounds(now).weekendStart));
+  return <TodayEventsRecovery initialResponse={initialResponse} scoped weekendFriday={weekendFriday} />;
 }

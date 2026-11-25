@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:c2443c1623118b98e09fbf63b1e9f2713a754c5576f6489203043bebbf39bc11",
+  "data_version": "sha256:7d01e6e092a41e83a25e89580be25e8703fb393ca2cb46678fc7de0cd6e02302",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-24T19:27:46.342Z",
+      "promoted_at": "2026-11-25T01:35:52.624Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -174,15 +174,45 @@
         },
         {
           "path": "src/lib/integrations/wikimedia.ts",
-          "sha256": "1571fe5d66a9cf6f44320249a628278a4c34ad74b52cbeb21e80d22d95d12c20",
+          "sha256": "808af15bd176d3349874b33a19867e25064b805860d7748c83650f8ddc94c11c",
           "records": null,
-          "bytes": 12806
+          "bytes": 13606
         },
         {
           "path": "src/data/credited-local-place-photos.ts",
           "sha256": "484b8a90bd6527382b5026e5eb1d7c9cf2ab72e75aaba557e47ff15a71c1fd66",
           "records": null,
           "bytes": 35469
+        },
+        {
+          "path": "public/images/towns/brunswick.webp",
+          "sha256": "3912f57e14049a53a1731a60fa8bf1c2c77bf28349673ebcff045288e06245ab",
+          "records": null,
+          "bytes": 213840
+        },
+        {
+          "path": "public/images/towns/emmitsburg.webp",
+          "sha256": "9b8c8df8fd9850979737117ee26754e083eb336de8e35135a523580922ccb751",
+          "records": null,
+          "bytes": 48316
+        },
+        {
+          "path": "public/images/towns/frederick.webp",
+          "sha256": "d0f0be54f4deb1372a768806d18e0f49c93b838e7bc9d9a0d7a801b6d598b5c4",
+          "records": null,
+          "bytes": 226116
+        },
+        {
+          "path": "public/images/towns/middletown.webp",
+          "sha256": "1db46b8ed3ad46d5c9bf8d645f58726251f98455dfa388dba9487960d9a41f6d",
+          "records": null,
+          "bytes": 90682
+        },
+        {
+          "path": "public/images/towns/new-market.webp",
+          "sha256": "b8e5370930c66731b32e3b06959ee20dbffe13c81fe0976bdd22cfd2e426fd55",
+          "records": null,
+          "bytes": 83814
         },
         {
           "path": "public/place-photos/county-ballenger-creek-park-frederick.jpg",

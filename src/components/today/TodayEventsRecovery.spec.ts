@@ -67,6 +67,54 @@ describe("TodayEventsRecoveryView", () => {
     expect(html).not.toContain("Event picks are unavailable here");
   });
 
+  it("links the three actual weekend dates to this town's filtered board, including month rollover", () => {
+    const html = renderToStaticMarkup(createElement(TodayEventsRecoveryView, {
+      response: { events: [], partial: false }, weekendFriday: "2026-10-30", eventsHref: "/events?in=brunswick",
+    }));
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const link = doc.querySelector("[data-events-weekend-calendar]")!;
+    expect(link.getAttribute("href")).toBe("/events?in=brunswick&when=weekend");
+    expect(link.getAttribute("aria-label")).toContain("Friday, October 30, 2026 evening through Sunday, November 1, 2026");
+    expect(Array.from(link.querySelectorAll("b"), day => day.textContent)).toEqual(["30", "31", "1"]);
+    expect(doc.querySelector("[role=status]")?.textContent).toBe("No picks in this brief");
+  });
+
+  it("plots only the imageless lead's published start, and never infers an all-day start or an overnight duration", () => {
+    function read(time: string, endTime?: string) {
+      const first = { ...event, time, endTime };
+      const html = renderToStaticMarkup(createElement(TodayEventsRecoveryView, {
+        response: { events: [first, { ...first, slug: "separate-event" }], partial: false },
+      }));
+      return new DOMParser().parseFromString(html, "text/html");
+    }
+    const timed = read("6:00 PM", "8:00 PM");
+    expect(timed.querySelectorAll("[data-event-start-scale]")).toHaveLength(1);
+    const span = timed.querySelector<HTMLElement>("[data-event-start-scale] i + span")!;
+    expect(span.style.left).toBe("75%");
+    expect(parseFloat(span.style.width)).toBeCloseTo(100 / 12);
+    expect(read("All day").querySelector("[data-event-start-scale]")).toBeNull();
+    expect(read("11:00 PM", "1:00 AM").querySelector<HTMLElement>("[data-event-start-scale] i + span")?.style.width).toBe("0%");
+  });
+
+  it.each(["/events?in=brunswick", "/events?in=brunswick&when=weekend"])("keeps focus on %s as timed picks replace a pending brief", async (href) => {
+    const container = document.body.appendChild(document.createElement("div"));
+    const root = createRoot(container);
+    const shared = { weekendFriday: "2026-11-27", eventsHref: "/events?in=brunswick" };
+    try {
+      await act(async () => root.render(createElement(TodayEventsRecoveryView, { ...shared, response: null })));
+      const action = container.querySelector<HTMLAnchorElement>(`a[href="${href}"]`)!;
+      action.focus();
+      expect(document.activeElement).toBe(action);
+      await act(async () => root.render(createElement(TodayEventsRecoveryView, { ...shared, response: { events: [event], partial: false } })));
+      expect(container.textContent).toContain(event.title);
+      expect(container.querySelector(`a[href="${href}"]`)).toBe(action);
+      expect(document.activeElement).toBe(action);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
   it("counts an open on every later event row", () => {
     const later = { ...event, slug: "later-pick-2026-08-27", title: "Later pick", time: "8:00 PM" };
     const html = renderToStaticMarkup(

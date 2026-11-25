@@ -11,7 +11,8 @@ import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import Image from "next/image";
-import { getTownPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
+import { getTownPhoto, curatedPhotoUrl } from "@/lib/integrations/wikimedia";
+import CountyLocator from "@/components/map/CountyLocator";
 import PhotoCreditLine from "@/components/place/PhotoCreditLine";
 import { curatedPhotoCredit } from "@/lib/curated-photo-source";
 import TownStrip from "@/components/municipality/TownStrip";
@@ -179,7 +180,7 @@ export default async function MunicipalityPage(
       </nav>
 
       {/* Town identity leads the first viewport; keep the image with its attribution. */}
-      <header className={townPhoto ? "grid items-center gap-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-8" : undefined}>
+      <header className="grid items-center gap-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-8">
         <div className="min-w-0 space-y-1.5">
           <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>
             {m.type === "city" ? "City" : m.type === "town" ? "Town" : m.type === "village" ? "Village" : "Community"} · Frederick County
@@ -191,11 +192,11 @@ export default async function MunicipalityPage(
             {m.hero_blurb}
           </p>
         </div>
-        {townPhoto && (
+        {townPhoto ? (
           <figure className="min-w-0 space-y-1.5">
             <div className="relative h-40 w-full overflow-hidden rounded-[var(--app-radius-md)] sm:h-48 lg:h-56" style={{ background: "var(--app-bg-sunken)" }}>
               <Image
-                src={wikimediaUrl(townPhoto.file, 1200)}
+                src={curatedPhotoUrl(townPhoto, 1200)}
                 alt={townPhoto.alt}
                 fill
                 priority
@@ -207,7 +208,7 @@ export default async function MunicipalityPage(
               <PhotoCreditLine credit={curatedPhotoCredit(townPhoto)} />
             </figcaption>
           </figure>
-        )}
+        ) : <CountyLocator town={m.slug} cover={{ title: m.name, href: `/map?in=${m.slug}`, action: "Explore map" }} />}
       </header>
 
       {/* Town switching belongs near the town identity, not near the footer. */}

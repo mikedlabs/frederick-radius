@@ -9,12 +9,15 @@ export const metadata: Metadata = {
   alternates: { canonical: "/towns" },
 };
 
-export default async function TownsPage() {
+export default async function TownsPage({ searchParams }: {
+  searchParams: Promise<{ town?: string | string[] }>;
+}) {
   // Rolling seven-day PUBLIC event counts per town (curated + live county/
   // municipal feeds + venue lineups), cached. Passed into the pure townStats
   // so a feed-fed town no longer reads as though Radius has no listings.
-  const eventCounts = await getNextSevenDayPublicEventCountsByMunicipality();
+  const [query, eventCounts] = await Promise.all([searchParams, getNextSevenDayPublicEventCountsByMunicipality()]);
   const stats = townStats(eventCounts);
+  const town = typeof query.town === "string" ? query.town : undefined;
   return (
     <div className="relative space-y-6">
 
@@ -23,14 +26,14 @@ export default async function TownsPage() {
           Frederick County
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Pick a place to start.
+          Town guides
         </h1>
         <p className="text-[15px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-          Choose a town to see its places, listed events in the next seven days and what it&rsquo;s best for.
+          Browse {stats.length} communities and their seven-day event listings.
         </p>
       </header>
 
-      <TownPicker stats={stats} />
+      <TownPicker key={town} stats={stats} town={town} />
     </div>
   );
 }

@@ -239,6 +239,19 @@ describe("explicit confirmed-hours planning preference", () => {
     vi.restoreAllMocks();
   });
 
+  it("links each scheduled time to its exact stop on a multi-stop outing", () => {
+    const inputs = ordinaryInputs();
+    const plan = ordinaryPlan(inputs);
+    const first = plan.stops[0];
+    plan.stops.push({ ...first, order: 2, spec_index: 1, at: "2026-10-12T18:18:00Z", place: { ...first.place!, slug: "museum", name: "Museum" } });
+    render(inputs, plan);
+    const links = host.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Jump to a planned stop"] a');
+    expect([...links].map(link => link.getAttribute("href"))).toEqual(["#plan-stop-1", "#plan-stop-2"]);
+    expect(links[1].querySelector("time")?.dateTime).toBe("2026-10-12T18:18:00Z");
+    expect(links[1].textContent).toContain("Museum");
+    expect(host.querySelector(`${links[1].hash} h3`)?.textContent).toBe("Museum");
+  });
+
   it("keeps native editor fields and Build unavailable until their handlers are hydrated", async () => {
     act(() => root.unmount());
     const preview = <PlanBuilder />;

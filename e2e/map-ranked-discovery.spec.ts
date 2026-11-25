@@ -172,7 +172,7 @@ for (const [width, height] of [[320, 568], [390, 844]]) {
     await clearTarget(toggle);
     const geometry = () => panel.evaluate(element => {
       const canvas = document.querySelector("canvas.mapboxgl-canvas")!.getBoundingClientRect();
-      const header = document.querySelector("header[data-map-header]")!.getBoundingClientRect();
+      const header = document.querySelector("[data-app-topbar-row]")!.closest("header")!.getBoundingClientRect();
       const nav = document.querySelector('[data-bottom-nav-shell] nav')!.getBoundingClientRect();
       const dock = element.closest("[data-map-dock]")!.getBoundingClientRect();
       const top = Math.max(canvas.top, header.bottom);

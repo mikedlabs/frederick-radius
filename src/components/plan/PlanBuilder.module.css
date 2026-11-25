@@ -96,3 +96,29 @@
 .recovery h1 { color: var(--app-ink); font-size: clamp(1.6rem, 4vw, 2.25rem); font-weight: 750; line-height: 1.15; }
 .recovery p { color: var(--app-ink-2); }
 .recovery button { max-width: 100%; height: auto; min-height: 44px; padding-block: 8px; white-space: normal; }
+
+.sequence { min-width: 0; margin-inline: 1.25rem; padding-block: .75rem; border-block: 1px solid var(--app-border); }
+.sequenceHeading { margin: 0 0 .45rem; font: 600 .88rem/1.35 var(--font-sans, system-ui); color: var(--app-ink-2); }
+.sequence ol { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(min(100%, 5.25rem), 1fr); gap: .45rem; overflow-x: auto; padding: .2rem; margin: -.2rem; list-style: none; }
+.sequence li { position: relative; min-width: 0; }
+.sequence a { position: relative; display: grid; grid-template-columns: minmax(0,1fr); align-content: start; align-items: start; gap: .22rem; min-height: 44px; height: 100%; padding: .3rem .1rem .35rem; color: var(--app-ink); }
+.sequence li:not(:last-child)::before { content: ""; position: absolute; top: .91rem; inset-inline: .7rem -.45rem; height: 2px; background: var(--app-link); opacity: .46; }
+.sequenceMarker { position: relative; display: grid; place-items: center; width: 1.28rem; height: 1.28rem; border-radius: 50%; background: var(--app-link); color: var(--app-bg-elevated); font-size: .72rem; font-weight: 750; }
+.sequence time { font-size: .76rem; font-weight: 650; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.sequenceName { grid-column: 1/-1; font-family: var(--font-editorial, Georgia, serif); font-size: 1.08rem; line-height: 1.2; overflow-wrap: anywhere; }
+.sequence a:hover .sequenceName { text-decoration: underline; text-underline-offset: .14em; }
+.sequence a:focus-visible, .stopEntry:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 3px; }
+.stopEntry { scroll-margin-block-start: calc(var(--app-topbar-h, 6rem) + .75rem); }
+@media (max-width: 375px) {
+ .sequence { margin-inline: .75rem; }
+ .sequence ol { grid-auto-columns: minmax(min(100%, 4rem), 1fr); }
+ .sequenceHeading { margin-bottom: .2rem; }
+ .sequenceName { font-size: .94rem; line-height: 1.22; }
+}
+
+@media (min-width: 800px) {
+ .stopEntry:has(.sequence) { grid-column: 1 / -1; }
+ .stopCard:has(.sequence) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+ .stopCard:has(.sequence) > :not(.sequence) { grid-column: 1; }
+ .stopCard .sequence { grid-column: 2; grid-row: 1 / span 3; margin: 0; padding: 1.25rem; border-block: 0; border-inline-start: 1px solid var(--app-border); }
+}

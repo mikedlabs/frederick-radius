@@ -12,6 +12,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import TrailsMap from "@/components/trails/TrailsMap";
+import TrailDistanceGuide from "@/components/trails/TrailDistanceGuide";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
@@ -104,6 +105,9 @@ export default async function TrailsPage() {
         </p>
       </header>
 
+      <TrailDistanceGuide trails={trails.map(({ id, name, park, surface, skill, lengthMi, lat, lng }) =>
+        ({ id, name, park, surface, skill, lengthMi, lat, lng }))} />
+
       <TrailsMap
         places={trailPoints}
         trailLines={trailLines}
@@ -150,7 +154,7 @@ export default async function TrailsPage() {
           <ul className="space-y-2">
             {[
               {
-                href: "https://dnr.maryland.gov/publiclands/Pages/Western/Catoctin.aspx",
+                href: "https://www.nps.gov/cato/planyourvisit/hiking.htm",
                 title: "Catoctin Mountain Park · NPS",
                 meta: "Cunningham Falls Loop · Wolf Rock · Chimney Rock · Hog Rock",
               },

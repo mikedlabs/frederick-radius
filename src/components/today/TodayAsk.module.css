@@ -123,49 +123,53 @@
 }
 
 .shortcuts {
+  container: practical-tools / inline-size;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 var(--app-space-4);
+  gap: 0 var(--app-space-3);
 }
 
 .shortcut {
-  display: flex;
-  align-items: center;
+  --wayfinding-ink: var(--app-cool-text);
+  display: grid;
+  align-content: start;
+  align-items: start;
   gap: var(--app-space-2);
   min-width: 0;
   min-height: 56px;
-  padding: var(--app-space-3) 0;
-  border: 0;
-  border-top: 1px solid var(--app-border);
-  border-radius: 0;
-  background: transparent;
+  padding: var(--app-space-2) 0;
   color: var(--app-ink);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1.35;
-  transition: border-color var(--app-dur-fast) var(--app-ease-out), background-color var(--app-dur-fast) var(--app-ease-out);
+  text-decoration: none;
 }
+.shortcut:nth-child(1) { --wayfinding-ink: var(--app-brand-text); }
+.shortcut:nth-child(3) { --wayfinding-ink: var(--app-forest-text); }
 
-.shortcut:hover {
-  color: var(--app-link);
-  background: transparent;
+.wayfindingArt {
+  width: 100%;
+  height: clamp(3.2rem, 10cqi, 4.4rem);
+  border-radius: var(--app-radius-sm);
+  color: var(--wayfinding-ink);
+  background: color-mix(in srgb, var(--wayfinding-ink) 6%, var(--app-bg));
 }
-
-.shortcut:focus-visible {
-  outline: 2px solid var(--app-link);
-  outline-offset: 3px;
+.artPaper { fill: var(--app-bg); }
+.artFill { fill: var(--wayfinding-ink); }
+.artTint { fill: color-mix(in srgb, var(--wayfinding-ink) 22%, var(--app-bg)); }
+.artReverse { stroke: var(--app-bg); }
+.artTrail { stroke-width: 2.3px; stroke-dasharray: 3 3; }
+.toolCaption, .toolCaption strong, .toolCaption small { display: block; min-width: 0; overflow-wrap: anywhere; }
+.toolCaption strong { font-size: 1rem; font-weight: 680; line-height: 1.25; letter-spacing: -0.02em; }
+.toolCaption small { margin-top: 0.15rem; color: var(--app-ink-2); font-size: 0.8125rem; line-height: 1.32; }
+.shortcut:hover strong { text-decoration: underline; text-underline-offset: 0.15em; }
+.shortcut:focus-visible { outline: 2px solid var(--app-link); outline-offset: 2px; }
+@container practical-tools (max-width: 13rem) {
+  .shortcut { grid-column: 1 / -1; grid-template-columns: 2.75rem minmax(0, 1fr); align-items: center; }
+  .wayfindingArt { height: auto; }
 }
-
-.shortcut > span {
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-
-.shortcut svg {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  color: var(--app-link);
+@media (forced-colors: active) {
+  .wayfindingArt { --wayfinding-ink: CanvasText; border: 1px solid CanvasText; }
+  .artPaper, .artTint { fill: Canvas; }
+  .artFill { fill: CanvasText; }
+  .artReverse { stroke: Canvas; }
 }
 
 .find [data-surface-row="browse"] > :is(button, a) {
@@ -220,11 +224,7 @@
     font-size: 0.875rem;
   }
 
-  .shortcut {
-    gap: var(--app-space-2);
-    padding-inline: 10px;
-    font-size: 0.875rem;
-  }
+
 }
 
 .headerFind .launcher {

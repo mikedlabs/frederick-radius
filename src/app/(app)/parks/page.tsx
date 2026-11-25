@@ -10,6 +10,22 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { titleCaseName } from "@/lib/format/text";
+import { publicPlaces } from "@/lib/loaders/places";
+import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
+import { curatedPhotoCredit } from "@/lib/curated-photo-source";
+import ParkGuide from "@/components/parks/ParkGuide";
+
+// These reviewed guide IDs and catalog slugs name the same destination.
+// Other parks keep their existing map point and receive a county locator.
+const parkCatalog: Record<string, string> = {
+  "ballenger-creek-park": "ballenger-creek-park-frederick",
+  "pinecliff-park": "pinecliff-park-frederick",
+  "othello-park": "othello-regional-park-brunswick",
+  "kemptown-park": "kemptown-park-new-market",
+  "utica-district-park": "utica-park-walkersville",
+  "fountain-rock-park": "fountain-rock-nature-center-walkersville",
+  "heritage-farm-park": "heritage-farm-park-walkersville",
+};
 
 export const metadata: Metadata = {
   // Promoted back into nav (the Outdoors want's Parks chip lands here),
@@ -47,7 +63,22 @@ export default async function ParksPage() {
     getFrederickParks().catch(() => []),
     getFrederickParkLocations().catch(() => []),
   ]);
-  const parks = enrichParksWithLocations(parksRaw, parkLocs);
+  const catalog = new Map(publicPlaces().map((place) => [place.slug, place]));
+  const parks = enrichParksWithLocations(parksRaw, parkLocs).map((park) => {
+    const slug = parkCatalog[park.id];
+    const place = catalog.get(slug);
+    if (!place) return park;
+    return { ...park, address: place.address ?? park.address, municipality: place.municipality,
+      lat: place.geom.lat, lng: place.geom.lng, detailsUrl: place.website || park.detailsUrl };
+  });
+  const guide = parks.map((park) => {
+    const slug = parkCatalog[park.id];
+    const photo = slug && catalog.has(slug) ? getLandmarkPhoto(slug) : null;
+    return { id: park.id, name: titleCaseName(park.name), area: MUNICIPALITY_BY_SLUG[park.municipality]?.name ?? park.municipality,
+      lat: park.lat, lng: park.lng, address: park.address, type: park.type && titleCaseName(park.type), official: park.detailsUrl,
+      photo: photo?.localSrc ? { src: photo.localSrc, alt: photo.alt, position: photo.objectPosition,
+        credit: curatedPhotoCredit(photo) } : undefined };
+  }).sort((a,b) => a.name.localeCompare(b.name));
 
   const byMuni = new Map<string, Park[]>();
   for (const p of parks) {
@@ -73,8 +104,7 @@ export default async function ParksPage() {
           Parks
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Browse reviewed local, state, and national park records. Tap a place
-          to see its mapped location.
+          Browse local, state and national parks by area.
         </p>
         <p className="text-[13px]">
           <Link
@@ -158,6 +188,7 @@ export default async function ParksPage() {
         </section>
       ) : (
         <>
+          <ParkGuide parks={guide} />
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
             <strong className="font-serif text-base font-semibold" style={{ color: "var(--app-brand-2)" }}>
               {parks.length}

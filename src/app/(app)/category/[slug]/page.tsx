@@ -18,8 +18,7 @@ import PlaceList from "@/components/place/PlaceList";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
-import ScopeBar from "@/components/nav/ScopeBar";
-import { MUNICIPALITIES } from "@/data/municipalities";
+import CategoryGeography from "@/components/category/CategoryGeography";
 import type { LngLat } from "@/lib/geo";
 import { resolveServerTownRankingContext } from "@/lib/scope";
 import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
@@ -232,34 +231,14 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           card-like hero around its title. The flat heading keeps the first
           viewport for the location control and useful recommendations. */}
       <header className="border-b pb-5" style={{ borderColor: "var(--app-border)" }}>
-        <p className="eyebrow" style={{ color: `color-mix(in srgb, ${c.color} 72%, var(--app-ink))` }}>
-          Frederick County guide
-        </p>
         <h1 className="mt-1.5 text-[32px] font-bold leading-[1.05] tracking-[-0.03em] sm:text-[38px]" style={{ color: "var(--app-ink)" }}>
           {c.name}
         </h1>
         <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
           {c.blurb}
         </p>
-        {/* "0 places" as page furniture reads like a broken app, not an
-            answer. The town-empty state below carries the honest sentence
-            instead. */}
-        {!townScopeIsEmpty && (
-          <p className="mt-2 text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {places.length} place{places.length === 1 ? "" : "s"}
-          </p>
-        )}
+        <CategoryGeography places={places} current={homeMuni} selectedTown={rankingContext.filterMunicipality} />
       </header>
-      {/* The location control is ALWAYS shown and always changeable (beta
-          feedback 2026-07-12: once a town was set, the old control vanished
-          and left read-only "Ranked from X" with no way to change it). It
-          writes the shared browsing scope, so it stays in sync with the nav
-          chip and re-ranks everywhere. */}
-      <ScopeBar
-        current={homeMuni}
-        selectedTown={rankingContext.filterMunicipality}
-        municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
-      />
 
       {/* The honest town-empty state. The town's answer is "none", said
           plainly and first; the nearest county-wide places follow so the

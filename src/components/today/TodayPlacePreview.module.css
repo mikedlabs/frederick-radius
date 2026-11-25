@@ -1,7 +1,3 @@
-/* PLAIN TOOL: the open-now lead is a row on the white ground, ruled above
-   and below. Type carries it: a category label, the name, the status line
-   and the town, then one line of quiet text actions. A real photograph
-   sits at the row's right edge; without one there is no media at all. */
 .preview {
   display: grid;
   container-type: inline-size;
@@ -17,28 +13,65 @@
   background: transparent;
 }
 
+/* A place photograph or an hours placard sits beside its own venue. */
 .content {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "facts";
-  column-gap: var(--app-space-4);
-  align-items: start;
-  min-width: 0;
-}
-
-.preview[data-has-photo="true"] .content {
-  grid-template-columns: minmax(0, 1fr) 96px;
+  grid-template-columns: minmax(0, 1fr) minmax(5.4rem, 35%);
   grid-template-areas: "facts media";
+  column-gap: var(--app-space-3);
+  align-items: center;
+  min-width: 0;
 }
 
 .media {
   grid-area: media;
+  width: 100%;
   min-width: 0;
-  width: 96px;
-  height: 96px;
+  aspect-ratio: 1.32;
   overflow: hidden;
   border-radius: var(--app-radius-sm);
 }
+
+.sign {
+  grid-area: media;
+  align-self: center;
+  justify-self: end;
+  width: 100%;
+  max-width: 10.5rem;
+  padding: 3px;
+  color: var(--app-forest-text);
+  background: color-mix(in srgb, var(--app-forest-text) 8%, var(--app-bg));
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+}
+
+.sign:not([data-hours-confidence="confirmed"]) { color: var(--app-ink-2); background: var(--app-bg-sunken); }
+
+.signFace {
+  border: 1px solid color-mix(in srgb, currentColor 58%, transparent);
+  padding: .35rem .35rem .45rem;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: .25rem;
+  min-height: 4.8rem;
+  text-align: center;
+}
+
+.signLabel {
+  font: 650 .66rem/1.3 var(--font-mono, monospace);
+  text-transform: uppercase;
+  letter-spacing: .13em;
+}
+
+.dialGroup { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .2rem .42rem; }
+.clock { width: 2.6rem; height: 2.6rem; }
+.clockRead, .signStatus {
+  font: 650 clamp(1.05rem, 6cqi, 1.5rem)/1.12 var(--font-sans, system-ui);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.clockRead small { font-size: .63em; text-transform: uppercase; }
 
 .media > [data-place-card-photo] {
   width: 100%;
@@ -177,13 +210,14 @@
   border-top: 0;
 }
 
-@container (min-width: 36rem) {
-  .preview[data-has-photo="true"] .content {
-    grid-template-columns: minmax(0, 1fr) 128px;
-  }
+/* At 200% the literal hours and all actions take the entire reading width.
+   The decorative duplicate never displaces a usable fact. */
+@container (max-width: 16rem) {
+  .preview .content { grid-template-columns: minmax(0, 1fr); grid-template-areas: "facts" "media"; }
+  .sign { display: none; }
+  .media { width: 100%; height: 7.5rem; margin-top: .5rem; }
+}
 
-  .media {
-    width: 128px;
-    height: 128px;
-  }
+@container (min-width: 35rem) {
+  .content { grid-template-columns: minmax(0, 1fr) 11.25rem; }
 }
