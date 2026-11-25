@@ -149,7 +149,7 @@
   height: clamp(3.2rem, 10cqi, 4.4rem);
   border-radius: var(--app-radius-sm);
   color: var(--wayfinding-ink);
-  background: color-mix(in srgb, var(--wayfinding-ink) 9%, var(--app-bg));
+  background: color-mix(in srgb, var(--wayfinding-ink) 6%, var(--app-bg));
 }
 .artPaper { fill: var(--app-bg); }
 .artFill { fill: var(--wayfinding-ink); }
