@@ -31,4 +31,20 @@ describe("EventsBoardDock mobile hierarchy", () => {
     expect(styles).toContain("max-height: 48px;");
     expect(styles).toContain("min-height: 44px;");
   });
+
+  it("lets the sticky Filters head reach the top of the pane so scrolled choices cannot show above it", () => {
+    const source = readFileSync("src/components/event/EventsBoardDock.tsx", "utf8");
+    const dock = readFileSync("src/components/event/EventsBoardDock.module.css", "utf8").replace(/\s+/g, " ");
+    const globals = readFileSync("src/app/globals.css", "utf8").replace(/\s+/g, " ");
+
+    // The head is the first child of the scroller and sticks at its content
+    // edge, which the scroller's own 10px top padding used to hold 10px down.
+    expect(source).toMatch(/<div className=\{`eb-pane-scroll \$\{styles\.scroll\}`\}>\s*<div className="dock-pane-head">/);
+    expect(globals).toContain(".dock-pane-head { position: sticky; top: 0;");
+    expect(globals).toMatch(/\.eb-pane-scroll \{[^}]*padding: 10px 15px /);
+    // In this pane the head carries that space instead, on its opaque ground.
+    expect(dock).toMatch(/\.scroll:global\(\.eb-pane-scroll\) \{[^}]*padding-top: 0;/);
+    expect(dock).toContain(".scroll:global(.eb-pane-scroll) :global(.dock-pane-head) { padding-top: 10px; }");
+    expect(globals).toMatch(/\.dock-pane-head \{[^}]*background: var\(--app-bg-elevated-solid\);/);
+  });
 });

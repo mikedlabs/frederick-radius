@@ -10,9 +10,9 @@
  * Neutral card faces keep event details readable in both themes. Published
  * lifecycle changes and genuinely live events keep their status treatment.
  *
- * The deck: every card tucks to a 62px lip (serif title + ONE mono fact by
+ * The deck: each closed card is one ruled row (serif title + ONE mono fact by
  * value — "On now" beats the compact when). A dedicated disclosure control
- * raises the card (accordion, one at a time); the event title and explicit
+ * opens the card (accordion, one at a time); the event title and explicit
  * action open /events/[slug].
  * The raised card tears out the same cream SPECIMEN-LABEL STUB places use,
  * where the mono ledger prints the full when, venue, town, kind, admission,
@@ -139,12 +139,12 @@ function Card({
         <CategoryIcon slug={event.category} className="h-full w-full" strokeWidth={1.5} />
       </span>
 
-      {/* The fixed 62px wallet lip must fit the 44px opener even when root
-          text sizing grows. Keep vertical padding at 16px; horizontal padding
+      {/* The closed row must fit the 44px opener even when root text
+          sizing grows. Keep vertical padding at 16px; horizontal padding
           continues to use the shared spacing token. */}
       <div className="sw-face" style={{ paddingBlock: 16 }}>
         {/* Lockup — category glyph "logo" + serif title left. Right slot: the
-            ONE mono lip fact while tucked; the category TIER wordmark on raise. */}
+            ONE mono lip fact while closed; the category TIER wordmark when open. */}
         <div className="sw-top">
           <Link
             href={withBrowseReturnTo(`/events/${event.slug}`, "/my-radius")}
@@ -305,7 +305,7 @@ export default function SavedEventWallet({
   /** One render-stable "now" from the page, for the live-now gate. */
   now: Date;
   /** Whether the top card starts raised (true for the active deck, false for
-   *  the calm past archive so it stays fully tucked). */
+   *  the calm past archive so it stays closed). */
   startRaised?: boolean;
   openSlug?: string | null;
   onOpenSlug?: (slug: string | null) => void;
@@ -327,7 +327,7 @@ export default function SavedEventWallet({
         const open = openValid ? e.slug === openSlug : startRaised && i === 0;
         const savedId = savedIds?.[e.slug] ?? e.slug;
         return (
-          // The SLOT carries the stack geometry (the -124px tuck + raise); it
+          // The SLOT carries the row seam (1px, shared hairline); it
           // must live on this wrapper, not .sw-card (the shipped first-child
           // bug the place wallet documents). Distinct id prefix from places.
           <div

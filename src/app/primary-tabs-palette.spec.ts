@@ -103,33 +103,135 @@ const detailEvent = {
   source_id: "contrast-fixture", license: "Demonstration fixture", confidence: "curated", first_seen_at: "2029-10-01T12:00:00Z", last_verified_at: "2029-10-01T12:00:00Z",
 } satisfies EventWithMeta;
 
-function minimumHeight(element: Element): string | undefined {
-  // The focused rule has greater specificity than the shared deck base;
-  // checking it against real markup also proves its event/single/closed scope.
-  const compact = '[data-app-primary-tab="/my-radius"] .sw-slot[id^="swe-slot-"]:first-child:last-child:not(.is-open) > .sw-card';
-  let height = declaration(stylesheet, ".sw-card", "min-height");
-  stylesheet.walkRules(compact, (rule) => {
-    if (element.matches(compact)) rule.walkDecls("min-height", (entry) => { height = entry.value; });
+/** Selector specificity as [ids, classes, types]. Enough for this sheet:
+ *  :where() counts nothing, and :not() and :is() count their argument. */
+function specificity(selector: string): number[] {
+  let rest = selector.replace(/:where\((?:[^()]|\([^()]*\))*\)/g, "");
+  const attributes = (rest.match(/\[[^\]]*\]/g) ?? []).length;
+  rest = rest.replace(/\[[^\]]*\]/g, "").replace(/:(?:not|is)\(/g, "(");
+  const pseudoElements = (rest.match(/::[\w-]+/g) ?? []).length;
+  rest = rest.replace(/::[\w-]+/g, "");
+  const ids = (rest.match(/#[\w-]+/g) ?? []).length;
+  const classes = (rest.match(/\.[\w-]+|:[\w-]+/g) ?? []).length;
+  const types = (rest.match(/(?:^|[\s>+~(])[a-z][\w-]*/g) ?? []).length;
+  return [ids, classes + attributes, types + pseudoElements];
+}
+
+function outranks(rank: number[], other: number[]): boolean {
+  const index = rank.findIndex((count, position) => count !== other[position]);
+  return index === -1 || rank[index] > other[index]; // a tie goes to the later rule
+}
+
+/** The value a browser would cascade to the element from the sheet's
+ *  unlayered top-level rules. A shorthand can be named with its longhand. */
+function cascaded(element: Element, properties: string[]): string | undefined {
+  let best: { rank: number[]; value: string } | undefined;
+  stylesheet.walkRules((rule) => {
+    if (rule.parent?.type !== "root") return;
+    let value: string | undefined;
+    rule.walkDecls((entry) => { if (properties.includes(entry.prop)) value = entry.value; });
+    if (value === undefined) return;
+    for (const part of rule.selector.split(",")) {
+      let hit = false;
+      try { hit = element.matches(part.trim()); } catch { /* a piece of a list that jsdom cannot parse */ }
+      if (!hit) continue;
+      const rank = specificity(part.trim());
+      if (!best || outranks(rank, best.rank)) best = { rank, value };
+    }
   });
-  return height;
+  return best?.value;
+}
+
+function savedEventDeck(count: number, openIndex: number | null): DocumentFragment {
+  const events = Array.from({ length: count }, (_, index) => ({ ...detailEvent, slug: `detail-${index}`, title: `Event ${index + 1}` }));
+  const template = document.createElement("template");
+  template.innerHTML = renderToStaticMarkup(createElement("div", { "data-app-primary-tab": "/my-radius" },
+    createElement(SavedEventWallet, { events, now: new Date("2029-10-08T12:00:00.000Z"), openSlug: openIndex === null ? null : events[openIndex].slug })));
+  return template.content;
 }
 
 describe("primary tab palette contrast", () => {
-  it("compacts a single closed event while multi-item and expanded cards retain the deck height", () => {
-    const events = [detailEvent, { ...detailEvent, slug: "second-detail", title: "Second event" }];
-    for (const deck of [[detailEvent], events]) {
-      for (const openSlug of [null, deck.at(-1)!.slug]) {
-        const template = document.createElement("template");
-        template.innerHTML = renderToStaticMarkup(createElement("div", { "data-app-primary-tab": "/my-radius" },
-          createElement(SavedEventWallet, { events: deck, now: new Date("2029-10-08T12:00:00.000Z"), openSlug })));
-        const cards = [...template.content.querySelectorAll(".sw-card")];
-        for (const card of cards) expect(minimumHeight(card)).toBe(deck.length === 1 && openSlug === null ? "calc(var(--app-space-4) * 4)" : "186px");
-        expect(cards.at(-1)!.querySelector(".sw-disclosure")?.getAttribute("aria-expanded")).toBe(String(openSlug !== null));
-      }
+  it("lays every closed Saved card out as a row while an expanded card keeps the deck height", () => {
+    // No minimum at all: the row is as tall as its name line and padding, so
+    // enlarged text cannot reopen an empty band the way a rem minimum would.
+    for (const [count, openIndex] of [[1, null], [1, 0], [2, null], [2, 1], [3, 1]] as const) {
+      const deck = savedEventDeck(count, openIndex);
+      const cards = [...deck.querySelectorAll(".sw-card")];
+      expect(cards).toHaveLength(count);
+      // A closed card is a row whether it is alone, first, middle or last.
+      // No closed card keeps the old 186px box with a band under its name.
+      expect(cards.map((card) => cascaded(card, ["min-height"])))
+        .toEqual(cards.map((_, index) => (index === openIndex ? "186px" : "0")));
+      // An event keeps its date on the narrowest phones; only a place row drops its fact there.
+      expect(deck.querySelector('.sw-slot[id^="sw-slot-"]')).toBeNull();
     }
-    const placeSlot = document.createElement("div");
-    placeSlot.innerHTML = '<div data-app-primary-tab="/my-radius"><div class="sw-stack"><div class="sw-slot" id="sw-slot-place"><div class="sw-card"></div></div></div></div>';
-    expect(minimumHeight(placeSlot.querySelector(".sw-card")!)).toBe("186px");
+    const placeDeck = document.createElement("div");
+    placeDeck.innerHTML = '<div data-app-primary-tab="/my-radius"><div class="sw-stack">'
+      + '<div class="sw-slot" id="sw-slot-first"><div class="sw-card"></div></div>'
+      + '<div class="sw-slot is-open" id="sw-slot-second"><div class="sw-card is-open"></div></div>'
+      + '<div class="sw-slot" id="sw-slot-last"><div class="sw-card"></div></div></div></div>';
+    expect([...placeDeck.querySelectorAll(".sw-card")].map((card) => cascaded(card, ["min-height"]))).toEqual(["0", "186px", "0"]);
+  });
+  it("stacks the Saved rows on one shared hairline with no tuck, on the heading's left edge", () => {
+    // Every row after the first overlaps the one above by its 1px rule,
+    // including the row after an opened one, and the first row has no
+    // margin at all. This is the margin that reaches each real slot.
+    const deck = savedEventDeck(4, 1);
+    const slots = [...deck.querySelectorAll(".sw-slot")];
+    expect(slots.map((slot) => cascaded(slot, ["margin-top", "margin", "margin-block", "margin-block-start"])))
+      .toEqual([undefined, "-1px", "-1px", "-1px"]);
+    // The retired tucked deck (-124px tuck, -64px raise, 10px drop) has no
+    // rule left anywhere, scoped or not, so nothing has to out-rank it.
+    stylesheet.walkRules((rule) => {
+      if (!/\.sw-slot\b/.test(rule.selector)) return;
+      rule.walkDecls(/^margin/, (entry) => { expect(`${rule.selector} ${entry.value}`).toMatch(/^\[data-app-primary-tab="\/my-radius"\] .* -1px$/); });
+    });
+    // One 6px corner at each end of the list and square corners at each seam.
+    const cards = [...deck.querySelectorAll(".sw-card")];
+    const corner = (card: Element, longhand: string) => cascaded(card, [longhand, "border-radius"]);
+    expect(cards.map((card) => corner(card, "border-top-left-radius"))).toEqual(["var(--app-radius-md)", "0", "0", "0"]);
+    expect(cards.map((card) => corner(card, "border-bottom-right-radius"))).toEqual(["0", "0", "0", "var(--app-radius-md)"]);
+    // The single-event special case is gone because every closed card is a row now.
+    stylesheet.walkRules((rule) => { expect(rule.selector).not.toContain(":first-child:last-child:not(.is-open)"); });
+    // The deck shares the left edge of its headings and keeps its 30rem cap.
+    const stack = deck.querySelector(".sw-stack")!;
+    expect(cascaded(stack, ["max-width"])).toBe("30rem");
+    expect(cascaded(stack, ["margin-inline", "margin"])).toBe("0");
+    // No blank band between an opened name row and its ledger.
+    expect(cascaded(cards[1].querySelector(".sw-face")!, ["min-height"])).toBe("0");
+  });
+  it("keeps the side and closing hairlines of an opened Saved row", () => {
+    // The hairline is an inset shadow on the card, which a filled child
+    // covers. The opened ledger must not paint a ground of its own.
+    for (const openIndex of [1, 2]) {
+      const deck = savedEventDeck(3, openIndex);
+      const card = deck.querySelectorAll(".sw-card")[openIndex];
+      expect(cascaded(card, ["box-shadow"])).toBe("inset 0 0 0 1px var(--app-border)");
+      const stub = card.querySelector(".sw-stub");
+      expect(stub, "the opened row renders its ledger").not.toBeNull();
+      expect(cascaded(stub!, ["background", "background-color"])).toBe("transparent");
+    }
+  });
+  it("keeps the Show details button inside a Saved card when the name is long", () => {
+    // The summary holds the fact and the 44px disclosure, neither of which
+    // can shrink. Only the name gives up room.
+    expect(declaration(stylesheet, ".sw-card-summary", "flex")).toBe("none");
+    expect(() => declaration(stylesheet, ".sw-card-summary", "min-width")).toThrow("Missing");
+    expect(declaration(stylesheet, ".sw-brand", "min-width")).toBe("0");
+    expect(declaration(stylesheet, ".sw-name", "text-overflow")).toBe("ellipsis");
+    expect(declaration(stylesheet, ".sw-disclosure", "flex")).toBe("none");
+    // Below 375px a place row gives its fact's room to the name (measured:
+    // beside "Open till 3 PM" the name kept about 10 letters at 360px and
+    // 12 at 375px). An event row keeps its date at every width.
+    const narrow: string[] = [];
+    stylesheet.walkRules('.sw-slot[id^="sw-slot-"] .sw-lipfact', (rule) => {
+      const media = rule.parent?.type === "atrule" ? (rule.parent as postcss.AtRule).params : "";
+      rule.walkDecls("display", (entry) => { narrow.push(`${media} ${entry.value}`); });
+    });
+    expect(narrow).toEqual(["(max-width: 374.98px) none"]);
+    const eventFact = savedEventDeck(1, null).querySelector(".sw-lipfact");
+    expect(eventFact).not.toBeNull();
+    expect(eventFact!.matches('.sw-slot[id^="sw-slot-"] .sw-lipfact')).toBe(false);
   });
   it("uses the shared safe-area-aware horizontal gutter on the recovery heading, count, and list", () => {
     for (const selector of [".map-error-fallback-head", ".map-error-fallback .map-list"]) {

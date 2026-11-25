@@ -5,7 +5,7 @@
  * (starts_at, ends_at, is_all_day, is_free, price_text) so a card's facts
  * can be spec'd without a DOM.
  *
- * The headline export is `eventLipFact`: a tucked event card's 62px lip
+ * The headline export is `eventLipFact`: a closed event card's row
  * carries the serif title and exactly ONE mono fact, chosen by VALUE —
  * "it's happening this minute" (a vermilion live dot, the only place
  * vermilion is allowed here) beats the compact when. The raised stub's
@@ -31,7 +31,7 @@ export type EventLipFact = {
 };
 
 /**
- * The ONE fact a tucked event lip shows, by value:
+ * The ONE fact a closed event row shows, by value:
  *   1. live right now  -> "On now" (vermilion live dot)
  *   2. today, upcoming -> "FRI JUL 8" (salient, not dimmed)
  *   3. later           -> "SAT JUL 12" (dimmed)

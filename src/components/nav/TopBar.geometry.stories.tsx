@@ -59,7 +59,9 @@ function geometryStory(pathname: string, enlarged = false, dark = false, fontFam
       const canvas = within(header);
       const pulse = header.querySelector<HTMLElement>("[data-pulse-indicator]")!;
       await waitFor(() => expect(pulse).toHaveAttribute("data-pulse-state", "ready"));
-      await expect(pulse).toHaveAccessibleName("County status: Unable to verify; current alerts are unverified");
+      // The pill can paint a stored report before this story's own fixture
+      // answers, so the name is awaited, not read once.
+      await waitFor(() => expect(pulse).toHaveAccessibleName("County status: Unable to verify; current alerts are unverified"));
       await document.fonts.ready;
       // The regular workshop uses its viewport toolbar. Vitest changes the
       // actual iframe viewport, so these are media-query and hit-test checks,

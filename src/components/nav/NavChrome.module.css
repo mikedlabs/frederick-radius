@@ -295,6 +295,21 @@
   .home svg { width: 24px; height: 24px; }
   .home [data-header-wordmark] { font-size: 1.25rem; }
 }
+/* A 280px fold cover screen is narrower than the wordmark, Find and More
+   together. Keep the words and drop their icons, as the tablet split view
+   does, so the three share the first row again. The area and the county
+   report then share the second row whenever both fit, and wrap when a long
+   town name or larger text needs the room. This was measured with the
+   system font; a wider fallback font (Verdana, for one) still wraps the
+   actions under the wordmark. */
+@media (max-width: 319.98px) {
+  .actions .search > svg,
+  .actions :global([data-find-density="header"]) a > span[aria-hidden],
+  .actions .todayHeaderTrigger > svg,
+  .context .todayHeaderTrigger[data-today-area-trigger] > svg:first-child { display: none; }
+  .context { display: flex; row-gap: 4px; }
+  .context :global([data-pulse-indicator]) { margin-inline-start: auto; }
+}
 @media (min-width: 640px) {
   .bar { --header-gutter: 20px; }
   .row { min-height: 68px; gap: 0.75rem; }
