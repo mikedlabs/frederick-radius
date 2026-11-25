@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import { useEventVisualLifecycle } from "./useEventVisualLifecycle";
 import EventVisualCredit from "./EventVisualCredit";
 import type { EventCardVisual } from "./eventVisuals";
@@ -30,6 +31,7 @@ export default function EventArtwork({
    * soft gray inset for the event page and sheet. */
   frame?: "standard" | "poster";
 }) {
+  const [uprightPoster, setUprightPoster] = useState<string | null>(null);
   const { visibleVisual, failImage, inspectLoadedImage } = useEventVisualLifecycle(visual);
   if (visual.presentation !== "artwork" || !visibleVisual) return null;
   const unavailable = () => {
@@ -38,7 +40,7 @@ export default function EventArtwork({
 
   return (
     <figure data-event-artwork className={className}>
-      <div data-event-artwork-frame={frame} className={`relative w-full overflow-hidden rounded-[var(--app-radius-md)] ${frame === "poster" ? "aspect-[16/10] bg-transparent" : "aspect-[4/3] bg-[var(--app-bg-sunken)]"}`}>
+      <div data-event-artwork-frame={frame} data-upright-poster={uprightPoster === visual.src || undefined} className={`relative w-full overflow-hidden rounded-[var(--app-radius-md)] ${frame === "poster" ? "aspect-[16/10] bg-transparent" : "aspect-[4/3] bg-[var(--app-bg-sunken)]"}`}>
         <Image
           key={visual.src}
           src={visual.src}
@@ -47,7 +49,13 @@ export default function EventArtwork({
           priority={priority}
           sizes="(max-width: 720px) 100vw, 720px"
           className={frame === "poster" ? "object-contain object-left" : "object-contain p-3"}
-          onLoad={(event) => inspectLoadedImage(event.currentTarget, onUnavailable)}
+          onLoad={(event) => {
+            const image = event.currentTarget;
+            if (frame === "poster" && image.naturalHeight > 0) {
+              setUprightPoster(image.naturalWidth / image.naturalHeight < 1.25 ? visual.src : null);
+            }
+            inspectLoadedImage(image, onUnavailable);
+          }}
           onError={unavailable}
         />
       </div>

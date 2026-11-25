@@ -347,9 +347,15 @@ async function parksTargets(canvasElement: HTMLElement, columns: 1 | 2, expected
   for (const card of row.querySelectorAll<HTMLElement>("article")) {
     await waitFor(() => expect(card.querySelector("img"), `Required park image: ${card.dataset.placeCardSlug}`).not.toBeNull(), { timeout: 5000 });
     const image = card.querySelector<HTMLImageElement>("img")!;
-    image.scrollIntoView({ block: "center" });
-    await waitFor(async () => { await image.decode(); expect(image.naturalWidth).toBeGreaterThan(1);
-      expect(card.getAttribute("data-place-card-photo-ready")).toBe("true"); });
+    image.scrollIntoView({ block: "center", behavior: "instant" });
+    // A lazy image in a cold browser can still be transferring after the
+    // default one-second DOM wait. Check the settled card before decoding.
+    await waitFor(() => {
+      expect(image.complete, `Park image transfer: ${card.dataset.placeCardSlug}`).toBe(true);
+      expect(image.naturalWidth).toBeGreaterThan(1);
+      expect(card.getAttribute("data-place-card-photo-ready")).toBe("true");
+    }, { timeout: 5000 });
+    await image.decode();
     expect(card.textContent).not.toContain("Hours not confirmed");
     expect(card.textContent).not.toContain("Carroll Creek between");
     expect(card.textContent).not.toContain("5420 Ballenger Creek");

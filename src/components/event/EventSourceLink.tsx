@@ -6,7 +6,7 @@ import { ExternalLink } from "lucide-react";
  * the user can verify the listing without the source competing with the next
  * move the page recommends.
  */
-export default function EventSourceLink({ href }: { href: string }) {
+export default function EventSourceLink({ href, label }: { href: string; label: string }) {
   return (
     <a
       href={href}
@@ -16,7 +16,7 @@ export default function EventSourceLink({ href }: { href: string }) {
       className="tap-44-y inline-flex items-center gap-1 font-semibold underline decoration-current/40 underline-offset-2"
       style={{ color: "var(--app-link)" }}
     >
-      Official event page
+      {label}
       <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
     </a>
   );

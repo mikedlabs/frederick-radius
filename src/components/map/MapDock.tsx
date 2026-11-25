@@ -1,5 +1,6 @@
 "use client";
 
+import { reachModeHref } from "@/components/radius/reach";
 import {
   useCallback,
   useEffect,
@@ -61,7 +62,10 @@ import type {
   MapLayerSourceHealth,
 } from "./deferredBrowseLayers";
 
+import { COUNTY_TRANSIT_BULLETIN_URL } from "@/lib/transit-service-calendar";
+
 export type TransitAlertSnapshot = {
+  countyBulletin?: string;
   status: "loading" | "ready" | "empty" | "stale" | "error";
   count: number;
 };
@@ -580,9 +584,9 @@ export default function MapDock(props: MapDockProps) {
       const mapBounds = host.getBoundingClientRect();
       const mapHeight = mapBounds.height;
       dockElement.style.setProperty("--map-canvas-height", `${mapHeight}px`);
-      // A two-row return/search dock leaves too little clear list space on a
-      // short phone canvas. Keep Back as a full touch target beside Search.
-      setCompactRecoveryDock(!mapAvailable && mapBounds.width < 1024 && mapHeight < 360);
+      // Leave room for a wrapped result and its Directions action on short
+      // canvases. Back keeps its full touch target beside the search field.
+      setCompactRecoveryDock(!mapAvailable && mapBounds.width < 1024 && mapHeight < 480);
       host.style.setProperty("--map-dock-height", `${dockElement.getBoundingClientRect().height}px`);
       const available = Math.max(148, mapHeight - 96);
       const minimum = mapHeight < 320 ? 148 : 280;
@@ -1297,7 +1301,7 @@ export default function MapDock(props: MapDockProps) {
           : props.liveBusSnapshot?.status === "error"
             ? "Live bus positions are unavailable"
             : "Checking live buses";
-  const liveBusLine =
+  const liveBusLine = props.transitAlertSnapshot?.countyBulletin ? `${liveBusPositionLine} · Holiday schedule` :
     props.transitAlertSnapshot?.status === "ready" &&
     props.transitAlertSnapshot.count > 0
       ? `${liveBusPositionLine} · ${props.transitAlertSnapshot.count} service ${props.transitAlertSnapshot.count === 1 ? "bulletin" : "bulletins"}`
@@ -1732,7 +1736,7 @@ export default function MapDock(props: MapDockProps) {
           {compactRecoveryDock && searchReturnTo && !pane && !searchPanelOpen && (
             <a
               href={searchReturnTo}
-              className="relative z-10 grid min-h-11 place-items-center rounded-l-[var(--app-radius-md)] border-r"
+              className="relative z-10 grid min-h-[44px] place-items-center rounded-l-[var(--app-radius-md)] border-r"
               style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}
               title="Back to search results"
             >
@@ -2587,7 +2591,7 @@ export default function MapDock(props: MapDockProps) {
                     // drops the browse query. This is a same-route client mode
                     // switch: update History, then notify the URL subscriber
                     // so MapModeGate swaps the UI without a document reload.
-                    window.history.pushState(null, "", "/map?mode=radius");
+                    window.history.pushState(null, "", reachModeHref(parseScope(sp.get(SCOPE_PARAM)) ?? getScope()));
                     window.dispatchEvent(new PopStateEvent("popstate"));
                   }}
                 >
@@ -2895,6 +2899,7 @@ export default function MapDock(props: MapDockProps) {
                         <strong>Transit</strong> · {props.transitHealth.status === "unavailable"
                           ? "The county route feed is unavailable."
                           : `${props.transitHealth.count} mapped route segments from ${props.transitHealth.source}. Tap a stop for arrivals or a vehicle for status.`}
+                        {props.transitAlertSnapshot?.countyBulletin && <> {props.transitAlertSnapshot.countyBulletin} <a className="underline" href={COUNTY_TRANSIT_BULLETIN_URL}>County transit bulletin (PDF)</a>.</>}
                         {props.transitAlertSnapshot?.status === "ready"
                           ? ` ${props.transitAlertSnapshot.count} provider service ${props.transitAlertSnapshot.count === 1 ? "bulletin is" : "bulletins are"} active.`
                           : props.transitAlertSnapshot?.status === "stale"

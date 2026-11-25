@@ -16,7 +16,7 @@ export default function SavedOutings({ snapshot }: { snapshot: SavedOutingsSnaps
   const [error, setError] = useState<string | null>(null);
   if (snapshot.status === "ready" && snapshot.outings.length === 0) return null;
 
-  async function remove(token: string, title: string, button: HTMLButtonElement) {
+  async function remove(token: string, button: HTMLButtonElement) {
     const restoreFocus = document.activeElement === button;
     const links = [...(sectionRef.current?.querySelectorAll<HTMLAnchorElement>("a[data-saved-outing-open]") ?? [])];
     const index = links.findIndex((link) => link === button.closest("article")?.querySelector("a[data-saved-outing-open]"));
@@ -26,10 +26,10 @@ export default function SavedOutings({ snapshot }: { snapshot: SavedOutingsSnaps
     setPending(token);
     setError(null);
     try {
-      await removeOuting(token);
+      const removed = await removeOuting(token);
       // Undo runs after the card is gone, and after this section is gone when
       // it was the last outing, so restoreOuting reports a failure as a toast.
-      notifyRemoved({ label: title, onUndo: () => void restoreOuting(token, title), item: { type: "outing", id: token } });
+      if (removed) notifyRemoved({ label: removed.item.title, onUndo: () => void restoreOuting(removed), item: { type: "outing", id: token } });
       if (restoreFocus) window.requestAnimationFrame(() => {
         // The confirmed store update removes the old control. Orient keyboard
         // users after React commits, including the last-card empty state.
@@ -72,7 +72,7 @@ export default function SavedOutings({ snapshot }: { snapshot: SavedOutingsSnaps
             <p className={styles.metadata}>{details.stopCount} saved {details.stopCount === 1 ? "stop" : "stops"} · {details.dateLabel}</p>
             <div className={styles.actions}>
               <Link href={href} data-saved-outing-open className={styles.open} prefetch={false} aria-label={`Open outing: ${outing.title}`}>Open outing <ArrowRight aria-hidden className="h-4 w-4" /></Link>
-              <button type="button" onClick={(event) => remove(outing.token, outing.title, event.currentTarget)} disabled={pending !== null || snapshot.status !== "ready"} className={styles.remove} aria-label={`Remove outing: ${outing.title}`}>{pending === outing.token ? "Removing…" : "Remove"}</button>
+              <button type="button" onClick={(event) => remove(outing.token, event.currentTarget)} disabled={pending !== null || snapshot.status !== "ready"} className={styles.remove} aria-label={`Remove outing: ${outing.title}`}>{pending === outing.token ? "Removing…" : "Remove"}</button>
             </div>
           </article>
         </li>;

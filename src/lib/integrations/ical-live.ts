@@ -134,7 +134,11 @@ export type LiveEvent = {
   online_url?: string;
   /** Promo/artist image from ticketed feeds. EventCard already renders
    *  hero images; only sources that vouch for one set it. */
+  /** Precision supported by the publisher, separate from the internal expiry timestamp. */
+  published_time?: "date" | "start" | "range";
   hero_image?: string;
+  /** Listing URL whose dedicated event-image field supplied these bytes. */
+  hero_image_record?: string;
   /** Lifecycle status — scheduled / cancelled / postponed. Derived
    *  from the iCal STATUS property or a title sniff at parse time. */
   status: EventStatus;
@@ -167,6 +171,10 @@ type FeedFormat =
   | "presence"
   | "vibemap"
   | "wix-html";
+
+function publishedTime(hasClock: boolean, hasEnd: boolean): NonNullable<LiveEvent["published_time"]> {
+  return hasClock ? (hasEnd ? "range" : "start") : "date";
+}
 
 export type FeedSpec = Feed & {
   format: FeedFormat;
@@ -1347,6 +1355,7 @@ async function fetchIcalFeed(
         description: cleanedDesc,
         starts_at: startsAtISO,
         ends_at: endsAtISO,
+        published_time: publishedTime(!allDay, Boolean(item.end)),
         is_all_day: allDay,
         venue_name: venue,
         address,
@@ -1464,6 +1473,7 @@ async function fetchRssFeed(
         );
         continue;
       }
+      const publishedWindow = end !== null && Number.isFinite(end.getTime());
       if (!end || isNaN(end.getTime())) end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
       if (!isEventWithinReadWindow(
         { starts_at: start.toISOString(), ends_at: end.toISOString() },
@@ -1492,6 +1502,7 @@ async function fetchRssFeed(
         description: clampDescription(cleanDescription(description), 300),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
+        published_time: publishedTime(publishedWindow, publishedWindow),
         venue_name: venue,
         address,
         geom: feed.default_geom,
@@ -1553,6 +1564,7 @@ const fetchCountyRssCached = unstable_cache(
 /** One event in a WordPress "The Events Calendar" REST v1 payload. Only the
  *  fields we read are typed; the payload carries far more. */
 type TribeEvent = {
+  all_day?: boolean;
   title?: string;
   description?: string;
   start_date?: string; // "2026-07-11 10:30:00" (venue-local ET)
@@ -1635,8 +1647,9 @@ async function fetchTribeFeed(
       const startsAtISO = jsonEventDateToISO(item.utc_start_date, item.start_date);
       if (!startsAtISO) continue;
       const effectiveStart = new Date(startsAtISO);
+      const publisherEnd = jsonEventDateToISO(item.utc_end_date, item.end_date);
       const endsAtISO =
-        jsonEventDateToISO(item.utc_end_date, item.end_date) ??
+        publisherEnd ??
         new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000).toISOString();
       if (!isEventWithinReadWindow(
         { starts_at: startsAtISO, ends_at: endsAtISO },
@@ -1657,6 +1670,7 @@ async function fetchTribeFeed(
         description: cleanedDesc,
         starts_at: startsAtISO,
         ends_at: endsAtISO,
+        published_time: publishedTime(item.all_day !== true, Boolean(publisherEnd)),
         is_all_day: false,
         venue_name: venue,
         address,
@@ -1919,6 +1933,7 @@ export function parseWixEventsHtml(
       description,
       starts_at: start.toISOString(),
       ends_at: end.toISOString(),
+      published_time: publishedTime(true, Number.isFinite(parsedEndMs)),
       is_all_day: false,
       venue_name: venue,
       address,
@@ -2131,6 +2146,7 @@ async function fetchJsonArrayFeed(
         description: cleanedDesc,
         starts_at: startsAtISO,
         ends_at: endsAtISO,
+        published_time: publishedTime(true, rawEndsAtISO === endsAtISO),
         is_all_day: false,
         venue_name: venue,
         address,
@@ -2217,8 +2233,7 @@ function vibemapEventImage(row: VibemapRow): string | undefined {
   const meta = row.meta ?? {};
   return (
     approvedVibemapImage(meta["vibemap_event_images"]) ??
-    approvedVibemapImage(meta["vibemap_event_original_images"]) ??
-    approvedVibemapImage(row.yoast_head_json?.twitter_image)
+    approvedVibemapImage(meta["vibemap_event_original_images"])
   );
 }
 
@@ -2315,6 +2330,7 @@ export function parseVibemapEvents(
       Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0);
     const metaUrl = str("vibemap_event_url");
     const publisherRecordUrl = samePublisherHttpsUrl(row.link, feed.url);
+    const recordImage = publisherRecordUrl && vibemapEventImage(row);
     const candidate = {
       // Preserve the existing source identity during this rollout. Switching
       // every archived DFP row to WordPress IDs without an alias migration can
@@ -2325,6 +2341,7 @@ export function parseVibemapEvents(
       description: cleanedDesc,
       starts_at: startsAtISO,
       ends_at: endsAtISO,
+      published_time: publishedTime(!allDay, endISO === endsAtISO),
       is_all_day: allDay,
       venue_name: venue,
       address,
@@ -2340,7 +2357,7 @@ export function parseVibemapEvents(
       // useful content, but it is not the evidence identity.
       url: publisherRecordUrl ?? (/^https?:\/\//i.test(metaUrl) ? metaUrl : feed.url),
       is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
-      hero_image: vibemapEventImage(row),
+      ...(recordImage ? { hero_image: recordImage, hero_image_record: publisherRecordUrl } : {}),
       last_verified_at: fetchedAt,
       publisher_updated_at: wordpressGmtIso(row.modified_gmt),
     };
@@ -2963,10 +2980,11 @@ function getCachedEventSourcePage(
       // first-party event changes. Keep old cache tuples out of this shape.
       // v5: bar, brewery and winery need the title, a publisher tag or the
       // feed's own venue category, so cached LiveEvent.category values changed.
-      // v6: Frederick Community College times are read as UTC, so cached
+      // v7: the November 24 launch pass (#1997) moved this key.
+      // v8: Frederick Community College times are read as UTC, so cached
       // FCC rows carry different starts_at and ends_at values. County rows
       // also gain a title-only category where they used to carry a blank.
-      "live-event-source-page-v6",
+      "live-event-source-page-v8",
       source,
       String(windowDays),
       afterCursor ?? "first",

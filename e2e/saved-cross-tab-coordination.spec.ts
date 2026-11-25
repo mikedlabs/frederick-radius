@@ -101,7 +101,7 @@ async function openEvent(page: Page, catalog: Catalog, exclude?: string) {
       await expect(filters).toBeVisible();
       await filters.getByRole("tab", { name: "What", exact: true }).click();
       await filters.getByRole("textbox", { name: "Filter the events shown" }).fill("Save coordination fixture");
-      await filters.getByRole("button", { name: "Done", exact: true }).click();
+      await filters.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }).click();
       await expect(filters).toBeHidden();
     }
   }

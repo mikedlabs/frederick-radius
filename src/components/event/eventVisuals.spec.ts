@@ -5,6 +5,13 @@ import fixture from "../../../tests/fixtures/steinhardt-squarespace.json" with {
 import { CREDITED_LOCAL_PLACE_PHOTOS } from "@/data/credited-local-place-photos";
 import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 
+const listing = {
+  dfp: "https://downtownfrederick.org/vm-event/community-concert/",
+  "visit-frederick": "https://www.visitfrederick.org/event/community-concert/123/",
+  fcpl: "https://frederick.librarycalendar.com/event/community-concert-123",
+  mdcc: "https://www.deafmdcc.org/event-details-registration/community-concert",
+  ticketmaster: "https://www.ticketmaster.com/event/01020304",
+} as const;
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
     slug: "test-event",
@@ -26,6 +33,7 @@ function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
     category_name: "Music",
     municipality_name: "Frederick",
     last_verified_at: "2026-07-23T12:00:00.000Z",
+    ...(overrides.source && overrides.source in listing ? { source_url: listing[overrides.source as keyof typeof listing] } : {}),
     ...overrides,
   } as EventWithMeta;
 }
@@ -82,7 +90,7 @@ describe("eventCardVisual", () => {
           hero_image: "https://seatgeek.com/images/example.jpg",
         }),
       ),
-    ).toMatchObject({ caption: "Event image · SeatGeek", presentation: "artwork" });
+    ).toBeNull();
   });
 
   it.each([
@@ -113,17 +121,29 @@ describe("eventCardVisual", () => {
         eventCardVisual(
           event({
             source,
-            source_url: "https://publisher.example/event",
+            source_url: listing[source],
+            ...(source === "dfp" ? { hero_image_record: listing.dfp } : {}),
             hero_image,
           }),
         ),
       ).toMatchObject({
         caption,
-        sourceHref: "https://publisher.example/event",
+        sourceHref: listing[source],
         presentation: "artwork",
       });
     },
   );
+
+  it("rejects generic, missing and mismatched listing evidence even on approved image hosts", () => {
+    const hero_image = "https://ik.imagekit.io/vibemap/events/program.jpg";
+    const image = { source: "dfp" as const, hero_image, source_url: listing.dfp };
+    expect(eventCardVisual(event(image))).toBeNull();
+    expect(eventCardVisual(event({ ...image, hero_image_record: listing.dfp + "another-event" }))).toBeNull();
+    expect(eventCardVisual(event({ source: "fcpl", source_url: "https://frederick.librarycalendar.com",
+      hero_image: "https://frederick.librarycalendar.com/sites/default/files/program.jpg" }))).toBeNull();
+    expect(eventCardVisual(event({ source: "ticketmaster", source_url: "https://another.example/events/my-concert",
+      hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg" }))).toBeNull();
+  });
 
   it("keeps publisher eligibility separate from shared transport hosts and source labels", () => {
     const library = "https://frederick.librarycalendar.com/sites/default/files/program.jpg";
@@ -301,7 +321,7 @@ describe("planHorizonVisual", () => {
 
 
 describe("recovery event visual boundary", () => {
-  const sourceHref = "https://publisher.example/events/community-concert";
+  const sourceHref = listing.fcpl;
   const attribution = {
     kind: "venue" as const,
     venue_name: "Test Venue",
@@ -358,12 +378,13 @@ describe("recovery event visual boundary", () => {
     ["fcpl", "https://frederick.librarycalendar.com/sites/default/files/program.jpg", "Event image · Frederick County Public Libraries"],
     ["mdcc", "https://static.wixstatic.com/media/program.jpg", "Event image · Maryland Deaf Community Center"],
     ["ticketmaster", "https://s1.ticketm.net/dam/a/program.jpg", "Event image · Ticketmaster"],
-    ["seatgeek", "https://seatgeek.com/images/program.jpg", "Event image · SeatGeek"],
   ] as const)("retains %s source wording, source link and intact-art presentation", (source, hero_image, caption) => {
-    const approved = eventCardVisual(event({ source, source_url: sourceHref, hero_image }))!;
+    const sourceHref = listing[source];
+    const proof = source === "dfp" ? { hero_image_record: sourceHref } : {};
+    const approved = eventCardVisual(event({ source, source_url: sourceHref, hero_image, ...proof }))!;
     const packet = Object.freeze({ ...approved, discarded: "not part of the public visual" });
     const parsed = parseRecoveryEventVisual(packet);
-    expect(parsed).toEqual({ src: hero_image, key: `event:${hero_image}`, caption, presentation: "artwork", sourceHref });
+    expect(parsed).toEqual({ src: hero_image, key: `event:${hero_image}`, caption, presentation: "artwork", sourceHref, ...(source === "dfp" ? { publisherImageRecord: sourceHref } : {}) });
     expect(parsed).not.toBe(packet);
     expect(parsed).not.toHaveProperty("discarded");
   });
@@ -505,7 +526,7 @@ describe("exact owned event venue photographs", () => {
 
   it.each([fairgrounds, "visitation-hotel"])("retains event-specific publisher artwork ahead of %s without photo framing", venue_place_slug => {
     const approved = eventCardVisual(event({ venue_place_slug, source: "ticketmaster",
-      source_url: "https://www.ticketmaster.com/offline-fixture", hero_image: "https://s1.ticketm.net/dam/a/offline-fixture.jpg" }));
+      source_url: "https://www.ticketmaster.com/event/abc123", hero_image: "https://s1.ticketm.net/dam/a/offline-fixture.jpg" }));
     expect(approved).toMatchObject({ src: "https://s1.ticketm.net/dam/a/offline-fixture.jpg",
       caption: "Event image · Ticketmaster", presentation: "artwork" });
     expect(approved).not.toHaveProperty("objectPosition");
@@ -574,7 +595,7 @@ describe("exact owned event venue photographs", () => {
   });
 
   it("does not let a recovery packet add owned framing to publisher art or a legacy venue tuple", () => {
-    const published = eventCardVisual(event({ source: "ticketmaster", source_url: "https://www.ticketmaster.com/offline-fixture",
+    const published = eventCardVisual(event({ source: "ticketmaster", source_url: "https://www.ticketmaster.com/event/abc123",
       hero_image: "https://s1.ticketm.net/dam/a/offline-fixture.jpg" }))!;
     const legacy = eventCardVisual(event({ venue_place_slug: "baker-park-bandshell" }))!;
     expect(parseRecoveryEventVisual({ ...published, objectPosition: "right" })).toBeNull();

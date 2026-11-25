@@ -16,6 +16,12 @@ import {
 } from "@/lib/integrations/planner";
 
 describe("buildPlan", () => {
+  it.each([["brunswick", "Brunswick"], ["frederick", "Frederick City"], [undefined, "Frederick County"]])(
+    "titles visitor outings with the selected area %s", (municipality, name) => {
+      const plan = buildPlan({ audience: "visitor", vibe: "easy", duration_hours: 2, municipality, start_at: "2026-11-23T15:00:00Z" });
+      expect(plan.title).toBe(`A morning in ${name}`);
+    },
+  );
   it("keeps an hours-unconfirmed food draft out of daytime errand categories", () => {
     const plan = buildPlan({
       audience: "date",

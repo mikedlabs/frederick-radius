@@ -1,4 +1,4 @@
-import type { EventStatus } from "@/lib/event-status";
+import { isJojosWineSpecial, type VenueOfferIdentity } from "@/data/jojos-wine-special";
 import {
   hasActionableAttendance,
   type EventAttendanceInput,
@@ -187,13 +187,13 @@ const RE_MEETING =
 const RE_CANCELLED = /\bcancell?ed\b|\bpostponed\b/i;
 
 export function classifyEvent(
-  e: { title: string; status?: EventStatus | string; category?: string },
+  e: VenueOfferIdentity & { category?: string },
 ): EventLane {
   const t = e.title ?? "";
   if (e.status === "cancelled" || e.status === "postponed" || RE_CANCELLED.test(t)) {
     return "cancelled";
   }
-  if (RE_NON_EVENT.test(t)) return "non_event";
+  if (RE_NON_EVENT.test(t) || isJojosWineSpecial(e)) return "non_event";
   if (isClosureNotice(t)) return "closure_notice";
   if (RE_RENTAL.test(t)) return "private_rental";
   if (RE_REMINDER.test(t) || RE_ADMIN_NOTICE.test(t)) return "town_reminder";
@@ -203,7 +203,7 @@ export function classifyEvent(
 
 /** True only for events that may lead the public "What's on" surfaces. */
 export function isPublicEvent(
-  e: { title: string; status?: EventStatus | string; category?: string } &
+  e: VenueOfferIdentity & { category?: string } &
     EventAttendanceInput,
 ): boolean {
   return classifyEvent(e) === "public" && hasActionableAttendance(e);

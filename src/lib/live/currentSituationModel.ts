@@ -18,6 +18,7 @@ import {
 } from "@/lib/live/incidentFusion";
 
 export const CURRENT_SITUATION_SCHEMA_VERSION = 1 as const;
+export const FCPS_CHECK_MAX_AGE_SECONDS = 20 * 60;
 
 export type SituationSourceId =
   | "nws"

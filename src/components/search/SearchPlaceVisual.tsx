@@ -96,6 +96,13 @@ export function SearchPlaceVisualImage({ fallback, size = 56, className = "", gl
   );
 }
 
+/** Only reserve the photographic frame while this exact source is usable.
+ * A failed image leaves the same destination and map anchors mounted. */
+export function SearchPlaceLeadPhoto() {
+  const visual = useContext(Context);
+  return visual?.source && !visual.failed ? <SearchPlaceVisualImage frame="lead" fallback={null} /> : null;
+}
+
 /** One leading place keeps the real photograph, facts and explicit actions
  * together. Failed media collapses to the same compact factual header. */
 export function SearchPlaceLead({ fallback, children, actions }: {
@@ -107,7 +114,7 @@ export function SearchPlaceLead({ fallback, children, actions }: {
   const hasPhoto = Boolean(visual?.source && !visual.failed);
   return (
     <div className={styles.lead} data-search-place-lead data-has-photo={hasPhoto}>
-      {hasPhoto && <SearchPlaceVisualImage frame="lead" fallback={null} />}
+      <SearchPlaceLeadPhoto />
       <div className={styles.leadHeader}>
         {!hasPhoto && <SearchPlaceVisualImage size={48} fallback={fallback} />}
         <div>{children}</div>

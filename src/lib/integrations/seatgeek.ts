@@ -20,7 +20,7 @@
  */
 import type { LngLat } from "@/lib/geo";
 import type { LiveEvent } from "@/lib/integrations/ical-live";
-import { allowedEventImage, ticketFloorText } from "@/lib/integrations/ticketmaster";
+import { ticketFloorText } from "@/lib/integrations/ticketmaster";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
@@ -155,7 +155,7 @@ export function normalizeSeatGeek(raw: unknown): LiveEvent[] {
       // price is unknown, not free, so only an explicit 0 sets the flag.
       is_free: typeof lowest === "number" && lowest === 0,
       price_text: ticketFloorText(lowest ?? undefined),
-      hero_image: allowedEventImage(ev.performers?.find((p) => p?.image)?.image),
+      // A performer portrait is not artwork for this specific listing.
       status: "scheduled" as const,
       last_verified_at: new Date().toISOString(),
     });

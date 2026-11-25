@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CheckCircle2, KeyRound, Loader2, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { resetFollowsSyncFlag } from "@/hooks/useFollows";
+import { useMounted } from "@/hooks/useSaved";
 
 const SAVED_KEY = "fr:saved:v1";
 const PENDING_AUTH_KEY = "fr:auth:pending:v1";
@@ -59,6 +61,7 @@ export default function LoginForm({
   destinationLabel: string;
 }) {
   const router = useRouter();
+  const ready = useMounted();
   const codeInputRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -197,6 +200,15 @@ export default function LoginForm({
     }
   }
 
+  if (!ready) {
+    return (
+      <p className="text-sm leading-relaxed">
+        Secure sign-in needs JavaScript.{" "}
+        <Link href="/" className="font-medium underline">Browse without signing in</Link>.
+      </p>
+    );
+  }
+
   if (sentTo) {
     return (
       <div aria-busy={busy !== null}>
@@ -244,7 +256,7 @@ export default function LoginForm({
           </div>
         )}
 
-        <form onSubmit={onCodeSubmit} className="mt-5 space-y-3">
+        <form method="post" onSubmit={onCodeSubmit} className="mt-5 space-y-3">
           <label
             htmlFor="email-code"
             className="block text-[11px] font-bold uppercase tracking-[0.1em]"
@@ -344,7 +356,7 @@ export default function LoginForm({
   }
 
   return (
-    <form onSubmit={onEmailSubmit} className="space-y-4" aria-busy={busy !== null}>
+    <form method="post" onSubmit={onEmailSubmit} className="space-y-4" aria-busy={busy !== null}>
       <div>
         <p className="eyebrow" style={{ color: "var(--app-brand)" }}>
           Secure sign-in

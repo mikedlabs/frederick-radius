@@ -94,13 +94,13 @@ export default function AnalyticsOptOut() {
       className="rounded-[var(--app-radius-md)] border p-4"
       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
     >
-      <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
+      <p role="status" className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
         {optedOut
-          ? "Activity logging is off on this device. No new in-app activity is being recorded."
-          : "In-app activity may be logged on this device while you use a beta invite. You can turn that off here."}
+          ? "Beta invite activity logging is off on this device."
+          : "Beta invite activity logging is on for this device while you use an invite."}
       </p>
       {failed && (
-        <p className="mt-2 text-[12.5px]" style={{ color: "var(--app-danger)" }}>
+        <p role="alert" className="mt-2 text-[12.5px]" style={{ color: "var(--app-danger)" }}>
           That did not save. Check your connection and try again.
         </p>
       )}
@@ -115,7 +115,7 @@ export default function AnalyticsOptOut() {
           opacity: busy ? 0.7 : 1,
         }}
       >
-        {optedOut ? "Turn activity logging back on" : "Turn off activity logging"}
+        {optedOut ? "Resume beta invite logging" : "Pause beta invite logging"}
       </button>
     </div>
   );

@@ -2,9 +2,9 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync, statSync } from "node:fs";
 import { isAbsolute, relative, resolve } from "node:path";
 import postcss from "postcss";
-import routeCache from "next/dist/server/lib/route-cache-key.js";
-
-const { getRouteCacheKey, isRouteCacheOwner } = routeCache;
+import { JSDOM } from "jsdom";
+import { require as loadTypeScript } from "tsx/cjs/api";
+import { readProductionTodayDocuments, todayDeploymentId } from "./production-today-documents.mjs";
 
 const LABEL = ".content-chapter--plain .content-chapter__label";
 const RULE = ".content-chapter--plain .content-chapter__rule";
@@ -196,26 +196,25 @@ function contained(root, path) {
   return inside !== ".." && !inside.startsWith("../") && !isAbsolute(inside);
 }
 
-function stylesheetHrefs(html) {
-  const hrefs = [];
-  // Next emits quoted rel/href link attributes. Strip script/comment contents
-  // so streamed RSC strings or comments cannot masquerade as linked CSS.
-  const markup = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "");
-  for (const [tag] of markup.matchAll(/<link\b[^>]*>/gi)) {
-    const attrs = new Map([...tag.matchAll(/\b([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)]
-      .map((match) => [match[1].toLowerCase(), match[2] ?? match[3]]));
-    if (!(attrs.get("rel") ?? "").toLowerCase().split(/\s+/).includes("stylesheet")) continue;
-    const href = attrs.get("href");
-    if (!href) throw new Error("Built Today stylesheet link has no quoted href");
-    if (/\bdisabled(?:\s|=|\/?>)/i.test(tag)) continue;
-    const media = (attrs.get("media") ?? "").trim().toLowerCase();
-    if (media && media !== "all") continue; // Conditional links cannot prove base CSS.
-    if (!hrefs.includes(href)) hrefs.push(href);
+function stylesheetHrefs(document) {
+  const hrefs = new Set();
+  for (const link of document.querySelectorAll("link[rel]")) {
+    if (!link.rel.toLowerCase().split(/\s+/).includes("stylesheet") || link.hasAttribute("disabled") || link.closest("noscript")) continue;
+    const media = link.media.trim().toLowerCase();
+    if (media && media !== "all") continue;
+    const href = link.getAttribute("href");
+    if (!href) throw new Error("Built Today stylesheet link has no href");
+    hrefs.add(href);
   }
-  return hrefs;
+  return [...hrefs];
 }
 
-function localStylesheetPath(buildRoot, href) {
+function localStylesheetPath(buildRoot, href, deploymentId) {
+  // Next can append the exact build's deployment token for skew protection.
+  if (deploymentId && /^[a-z0-9_-]+$/i.test(deploymentId)) {
+    const suffix = `?dpl=${deploymentId}`;
+    if (href.endsWith(suffix)) href = href.slice(0, -suffix.length);
+  }
   let decoded;
   try { decoded = decodeURIComponent(href); }
   catch { throw new Error(`Invalid encoded built stylesheet path: ${href}`); }
@@ -242,67 +241,131 @@ function builtJson(buildRoot, path, label) {
   return value;
 }
 
-function todayHtmlPath(buildRoot, result) {
+function todayOwner(buildRoot, env) {
   const required = builtJson(buildRoot, "required-server-files.json", "required-server-files manifest");
   const config = required.config;
   if (!config || typeof config !== "object" || Array.isArray(config)) throw new Error("Built required-server-files manifest has no config object");
-  if (config.adapterPath != null && typeof config.adapterPath !== "string") throw new Error("Built config adapterPath must be a string when set");
-  // Match installed Next 16's export/worker useScopedBuildArtifacts predicate.
-  // The emitted config can redact the actual adapter path; never import it.
-  const scoped = Boolean(config.adapterPath) && config.output !== "export";
-  result.layout = scoped ? "scoped-route-cache" : "legacy-app";
-
   const prerenders = builtJson(buildRoot, "prerender-manifest.json", "prerender manifest");
-  const prerender = prerenders.routes?.["/today"];
-  if (!prerender || prerender.routeType !== "page" || prerender.response !== "complete" || prerender.compute !== "static" ||
-      prerender.dataRoute !== "/today.rsc" || prerenders.notFoundRoutes?.includes("/today") || prerenders.dynamicRoutes?.["/today"] ||
-      !(prerender.initialRevalidateSeconds === false || Number.isFinite(prerender.initialRevalidateSeconds) && prerender.initialRevalidateSeconds > 0)) {
-    throw new Error("Built /today must be a complete static APP_PAGE prerender with /today.rsc and nonzero revalidation");
+  const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  if (!record(prerenders.routes) || !record(prerenders.dynamicRoutes) || !Array.isArray(prerenders.notFoundRoutes)
+      || config.output === "export" || Object.hasOwn(prerenders.routes, "/today")
+      || Object.hasOwn(prerenders.dynamicRoutes, "/today") || prerenders.notFoundRoutes.includes("/today")) {
+    throw new Error("Built /today must render its exact request area as a server page");
   }
-  const pathRoutes = builtJson(buildRoot, "app-path-routes-manifest.json", "app-path-routes manifest");
+  const routes = builtJson(buildRoot, "app-path-routes-manifest.json", "app-path-routes manifest");
   const appPaths = builtJson(buildRoot, "server/app-paths-manifest.json", "app-paths manifest");
-  const sources = Object.entries(pathRoutes).filter(([, pathname]) => pathname === "/today").map(([source]) => source);
-  if (sources.length !== 1 || !sources[0].startsWith("/") || !sources[0].endsWith("/page") ||
-      typeof appPaths[sources[0]] !== "string" || !appPaths[sources[0]].endsWith("/page.js")) {
+  const sources = Object.keys(routes).filter(source => routes[source] === "/today");
+  const [sourceRoute] = sources;
+  if (sources.length !== 1 || !sourceRoute.startsWith("/") || !sourceRoute.endsWith("/page")
+      || appPaths[sourceRoute] !== `app${sourceRoute}.js`) {
     throw new Error("Built /today must have one APP_PAGE owner shared by app-path-routes and app-paths manifests");
   }
-  const owner = { kind: "APP_PAGE", sourceRoute: sources[0] };
-  if (!isRouteCacheOwner("/today", owner, prerender, config.i18n?.locales)) throw new Error("Built /today prerender source does not match its APP_PAGE owner");
-  result.owner = owner;
-  // Use Next's pinned key implementation, including route-group source identity.
-  const key = getRouteCacheKey("/today", owner);
-  result.routeCacheKey = key;
-  const html = scoped ? `server${key}.html` : "server/app/today.html";
-  result.htmlPath = resolve(buildRoot, html);
-  const htmlPath = builtArtifactPath(buildRoot, html, "Today HTML");
-  const metaPath = html.replace(/\.html$/, ".meta");
-  result.metaPath = resolve(buildRoot, metaPath);
-  const meta = builtJson(buildRoot, metaPath, "Today metadata");
-  if (meta.routeCache?.key !== key || meta.routeCache?.owner?.kind !== owner.kind ||
-      meta.routeCache?.owner?.sourceRoute !== owner.sourceRoute || meta.routeCache?.isFallback !== false) {
-    throw new Error("Built Today metadata must match the selected non-fallback route-cache key and APP_PAGE owner");
-  }
-  return htmlPath;
+  builtArtifactPath(buildRoot, `server/${appPaths[sourceRoute]}`, "Today page bundle");
+  const id = todayDeploymentId(config, env);
+  return { owner: { kind: "APP_PAGE", sourceRoute }, deploymentId: config.supportsImmutableAssets ? undefined : id };
 }
 
-/** Read only manifest-identified Today HTML and the local CSS it actually links.
- * Emitted config selects exactly one Next artifact layout. No legacy rescue,
- * cache scan, source CSS fallback, fetch, adapter execution or regeneration.
- */
-export function validateBuiltCssContract(root) {
-  const result = { layout: null, owner: null, routeCacheKey: null, htmlPath: null, metaPath: null, stylesheets: [], errors: [] };
+const expectedPaths = { county: "/today", brunswick: "/today", "mount-airy": "/today?in=mount-airy", nearme: "/today?in=nearme" };
+const loopbackOrigin = "http://127.0.0.1";
+
+function matchesImage(image, expected) {
+  if (!image?.alt || !image.getAttribute("src")) return false;
+  const url = new URL(image.getAttribute("src"), loopbackOrigin);
+  if (url.origin !== loopbackOrigin) return false;
+  return url.pathname === "/_next/image" ? url.searchParams.get("url") === expected : decodeURIComponent(url.pathname) === expected;
+}
+
+function checkArea(document, area, subjects) {
+  const scenes = [...document.querySelectorAll("main [data-today-local-discovery]")].filter(scene => !scene.closest("[hidden], [inert], [aria-hidden=true], noscript"));
+  if (scenes.length !== 1) throw new Error(`Expected one visible server-rendered discovery section for ${area}`);
+  const [scene] = scenes;
+  const photo = scene.querySelector("[data-today-feature-photo] img");
+  const map = scene.querySelector("[data-today-map-link]");
+  if (area === "county") {
+    const link = photo?.closest("a[href]");
+    const url = new URL(link?.getAttribute("href") ?? "/", loopbackOrigin);
+    url.searchParams.delete("returnTo");
+    if (map || url.origin !== loopbackOrigin || !subjects.walks.some(guide =>
+      matchesImage(photo, guide.downtown) && url.pathname + url.search === guide.downtownHref)) {
+      throw new Error("County document lost its published walk photograph or destination");
+    }
+  } else if (subjects.places[area]) {
+    const expected = subjects.places[area];
+    const place = scene.querySelector("[data-today-geographic-place]");
+    const url = new URL(place?.getAttribute("href") ?? "/", loopbackOrigin);
+    if (photo || map || !matchesImage(place?.querySelector("img"), expected.src)
+        || place?.getAttribute("data-today-geographic-place") !== expected.slug || url.origin !== loopbackOrigin
+        || url.pathname !== `/places/${expected.slug}` || url.searchParams.get("in") !== area) {
+      throw new Error(`Document for ${area} lost its published place photograph or destination`);
+    }
+  } else {
+    const url = new URL(map?.getAttribute("href") ?? "/", loopbackOrigin);
+    const chart = map?.querySelector("[data-county-locator]");
+    const marks = chart?.querySelectorAll("[data-locator-selection]");
+    if (photo || !chart?.querySelector('svg[role="img"]') || url.origin !== loopbackOrigin || url.pathname !== "/map" || url.searchParams.get("in") !== area
+        || (area === "nearme" ? marks.length !== 0 : marks.length !== 1 || marks[0].getAttribute("data-locator-selection") !== "Town center" || !chart.querySelector("figcaption")?.textContent.includes("Town center: Mount Airy"))) {
+      throw new Error(`Expected the correct county map, selection and destination for ${area}`);
+    }
+  }
+}
+
+/** Check only assets linked, in cascade order, by actual documents from this
+ * build. CSS and page bundles must resolve under its emitted artifact root. */
+export function validateBuiltCssContract(root, documents, subjects, env = {}) {
+  const result = { layout: "request-rendered", owner: null, documents: [], stylesheets: [], errors: [] };
   try {
     const buildRoot = realpathSync(resolve(root, ".next"));
-    const htmlPath = todayHtmlPath(buildRoot, result);
-    const hrefs = stylesheetHrefs(readFileSync(htmlPath, "utf8"));
-    if (hrefs.length === 0) throw new Error("Built Today HTML has no unconditional stylesheet links");
-    const stylesheets = hrefs.map((href) => {
-      const path = localStylesheetPath(buildRoot, href);
-      const bytes = readFileSync(path);
-      result.stylesheets.push({ href, path, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") });
-      return { href, css: bytes.toString("utf8") };
-    });
-    result.errors.push(...chapterCssContractErrors(stylesheets), ...sharedPressCssContractErrors(stylesheets));
+    const { owner, deploymentId } = todayOwner(buildRoot, env);
+    result.owner = owner;
+    if (!Array.isArray(documents) || documents.length !== Object.keys(expectedPaths).length
+        || new Set(documents.map(doc => doc.area)).size !== documents.length) throw new Error("Missing or duplicate Today request area");
+    const assets = new Map();
+    const analyzedOrders = new Set();
+    for (const { area, path, html } of documents) {
+      if (!Object.hasOwn(expectedPaths, area) || path !== expectedPaths[area]) throw new Error(`Unexpected Today request area or path: ${area}`);
+      const dom = new JSDOM(html);
+      let hrefs;
+      try {
+        checkArea(dom.window.document, area, subjects);
+        hrefs = stylesheetHrefs(dom.window.document);
+      } finally { dom.window.close(); }
+      if (!hrefs.length) throw new Error(`Built Today HTML for ${area} has no unconditional stylesheet links`);
+      result.documents.push({ area, path, hrefs });
+      const order = JSON.stringify(hrefs);
+      if (analyzedOrders.has(order)) continue;
+      analyzedOrders.add(order);
+      for (const href of hrefs) {
+        if (assets.has(href)) continue;
+        const asset = localStylesheetPath(buildRoot, href, deploymentId);
+        const bytes = readFileSync(asset);
+        if (!bytes.length) throw new Error(`Built Today stylesheet is empty: ${href}`);
+        result.stylesheets.push({ href, path: asset, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") });
+        assets.set(href, { href, css: bytes.toString("utf8") });
+      }
+      const sheets = hrefs.map(href => assets.get(href));
+      result.errors.push(...chapterCssContractErrors(sheets), ...sharedPressCssContractErrors(sheets));
+    }
   } catch (error) { result.errors.push(`Cannot validate built Today CSS: ${error.message}`); }
   return result;
+}
+
+export async function verifyProductionToday(root, buildEnv) {
+  try {
+    // Validate the owner and emitted config before booting any code from the build.
+    todayOwner(realpathSync(resolve(root, ".next")), buildEnv);
+    const { downtownFeatureForToday } = loadTypeScript(resolve(root, "src/lib/today/local-outing-guides.ts"), import.meta.url);
+    const { localDiscoveryPlaces } = loadTypeScript(resolve(root, "src/lib/today/discovery-places.ts"), import.meta.url);
+    const started = new Date();
+    const documents = await readProductionTodayDocuments(root, buildEnv);
+    // The clock can cross a daypart or date boundary while the requests run.
+    const walks = [downtownFeatureForToday(started), downtownFeatureForToday(new Date())];
+    const places = {};
+    for (const town of ["brunswick", "mount-airy"]) {
+      const [place] = localDiscoveryPlaces(`town:${town}`);
+      if (place) places[town] = { slug: place.slug, src: place.photoPlan.sources[0].src };
+    }
+    return validateBuiltCssContract(root, documents, { walks, places }, buildEnv);
+  } catch (error) {
+    return { errors: [`Cannot verify production Today documents: ${error.message}`] };
+  }
 }

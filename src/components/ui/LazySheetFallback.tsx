@@ -14,6 +14,7 @@ type Props = {
   label: string;
   onClose: () => void;
   onOpenFullPage?: () => void;
+  fullPageLabel?: string;
   returnFocusRef: RefObject<HTMLElement | null>;
   historyLayerId?: string;
 };
@@ -30,6 +31,7 @@ export default function LazySheetFallback({
   label,
   onClose,
   onOpenFullPage,
+  fullPageLabel = "Open full page",
   returnFocusRef,
   historyLayerId,
 }: Props) {
@@ -138,7 +140,7 @@ export default function LazySheetFallback({
         </div>
         {onOpenFullPage ? (
           <button type="button" onClick={onOpenFullPage} className="mt-5 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-4 text-sm font-semibold" style={{ color: "var(--app-ink)", background: "var(--app-bg)", borderColor: "var(--app-control-border)" }}>
-            Open full page
+            {fullPageLabel}
           </button>
         ) : null}
       </div>

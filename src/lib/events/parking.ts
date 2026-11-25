@@ -1,6 +1,6 @@
 import {
   PARKING_GARAGES,
-  PARKING_RATE_SCHEDULE,
+  garageRateSummary,
 } from "@/data/parking-garages";
 import {
   formatDistance,
@@ -51,11 +51,9 @@ export function eventParkingSummary(
 
 export function eventParkingDirections(
   parking: EventParkingDecision | null,
+  eventDay?: string,
 ): string | null {
   if (!parking) return null;
-  const overnightMaximum = PARKING_RATE_SCHEDULE.nighttimeMax.replace(
-    /\s+max$/,
-    "",
-  );
-  return `${parking.name} is ${parking.distanceLabel} away in a straight line. Garage parking is ${PARKING_RATE_SCHEDULE.hourly}; the overnight maximum is ${overnightMaximum}. Check the route and current rates before leaving.`;
+  const rateDate = eventDay ? new Date(`${eventDay}T12:00:00-05:00`) : new Date();
+  return `${parking.name} is ${parking.distanceLabel} away in a straight line. City garage rates: ${garageRateSummary(rateDate)}.`;
 }

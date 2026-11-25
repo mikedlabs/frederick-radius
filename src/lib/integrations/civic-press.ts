@@ -63,7 +63,7 @@ export function classifyCivicPress(title: string): CivicPressLane {
 
 const parser = new XMLParser({ ignoreAttributes: false, parseTagValue: false });
 const MAX_FEED_BYTES = 512 * 1024;
-const FETCH_TIMEOUT_MS = 2_000;
+const FETCH_TIMEOUT_MS = 4_500;
 const MAX_CHECK_AGE_MS = 60 * 60 * 1_000;
 const FUTURE_TOLERANCE_MS = 5 * 60 * 1_000;
 const UNKNOWN_DATE = "1970-01-01T00:00:00.000Z";
@@ -159,7 +159,15 @@ async function readBoundedFeed(response: Response, signal: AbortSignal): Promise
   }
 }
 
-async function loadSource(feed: CivicPressSource): Promise<{ items: CivicPressItem[]; check: CivicPressSourceCheck }> {
+type FeedResult = { items: CivicPressItem[]; check: CivicPressSourceCheck };
+
+class CivicPressReadError extends Error {
+  constructor(readonly reason: "request_failed" | "invalid_feed") {
+    super(reason);
+  }
+}
+
+async function loadSource(feed: CivicPressSource): Promise<FeedResult> {
   const deadline = createAbortDeadline(FETCH_TIMEOUT_MS);
   let reason: CivicPressSourceCheck["reason"] = "request_failed";
   const operation = (async () => {
@@ -174,21 +182,51 @@ async function loadSource(feed: CivicPressSource): Promise<{ items: CivicPressIt
   })();
   try {
     const outcome = await withDeadlineOutcome(operation, FETCH_TIMEOUT_MS);
-    const items = outcome.status === "fulfilled" ? outcome.value : [];
+    if (outcome.status !== "fulfilled") {
+      throw new CivicPressReadError(outcome.status === "timed_out" ? "request_failed" : reason);
+    }
+    const items = outcome.value;
     const dated = items.filter((item) => item.publishedAt !== UNKNOWN_DATE);
     const latestPublishedAt = dated.map((item) => item.publishedAt).sort().at(-1) ?? null;
     return { items, check: { id: feed.id, source: feed.source, scope: feed.scope, channel: feed.channel,
-      status: outcome.status === "fulfilled" ? (items.length ? "available" : "empty") : "unavailable",
+      status: items.length ? "available" : "empty",
       checkedAt: new Date().toISOString(), latestPublishedAt,
-      ...(outcome.status !== "fulfilled" ? { reason: outcome.status === "timed_out" ? "request_failed" as const : reason } : {}),
     } };
   } finally {
     deadline.dispose();
   }
 }
 
+// A failed revalidation must leave the last successful check at its original
+// timestamp and must not overwrite a different publisher's headlines.
+const pressReaders = CIVIC_PRESS_SOURCES.map((feed) => ({
+  feed,
+  read: unstable_cache(() => loadSource(feed), ["civic-press-subscription-v1", feed.id, feed.url],
+    { revalidate: 900, tags: ["civic-press"] }),
+}));
+
+function currentSourceCheck(source: CivicPressSourceCheck, now: number): CivicPressSourceCheck {
+  const checked = Date.parse(source.checkedAt ?? "");
+  if (source.status !== "unavailable" && (!Number.isFinite(checked) || checked > now + FUTURE_TOLERANCE_MS || now - checked >= MAX_CHECK_AGE_MS)) {
+    return { ...source, status: "unavailable", reason: "stale" };
+  }
+  return source;
+}
+
 async function loadCivicPressReleases(): Promise<CivicPressResult> {
-  const feeds = await Promise.all(CIVIC_PRESS_SOURCES.map(loadSource));
+  const feeds = await Promise.all(pressReaders.map(async ({ feed, read }): Promise<FeedResult> => {
+    try {
+      const { items, check } = await read();
+      const current = currentSourceCheck(check, Date.now());
+      // An old dated headline can still appear in the newsroom, but an
+      // unconfirmed police release or advisory cannot earn active placement.
+      return { items: current.reason === "stale" ? items.filter((item) => item.lane === "civic") : items, check: current };
+    } catch (error) {
+      return { items: [], check: { id: feed.id, source: feed.source, scope: feed.scope, channel: feed.channel,
+        status: "unavailable", checkedAt: new Date().toISOString(), latestPublishedAt: null,
+        reason: error instanceof CivicPressReadError ? error.reason : "request_failed" } };
+    }
+  }));
   // Compatibility health deliberately follows the broad safety channels;
   // a failed City news subscription must not imply its police feed failed.
   const unavailable = feeds.filter((feed) => feed.check.id !== "city_official_news" && feed.check.status === "unavailable")
@@ -217,23 +255,13 @@ export function officialCivicNews(result: CivicPressResult, now = Date.now()): O
       id: feed.id, source: feed.source, scope: feed.scope, channel: feed.channel,
       status: "unavailable", checkedAt: null, latestPublishedAt: null,
     };
-    const checked = source.checkedAt ? Date.parse(source.checkedAt) : NaN;
-    if (source.status !== "unavailable" && (!Number.isFinite(checked) || checked > now + FUTURE_TOLERANCE_MS || now - checked > MAX_CHECK_AGE_MS)) {
-      return { ...source, status: "unavailable" as const, reason: "stale" as const };
-    }
-    return source;
+    return currentSourceCheck(source, now);
   });
   const available = sources.filter((source) => source.status !== "unavailable").length;
   return { items, sources, status: available === CIVIC_PRESS_SOURCES.length ? "available" : available > 0 ? "partial" : "unavailable" };
 }
 
 const loadCivicPressOnce = createSingleFlight<"current", CivicPressResult>();
-const getCivicPressReleasesCached = unstable_cache(
-  () => loadCivicPressOnce("current", loadCivicPressReleases),
-  ["civic-press-adapter-v4", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
-  { revalidate: 900, tags: ["civic-press"] },
-);
-
 export function getCivicPressReleasesResult(): Promise<CivicPressResult> {
   if (isPromotedDataBuild()) {
     return Promise.resolve({ items: [], sourceHealth: { degraded: true, unavailable: ["City of Frederick", "Frederick County"] },
@@ -241,7 +269,7 @@ export function getCivicPressReleasesResult(): Promise<CivicPressResult> {
         channel: feed.channel, status: "unavailable", checkedAt: null, latestPublishedAt: null })),
     });
   }
-  return process.env.NODE_ENV === "test" ? loadCivicPressOnce("current", loadCivicPressReleases) : getCivicPressReleasesCached();
+  return loadCivicPressOnce("current", loadCivicPressReleases);
 }
 
 /** Compatibility facade for existing user-facing surfaces. */

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Hours } from "@/data/places";
-import { formatFullHours, formatWindows, getOpenStatus, hoursForDate, isDisplayOnlyHours, isScheduleEvidenceCurrent } from "@/lib/hours";
+import { formatFullHours, formatWindows, getOpenStatus, hoursForDate, isDisplayOnlyHours, isScheduleEvidenceCurrent, needsThanksgivingConfirmation } from "@/lib/hours";
 import { easternDayKey } from "@/lib/tz";
 import { placeHoursTrust } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
@@ -38,7 +38,8 @@ export default function HoursBlock({
   const week = formatFullHours(hours);
   const qualification = isDisplayOnlyHours(hours) ? hours._official?.qualification : undefined;
   const scheduleCurrent = verified && isScheduleEvidenceCurrent(hours, now);
-  const needsNewCheck = qualification ? !scheduleCurrent : (!verified || status.state === "unknown");
+  const holidayUnconfirmed = needsThanksgivingConfirmation(hours, easternDayKey(now));
+  const needsNewCheck = holidayUnconfirmed || (qualification ? !scheduleCurrent : (!verified || status.state === "unknown"));
 
   const disclosure = (
     // PLAIN TOOL: an unboxed disclosure; the page's hairlines frame it.
@@ -69,7 +70,7 @@ export default function HoursBlock({
           >
             <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-warning)" }} />
             <span>
-              {qualification
+              {holidayUnconfirmed ? "Thanksgiving hours haven’t been confirmed. Check with the venue before going." : qualification
                 ? "This posted schedule needs a new source check. Check the official source before going."
                 : "These stored weekly hours are not current enough to confirm a visit. Check the official source before going."}
             </span>

@@ -9,7 +9,7 @@ import { easternDayKey, easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { hasRecommendationAttendance } from "./attendance";
 import { isPublicEvent } from "./classify";
 import { rankRecommendations } from "./lead-rank";
-import { EVENT_EVENING_START_HOUR, hasUsableTonightOccurrence, type TonightEvent } from "./tonight-occurrence";
+import { hasUsableTonightOccurrence, type TonightEvent } from "./tonight-occurrence";
 
 export type EventHighlights = {
   tonight: EventWithMeta[];
@@ -20,14 +20,16 @@ export type EventHighlights = {
 
 type WindowBounds = Pick<HorizonBounds, "now" | "weekendStart" | "weekendEnd">;
 
-function eveningStart(now: Date): number {
+export function boardEveningStart(now: Date): number {
   const { year, month, day } = easternParts(now);
-  return Date.parse(easternWallToUtcISO(year, month, day, EVENT_EVENING_START_HOUR, 0));
+  // On the Events board, Tonight starts at 6 PM Frederick time. An earlier
+  // program still belongs here when its published session continues past 6.
+  return Date.parse(easternWallToUtcISO(year, month, day, 18, 0));
 }
 
 /** A published start is enough for a future show. Once it has started, only
  * a credible end supports recommending the session as still catchable. */
-export function eventMatchesTonight(event: TonightEvent, now: Date, from = eveningStart(now)): boolean {
+export function eventMatchesTonight(event: TonightEvent, now: Date, from = boardEveningStart(now)): boolean {
   const start = Date.parse(event.starts_at);
   if (!Number.isFinite(start) || event.is_all_day || easternDayKey(new Date(start)) !== easternDayKey(now) ||
       isDateOnlyEventAnchor(event) || isRangeListing(event)) return false;
@@ -75,7 +77,7 @@ export function selectEventHighlights(
   featured?: ReadonlySet<string>,
 ): EventHighlights {
   const now = new Date(bounds.now);
-  const from = eveningStart(now);
+  const from = boardEveningStart(now);
   const tonightCandidates: EventWithMeta[] = [];
   const weekendCandidates: EventWithMeta[] = [];
   const identities = new Set<string>();

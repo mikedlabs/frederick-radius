@@ -129,7 +129,7 @@ for (const appearance of ["light", "dark"] as const) {
           if (providerMode === "guarded-unavailable") {
             await test.step("guarded server resolves honest unavailable weather", async () => {
               expect(weatherState).toBe("unavailable");
-              await expect(weather).toContainText("The NWS forecast is briefly unavailable.");
+              await expect(weather).toContainText("Forecast unavailable");
               await expect(weather.locator('[aria-label="Today in Frederick"]')).toHaveCount(0);
               // An ordinary guarded day has no interruption above the masthead.
               // Active alert priority remains separately guarded by TodayHierarchy.
@@ -190,17 +190,18 @@ for (const appearance of ["light", "dark"] as const) {
           expect(Math.round(entryBox.height * 100) / 100).toBeGreaterThanOrEqual(44);
           expect(entryBox.width).toBeGreaterThanOrEqual(44);
           await expect.poll(() => fivePointForecastProbe(entryControl)).toEqual([true, true, true, true, true]);
-          const dailyFacts = renderedWeather.locator("[data-weather-stats] > span");
-          await expect(dailyFacts).toHaveCount(4);
+          const dailyFacts = renderedWeather.locator("[data-weather-stats] [data-weather-fact]");
+          if (weatherState === "available") await expect(dailyFacts).toHaveCount(4);
           const readings = [
             /^(?:(?:Earlier high|High)\s+[−-]?\d+°|High\s+–\s*unavailable)$/i,
             /^Low\s+(?:[−-]?\d+°|–\s*unavailable)$/i,
             /^Sunrise\s+(?:\d{1,2}:\d{2}\s*[AP]M|–\s*unavailable)$/i,
             /^Sunset\s+(?:\d{1,2}:\d{2}\s*[AP]M|–\s*unavailable)$/i,
           ];
-          for (const [index, value] of readings.entries()) {
-            await expect(dailyFacts.nth(index)).toBeVisible();
-            await expect(dailyFacts.nth(index)).toHaveText(value);
+          for (const [index, fact] of (await dailyFacts.all()).entries()) {
+            await expect(fact).toBeVisible();
+            if (weatherState === "available") await expect(fact).toHaveText(readings[index]);
+            else await expect(fact).not.toContainText(/unavailable|–/);
           }
           // A missing air-quality reading waits inside the closed details.
           for (const note of await renderedWeather.locator("[data-weather-routine-note]").all()) {

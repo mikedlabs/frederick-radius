@@ -36,6 +36,26 @@ describe("Tonight in Frederick", () => {
     expect(eventMatchesTonight({ ...matinee, ends_at: "2026-11-19T16:00:00-05:00" }, thursday)).toBe(false);
   });
 
+  it("keeps a 3:30–5:30 library program in today's browse but out of the Tonight filter and highlight", () => {
+    const reading = show("reading-buddy", "2026-11-19T15:30:00-05:00", "2026-11-19T17:30:00-05:00");
+    const browsable = prepareEventsForBrowse([reading, late], bounds);
+    expect(browsable.map(event => event.slug)).toContain(reading.slug);
+    expect(browsable.filter(event => eventMatchesTonight(event, thursday)).map(event => event.slug)).toEqual([late.slug]);
+    expect(selectEventHighlights(browsable, bounds, new Set([reading.slug])).tonight.map(event => event.slug)).toEqual([late.slug]);
+  });
+
+  it.each([
+    ["2026-03-08", "-04:00"],
+    ["2026-11-01", "-05:00"],
+  ])("uses 6 PM Frederick time on the clock-change day %s", (date, offset) => {
+    const local = (time: string) => date + "T" + time + ":00" + offset;
+    const now = new Date(local("13:00"));
+    expect(eventMatchesTonight(show("matinee", local("15:30"), local("18:00")), now)).toBe(false);
+    expect(eventMatchesTonight(show("festival", local("15:30"), local("19:00")), now)).toBe(true);
+    expect(eventMatchesTonight(show("time-only", local("17:59"), ""), now)).toBe(false);
+    expect(eventMatchesTonight(show("time-only", local("18:00"), ""), now)).toBe(true);
+  });
+
   it("honors a future start without inventing an end or still-running status", () => {
     const showtime = { ...late, ends_at: late.starts_at };
     expect(eventMatchesTonight(showtime, thursday)).toBe(true);

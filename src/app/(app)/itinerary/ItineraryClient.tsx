@@ -1,161 +1,126 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useItineraryList, useToggleItinerary } from "@/hooks/useItinerary";
+import { useEffect, useRef, useState } from "react";
+import { Calendar, Trash2 } from "lucide-react";
+import { useDayPlan, removeDayPlanEvent, restoreDayPlanEvent } from "@/hooks/useItinerary";
+import { notifyError, notifyRemoved } from "@/lib/feedback/notify";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { eventHasPreciseDisplayLocation } from "@/lib/events/geo-confidence";
+import { MAX_EVENTS_BY_SLUG } from "@/lib/events/eventSlugBatch";
+import { fetchSavedEventsHydration, mergeSavedEventHydration } from "@/lib/events/saved-event-hydration";
 import EventCard from "@/components/event/EventCard";
 import AppMapClient from "@/components/map/AppMapClient";
-import Skeleton from "@/components/ui/Skeleton";
-import Link from "next/link";
-import { Calendar, Trash2 } from "lucide-react";
-import { normalizeRequestedEventSlugList } from "@/lib/events/eventSlugBatch";
+import { Button } from "@/components/ui/Button";
 
 export default function ItineraryClient() {
-  const itineraryItems = useItineraryList();
-  const toggle = useToggleItinerary();
-  
-  const [events, setEvents] = useState<EventWithMeta[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const { items, status: storageStatus } = useDayPlan();
+  const heading = useRef<HTMLHeadingElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const [byId, setById] = useState(new Map<string, EventWithMeta>());
+  const [state, setState] = useState<"loading" | "ready" | "partial">("loading");
+  const [retry, setRetry] = useState(0);
+  const [view, setView] = useState<"list" | "map">("list");
 
   useEffect(() => {
-    if (itineraryItems.length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setEvents([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    const slugList = normalizeRequestedEventSlugList(itineraryItems.map(i => i.id));
-    if (!slugList) {
-      setEvents([]);
-      setLoading(false);
-      return;
-    }
-
-    fetch(`/api/events/by-slugs?slugs=${slugList}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.events) {
-          // Sort by start time chronologically for the timeline
-          const sorted = data.events.sort((a: EventWithMeta, b: EventWithMeta) => {
-            return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
-          });
-          setEvents(sorted);
+    if (!items.length) return;
+    const controller = new AbortController();
+    async function load() {
+      setState("loading");
+      let resolved = new Map<string, EventWithMeta>();
+      let partial = false;
+      try {
+        for (let start = 0; start < items.length; start += MAX_EVENTS_BY_SLUG) {
+          const batch = items.slice(start, start + MAX_EVENTS_BY_SLUG).map(item => item.id);
+          const result = await fetchSavedEventsHydration(batch, controller.signal);
+          if (controller.signal.aborted) return;
+          resolved = mergeSavedEventHydration(resolved, result);
+          if (result.degraded || result.unresolvedSlugs.length) partial = true;
         }
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
+        setById(resolved);
+        setState(partial ? "partial" : "ready");
+      } catch {
+        if (!controller.signal.aborted) setState("partial");
+      }
+    }
+    void load();
+    return () => controller.abort();
+  }, [items, retry]);
+
+  async function remove(id: string, name: string, trigger?: HTMLButtonElement) {
+    const shouldFocus = trigger && trigger === document.activeElement;
+    const controls = Array.from(list.current?.querySelectorAll<HTMLButtonElement>("[data-remove-plan-event]") ?? []);
+    const index = trigger ? controls.indexOf(trigger) : -1;
+    const nextId = (controls[index + 1] ?? controls[index - 1])?.dataset.removePlanEvent;
+    try {
+      const removed = await removeDayPlanEvent(id);
+      if (!removed) return;
+      const undo = async () => {
+        try { await restoreDayPlanEvent(removed); }
+        catch { notifyError({ title: "Could not restore the Day Plan event", onRetry: () => void undo() }); }
+      };
+      if (shouldFocus) requestAnimationFrame(() => {
+        if (document.activeElement !== document.body && document.activeElement !== trigger) return;
+        const next = nextId && list.current?.querySelector<HTMLButtonElement>(`[data-remove-plan-event="${CSS.escape(nextId)}"]`);
+        (next || heading.current)?.focus({ preventScroll: true });
       });
-  }, [itineraryItems]);
-
-  const mapEvents = events.map(e => ({
-    slug: e.slug,
-    title: e.title,
-    starts_at: e.starts_at,
-    ends_at: e.ends_at,
-    is_all_day: e.is_all_day,
-    venue_name: e.venue_name,
-    lng: e.geom.lng,
-    lat: e.geom.lat,
-    category: e.category,
-    venue_place_slug: e.venue_place_slug,
-  }));
-
-  if (itineraryItems.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center pt-24 pb-12 px-6 text-center">
-        <Calendar className="mb-4 h-8 w-8 text-[var(--app-ink-3)]" strokeWidth={1.75} aria-hidden />
-        <h1 className="mb-2 font-sans text-[1.75rem] font-extrabold leading-tight tracking-[-0.02em] text-[var(--app-ink)]">
-          Your day plan is empty
-        </h1>
-        <p className="text-[var(--app-ink-2)] max-w-sm mb-6">
-          Add events to your itinerary to build a chronological timeline or view them on a map.
-        </p>
-        <Link href="/events" className="inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] bg-[var(--app-ink)] px-6 py-2 font-semibold text-[var(--app-bg)]">
-          See upcoming events
-        </Link>
-      </div>
-    );
+      notifyRemoved({ title: `Removed from Day Plan · ${name}`, label: name, onUndo: () => void undo() });
+    } catch {
+      notifyError({ title: "Could not remove the Day Plan event", onRetry: () => void remove(id, name) });
+    }
   }
 
-  return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)]">
-      <header className="px-4 py-4 md:px-6 flex items-center justify-between border-b border-[var(--app-border)] bg-[var(--app-bg)] sticky top-0 z-20">
-        <div>
-          <h1 className="font-sans text-[1.75rem] font-extrabold leading-tight tracking-[-0.02em] text-[var(--app-ink)]">
-            Day Plan
-          </h1>
-          <p className="text-sm text-[var(--app-ink-2)]">
-            {events.length} {events.length === 1 ? "event" : "events"} in your itinerary
-          </p>
-        </div>
-        
-        <div className="flex bg-[var(--app-bg-sunken)] rounded-lg p-1">
-          <button 
-            onClick={() => setViewMode("list")}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === "list" ? "bg-[var(--app-bg)] shadow-sm text-[var(--app-ink)]" : "text-[var(--app-ink-2)]"}`}
-          >
-            Timeline
-          </button>
-          <button 
-            onClick={() => setViewMode("map")}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === "map" ? "bg-[var(--app-bg)] shadow-sm text-[var(--app-ink)]" : "text-[var(--app-ink-2)]"}`}
-          >
-            Map
-          </button>
-        </div>
-      </header>
+  const rows = items.map(item => ({ id: item.id, event: byId.get(item.id) }))
+    .sort((a, b) => (a.event ? Date.parse(a.event.starts_at) : Infinity) - (b.event ? Date.parse(b.event.starts_at) : Infinity));
+  const events = rows.flatMap(row => row.event ? [row.event] : []);
+  const mapEvents = events.filter(eventHasPreciseDisplayLocation).map(event => ({
+    slug: event.slug, title: event.title, starts_at: event.starts_at, ends_at: event.ends_at,
+    is_all_day: event.is_all_day, venue_name: event.venue_name, category: event.category,
+    lng: event.geom.lng, lat: event.geom.lat, venue_place_slug: event.venue_place_slug,
+  }));
 
-      {viewMode === "list" ? (
-        <div className="flex-1 max-w-3xl w-full mx-auto p-4 md:p-6 pb-32 space-y-6">
-          {loading ? (
-            Array.from({ length: 3 }).map((_, _index) => (
-              <div key={_index} className="flex gap-4">
-                <Skeleton.Block className="w-16 h-16 rounded-lg shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton.Block className="w-3/4 h-5" />
-                  <Skeleton.Block className="w-1/2 h-4" />
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="relative border-l-2 border-[var(--app-border)] ml-4 pl-6 space-y-8">
-              {events.map((event) => (
-                <div key={event.slug} className="relative">
-                  {/* Timeline node */}
-                  <div className="absolute -left-[35px] top-4 w-4 h-4 rounded-full border-2 border-[var(--app-bg)] bg-[var(--app-accent)] shadow-sm" />
-                  
-                  <div className="flex gap-4 group">
-                    <div className="flex-1">
-                      <EventCard event={event} variant="row" />
-                    </div>
-                    <button 
-                      onClick={() => toggle(event.slug)}
-                      className="p-2 rounded-full hover:bg-red-50 text-[var(--app-ink-3)] hover:text-red-500 self-start transition-colors"
-                      title="Remove from itinerary"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+  return (
+    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-5">
+      <header className="space-y-2">
+        <h1 ref={heading} tabIndex={-1} className="text-[1.75rem] font-extrabold leading-tight text-[var(--app-ink)]">Day Plan</h1>
+        {storageStatus === "loading" ? <p role="status">Loading your Day Plan…</p> : storageStatus === "unavailable" ? (
+          <p role="alert">This browser could not read your Day Plan. Open Saved to see your bookmarked events. <Button href="/my-radius" variant="quiet">Open Saved</Button></p>
+        ) : !items.length ? (
+          <>
+            <p>Your Day Plan is empty. Events you bookmark today appear in Saved.</p>
+            <Button href="/my-radius" variant="secondary">Open Saved</Button>
+          </>
+        ) : (
+          <p>{items.length} {items.length === 1 ? "event" : "events"} in your Day Plan</p>
+        )}
+      </header>
+      {items.length > 0 && <>
+        <div role="group" aria-label="Day Plan view" className="flex flex-wrap gap-2">
+          <Button variant={view === "list" ? "secondary" : "quiet"} aria-pressed={view === "list"} onClick={() => setView("list")}>Timeline</Button>
+          <Button variant={view === "map" ? "secondary" : "quiet"} aria-pressed={view === "map"} onClick={() => setView("map")}>Map</Button>
         </div>
-      ) : (
-        <div className="flex-1 bg-[var(--app-bg-sunken)] relative min-h-[500px]">
-          {events.length > 0 && !loading && (
-            <AppMapClient 
-              events={mapEvents}
-              places={[]}
-              fullBleed
-            />
-          )}
-        </div>
-      )}
+        {state === "loading" && <p role="status">Checking event listings…</p>}
+        {state === "partial" && <div className="space-y-2" role="status">
+          <p>Some event details could not be checked. Your Day Plan is still on this device.</p>
+          <Button variant="secondary" onClick={() => setRetry(value => value + 1)}>Try again</Button>
+        </div>}
+        {view === "list" ? (
+          <ul ref={list} aria-label="Events in your Day Plan" className="divide-y divide-[var(--app-border)]">
+            {rows.map(({ id, event }) => {
+              const name = event?.title || id;
+              return <li key={id} className="flex min-w-0 items-center gap-3 py-2">
+                <div className="min-w-0 flex-1">
+                  {event ? <EventCard event={event} variant="row" /> : <p><Calendar className="me-1 inline size-4" aria-hidden />{id}{state === "ready" ? " · Listing unavailable" : ""}</p>}
+                </div>
+                <button type="button" data-remove-plan-event={id} disabled={storageStatus !== "ready"} className="grid size-11 shrink-0 place-items-center rounded-[var(--app-radius-md)] text-[var(--app-ink-2)] hover:bg-[var(--app-bg-sunken)]" aria-label={`Remove ${name} from Day Plan`} onClick={e => void remove(id, name, e.currentTarget)}>
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
+              </li>;
+            })}
+          </ul>
+        ) : mapEvents.length > 0 ? (
+          <div className="relative h-[min(62dvh,36rem)]"><AppMapClient events={mapEvents} places={[]} fullBleed /></div>
+        ) : state !== "loading" && <p>No mapped event locations are available for this Day Plan.</p>}
+      </>}
     </div>
   );
 }

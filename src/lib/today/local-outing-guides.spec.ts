@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { downtownGuide, weekendGuide } from "./local-outing-guides";
+import { projectWalkSite, walkSites, WALK_VIEW } from "@/data/downtown-walk-map";
+import { FROSTY_FRIDAY, TENTH_WARD_CONCERT } from "@/data/thanksgiving-events";
+import { downtownFeatureForToday, downtownGuide, downtownGuideForDate, downtownGuideForVisit, weekendGuide } from "./local-outing-guides";
 
 function event(overrides: Partial<EventWithMeta> = {}): EventWithMeta {
   return {
@@ -42,13 +44,88 @@ describe("local outing guides", () => {
       "The Delaplaine Arts Center",
       "Carroll Creek and Community Bridge",
     ]);
+    expect(downtownGuide.photo).toMatchObject({ src: "/history-photos/carroll-creek-park.jpg", credit: { creator: "Art Anderson", capturedYear: 2015, license: { label: "CC BY-SA 3.0" } } });
+    expect(downtownFeatureForToday(new Date("2026-11-24T15:00:00Z")).downtown).toBe("/images/seasons/summer/SUMMER CARROL CREEK.jpg");
+    expect(new Set(downtownGuide.stops.map(stop => stop.anchor)).size).toBe(4);
+    expect(downtownGuide.stops.every(stop => stop.anchor && stop.routeName)).toBe(true);
     expect(downtownGuide.stops[1].detail).toContain("accessible restroom");
-    expect(downtownGuide.summary).toContain("Sunday, 11 AM–1 PM");
-    expect(downtownGuide.stops[0].price).toBe("Free Sundays, 8 AM–2 PM");
-    expect(downtownGuide.stops[0].tipSource?.href).toContain("/Garage-Parking");
+    expect(downtownGuide.note).toContain("Sunday, 11 AM–1 PM");
+    expect(downtownGuide.stops.map(stop => stop.suggestedMinutes)).toEqual([undefined, 20, 40, 45]);
+    expect(downtownGuide.route.durationLabel).toBe("About 2 hours");
+    expect(downtownGuide.route.allowanceMinutes).toBe(15);
+    expect(downtownGuide.route.firstAction.label).toContain("East All Saints");
+    expect(downtownGuide.route.firstAction.href).toContain("destination=39.4118117,-77.4072907");
+    expect(downtownGuide.stops[0].price).toContain("Free Sundays, 8 AM–2 PM");
+    expect(downtownGuide.stops[0].action.href).toContain("/Garage-Parking");
     expect(downtownGuide.stops[2].when).toContain("Sun, 11 AM–5 PM");
-    expect(downtownGuide.note).toContain("Nov 16, 2026");
+    expect(downtownGuide.note).toContain("Nov 24, 2026");
     expect(downtownGuide.stops.every((stop) => new URL(stop.source.href).protocol === "https:")).toBe(true);
+  });
+
+  it("keeps the complete route and ordinary parking before the holiday starts in Frederick", () => {
+    const wednesday = downtownGuideForDate(new Date("2026-11-26T04:59:59Z"));
+    expect(wednesday.stops).toEqual(downtownGuide.stops);
+    expect(wednesday.route).toEqual(downtownGuide.route);
+    expect(wednesday.notice?.active).toBeFalsy();
+    expect(wednesday.notice?.heading).toContain("Thu, Nov 26");
+    expect(wednesday.notice?.sources.map(source => source.href)).toContain(downtownGuide.stops[1].source.href);
+  });
+
+  it("keeps closed venues outside the walking route for the holiday and restores them at Eastern midnight", () => {
+    for (const iso of ["2026-11-26T05:00:00Z", "2026-11-27T04:59:59Z"]) {
+      const holiday = downtownGuideForDate(new Date(iso));
+      expect(holiday.title).toBe("Thanksgiving Creek Walk");
+      expect(holiday.notice?.active).toBe(true);
+      expect(holiday.notice?.text).toContain("Visitor Center and Delaplaine galleries close");
+      expect(holiday.notice?.sources).toHaveLength(3);
+      expect(holiday.stops.map(stop => stop.title)).toEqual([downtownGuide.stops[0].title, downtownGuide.stops[3].title]);
+      expect(holiday.route.durationLabel).toBe("About 1 hour");
+      expect(holiday.route.allowanceMinutes).toBe(15);
+      expect(holiday.stops[1].suggestedMinutes).toBe(45);
+      expect(holiday.route.firstAction.href).toContain("travelmode=driving");
+      expect(holiday.stops[1].detail).not.toContain("Visitor Center");
+    }
+    const nextDay = downtownGuideForDate(new Date("2026-11-27T05:00:00Z"));
+    expect(nextDay.notice).toBeUndefined();
+    expect(nextDay.stops).toHaveLength(4);
+    expect(nextDay.stops[0].price).toContain("Free Thu, Nov 26 through Sun, Nov 29");
+    expect(downtownGuideForDate(new Date("2026-11-30T05:00:00Z"))).toBe(downtownGuide);
+  });
+
+  it("offers the correct day after the last daytime start and opens the same dated holiday route", () => {
+    const afternoon = new Date("2026-11-25T20:05:00Z");
+    expect(downtownFeatureForToday(new Date("2026-11-25T19:59:59Z")).downtownWhen).toBe("Daytime walk");
+    const feature = downtownFeatureForToday(afternoon);
+    expect(feature).toMatchObject({ downtownWhen: "Tomorrow", downtownTitle: "Thanksgiving Creek Walk" });
+    const selected = new URL(feature.downtownHref, "https://frederickradius.app").searchParams.get("day")!;
+    expect(downtownGuideForVisit(afternoon, selected)).toMatchObject({ title: feature.downtownTitle, scopeLabel: "Downtown Frederick · Thu, Nov 26" });
+    for (const invalid of ["yesterday", "2026-11-24", "2027-01-01", ["2026-11-26", "2026-11-25"]]) {
+      expect(downtownGuideForVisit(afternoon, invalid).title).toBe("Two Hours Downtown");
+    }
+  });
+
+  it("pins the reviewed garage and building footprints and the bridge itself", () => {
+    expect(Object.entries(walkSites).map(([anchor, site]) => [anchor, site.osmWay])).toEqual([
+      ["east-all-saints-garage", "151766247"], ["visitor-center", "177916159"],
+      ["delaplaine", "178348790"], ["carroll-creek", "486999837"],
+    ]);
+    expect(downtownGuide.stops.map(stop => stop.anchor)).toEqual(Object.keys(walkSites));
+    for (const site of Object.values(walkSites)) {
+      const { x, y } = projectWalkSite(site.lng, site.lat);
+      expect(x).toBeGreaterThan(0);
+      expect(x).toBeLessThan(WALK_VIEW.width);
+      expect(y).toBeGreaterThan(0);
+      expect(y).toBeLessThan(WALK_VIEW.height);
+    }
+  });
+
+  it("adds up only the visits in the selected route and shares its numeric preview with Today", () => {
+    const standard = downtownFeatureForToday(new Date("2026-11-24T15:00:00Z")).routePreview;
+    expect(standard).toEqual({ allowanceMinutes: 15, stops: [
+      { title: "Visitor Center", minutes: 20 }, { title: "Delaplaine", minutes: 40 }, { title: "Carroll Creek", minutes: 45 },
+    ] });
+    const holiday = downtownFeatureForToday(new Date("2026-11-25T21:00:00Z")).routePreview;
+    expect(holiday).toEqual({ allowanceMinutes: 15, stops: [{ title: "Carroll Creek", minutes: 45 }] });
   });
 
   it("publishes the three Sunday and Saturday picks with their source and checked date", () => {
@@ -106,8 +183,11 @@ describe("local outing guides", () => {
     expect(before.scopeLabel).toMatch(/Nov 21\s*–\s*22/);
     expect(after.scopeLabel).toMatch(/Nov 27\s*–\s*29/);
     expect(after.photo.src).toBe("/images/places/church-street-sunset.jpg");
-    expect(after.stops).toEqual([]);
-    expect(after.summary).toContain("any confirmed guide picks");
+    expect(after.stops.map(stop => [stop.title, stop.when])).toEqual([
+      [FROSTY_FRIDAY.title, "Fri, Nov 27 · 9 AM–9 PM"],
+      [TENTH_WARD_CONCERT.title, "Fri, Nov 27 · 8–10 PM"],
+    ]);
+    expect(weekendGuide(new Date("2026-11-30T05:00:00Z")).summary).toContain("any confirmed guide picks");
     expect(after.secondaryAction?.href).toBe("/events?in=county&lens=weekend");
   });
 
@@ -124,14 +204,14 @@ describe("local outing guides", () => {
       event({ slug: "invalid", title: "Concert with no date", starts_at: "invalid" }),
     ]);
 
-    expect(guide.stops).toHaveLength(1);
-    expect(guide.stops[0]).toMatchObject({
+    expect(guide.stops).toHaveLength(3);
+    expect(guide.stops[2]).toMatchObject({
       title: "Frosty Friday Concert",
       when: "Fri, Nov 27 · 8:00 PM–9:00 PM",
       source: { label: "Weinberg Center for the Arts", href: "https://example.com/event" },
       action: { href: "https://example.com/event" },
     });
-    expect(guide.stops[0].detail).toBeUndefined();
+    expect(guide.stops[2].detail).toBeUndefined();
   });
 
   it("does not recommend a started timed event with an unknown end", () => {
@@ -147,6 +227,14 @@ describe("local outing guides", () => {
       }),
     ]);
 
-    expect(guide.stops.map((stop) => stop.title)).toEqual(["Frosty Friday Concert"]);
+    expect(guide.stops.map((stop) => stop.title)).toEqual([FROSTY_FRIDAY.title, TENTH_WARD_CONCERT.title, "Frosty Friday Concert"]);
+  });
+
+  it("retires holiday picks at their published ends and honors a notice under the syndicated URL", () => {
+    const duplicate = event({ title: "Live Music at Tenth Ward", source_url: TENTH_WARD_CONCERT.syndicatedUrl });
+    expect(weekendGuide(new Date("2026-11-27T20:00:00Z"), [duplicate]).stops).toHaveLength(2);
+    expect(weekendGuide(new Date("2026-11-28T02:00:00Z")).stops.map(stop => stop.title)).toEqual([TENTH_WARD_CONCERT.title]);
+    expect(weekendGuide(new Date("2026-11-28T03:00:00Z")).stops).toEqual([]);
+    expect(weekendGuide(new Date("2026-11-27T20:00:00Z"), [{ ...duplicate, status: "postponed" }]).stops.map(stop => stop.title)).toEqual([FROSTY_FRIDAY.title]);
   });
 });

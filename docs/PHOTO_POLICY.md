@@ -2,7 +2,7 @@
 
 **Status:** Current owner-approved photographic discovery direction.
 **Scope:** Photography in the UI, source identity and attribution.
-**Updated:** November 10, 2026. This document does not add another plan-approval step to already authorized product work.
+**Updated:** November 24, 2026. This document does not add another plan-approval step to already authorized product work.
 
 ## Current direction, approved October 9, 2026
 
@@ -27,6 +27,9 @@ coral-tinted tile.
 
 
 ## Source and rendering requirements
+
+- Photography of a named place, venue or event must come from a documented photograph of that subject. Keep AI-generated scenes and stock substitutes out of the product. Label seasonal or historical archive covers when their date or season could otherwise imply present conditions.
+- Use source geometry for map outlines and pins. A schematic must identify its scope, and a computed street route requires routing data.
 
 - Use an exact, appropriate photograph of the named place or approved event imagery. Favor owned or licensed assets where available; retain the source, rights and actual review evidence.
 - Existing provider photos retain their provider delivery, attribution and suppression requirements. Downloading a merchant or provider image does not turn it into owned or licensed media.

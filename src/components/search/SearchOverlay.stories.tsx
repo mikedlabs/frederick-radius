@@ -315,6 +315,11 @@ export const RestoredQuery: Story = {
     let dialog = within(await canvas.findByRole("dialog", { name: "What do you need?" }));
     await expect(dialog.getByRole("searchbox")).toHaveValue("coffee");
     await expect(await dialog.findByText("This is sample response 1 for component review.")).toBeVisible();
+    const place = dialog.getByRole("link", { name: "Sample coffee match" });
+    await expect(place).toContainElement(dialog.getByRole("heading", { name: "Sample coffee match" }));
+    await expect(place.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await expect(place.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
+    await expect(dialog.queryByRole("link", { name: "Map" })).not.toBeInTheDocument();
     await userEvent.click(dialog.getByRole("button", { name: "Close Find" }));
     await expect(canvas.queryByRole("dialog")).not.toBeInTheDocument();
     await expect(opener).toHaveFocus();
@@ -405,8 +410,10 @@ const exactMuseumFirst: NonNullable<Story["play"]> = async ({ canvasElement }) =
   const license = dialog.getByRole("link", { name: source.photo.license });
   await expect(license).toBeVisible();
   await expect(license).toHaveAttribute("href", source.photo.licenseUrl);
-  const viewPlace = dialog.getByRole("link", { name: "View place" });
+  const viewPlace = dialog.getByRole("link", { name: MUSEUM_NAME });
   const map = dialog.getByRole("link", { name: /^Map$/ });
+  await expect(viewPlace).toHaveAccessibleDescription("Sample result for component review · Frederick City");
+  await expect(map).toHaveAccessibleDescription(MUSEUM_NAME);
   await expect(viewPlace).toHaveAttribute("href", `/places/${MUSEUM_SLUG}`);
   await expect(map).toHaveAttribute("href", expect.stringContaining(`place=${MUSEUM_SLUG}`));
   for (const control of [viewPlace, map, attribution, license]) {
@@ -471,7 +478,7 @@ export const PendingExactPlaceKeepsTransitImmediate: Story = {
     await expectPendingRows(dialogElement);
     await expect(dialog.queryByText("Direct answer", { exact: true })).not.toBeInTheDocument();
     await expect(dialog.queryByText("Art", { exact: true })).not.toBeInTheDocument();
-    await expect(dialog.queryByRole("link", { name: "View place" })).not.toBeInTheDocument();
+    await expect(dialog.queryByRole("link", { name: MUSEUM_NAME })).not.toBeInTheDocument();
     const input = dialog.getByRole("searchbox");
     await userEvent.clear(input);
     await userEvent.type(input, "buses");

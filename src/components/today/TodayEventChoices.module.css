@@ -12,6 +12,11 @@
   min-width: 0;
 }
 
+.boardLink {
+  scroll-margin-block-start: calc(var(--app-topbar-h, 56px) + 8px + env(safe-area-inset-top, 0px));
+  scroll-margin-block-end: calc(3.5rem + 20px + env(safe-area-inset-bottom, 0px));
+}
+
 @media (min-width: 640px) {
   .choices {
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);

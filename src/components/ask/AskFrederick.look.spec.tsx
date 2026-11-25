@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const harness = vi.hoisted(() => ({
   slugs: new Set<string>(),
+  fix: null as { lat: number; lng: number } | null,
   state: { status: "idle" },
   requestIfGranted: vi.fn().mockResolvedValue(false),
 }));
@@ -22,7 +23,7 @@ vi.mock("next/image", () => ({
 }));
 vi.mock("@/hooks/useFollows", () => ({ useFollowedSlugs: () => ({ slugs: harness.slugs }) }));
 vi.mock("@/hooks/useGeolocation", () => ({
-  readCachedPosition: () => null,
+  readCachedPosition: () => harness.fix,
   useGeolocation: () => ({ state: harness.state, requestIfGranted: harness.requestIfGranted }),
 }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
@@ -83,6 +84,7 @@ function coralFields(): HTMLElement[] {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  harness.fix = null;
   window.localStorage.clear();
   window.sessionStorage.clear();
   window.history.replaceState({ __NA: true, tree: ["ask"] }, "", "/ask");
@@ -110,6 +112,16 @@ afterEach(async () => {
 });
 
 describe("Ask workspace follows the plain tool direction", () => {
+  it.each(["county", "town:brunswick", "nearme"] as const)("honors the selected %s scope before sending a device fix", async scope => {
+    harness.fix = { lat: 39.414378, lng: -77.410692 };
+    await act(async () => root.render(<AskFrederick mode="workspace" initialQuery="Coffee for a rainy afternoon" initialScope={scope} />));
+    const request = fetchMock.mock.calls.find(([url]) => url === "/api/ask");
+    expect(request).toBeDefined();
+    const body = JSON.parse(String(request![1]?.body));
+    expect(body.scope).toBe(scope);
+    expect([body.lat, body.lng]).toEqual(scope === "nearme" ? [39.414, -77.411] : [undefined, undefined]);
+  });
+
   it("sets the title in heavy system sans and keeps the question field a 6px control", async () => {
     await mount();
 

@@ -45,6 +45,38 @@ async function prepareOriginalFlow(page: Page, context: BrowserContext, baseURL:
   });
 }
 
+test("Today keeps the unavailable events board link clear of mobile navigation at 200% text", async ({
+  page, context, baseURL, browserName,
+}) => {
+  await prepareOriginalFlow(page, context, baseURL, browserName);
+  await page.setViewportSize({ width: 320, height: 568 });
+  // A town requests its own event brief. The unavailable read must still
+  // leave a working, town-scoped link to the full board.
+  await page.goto("/today?in=brunswick", { waitUntil: "domcontentloaded" });
+  const events = page.getByRole("region", { name: "Events today", exact: true });
+  await expect(events.getByRole("status")).toHaveText("Event picks are unavailable here");
+  const board = events.getByRole("link", { name: "Open the full events board" });
+  await page.evaluate(async () => {
+    document.documentElement.style.fontSize = "200%";
+    await document.fonts.ready;
+  });
+  for (let presses = 0; presses < 50; presses++) {
+    await page.keyboard.press("Tab");
+    if (await board.evaluate((link) => link === document.activeElement)) break;
+  }
+  await expect(board).toBeFocused();
+  await expect.poll(() => board.evaluate((link) => {
+    const r = link.getBoundingClientRect();
+    const points = [[r.left + 3, r.top + 3], [r.right - 3, r.top + 3],
+      [r.left + r.width / 2, r.top + r.height / 2],
+      [r.left + 3, r.bottom - 3], [r.right - 3, r.bottom - 3]];
+    return points.filter(([x, y]) => link.contains(document.elementFromPoint(x, y))).length;
+  }), { message: "Native Tab must reveal all five hit points above the fixed tabs" }).toBe(5);
+  await expect(board).toHaveAttribute("href", "/events?in=brunswick");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/events\?in=brunswick(?:&|$)/);
+});
+
 async function expectRouteAndScroll(
   page: Page,
   expectedUrl: string,

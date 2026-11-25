@@ -45,12 +45,14 @@ export type EventCardVisual = {
   attribution?: EventHeroImageAttribution;
   /** Publisher page that supplied an event-specific image. */
   sourceHref?: string;
+  /** Dedicated record evidence for a feed that historically mixed in social previews. */
+  publisherImageRecord?: string;
   /** Exact local Creative Commons image provenance, displayed outside actions. */
   licensedCredit?: EventPhotoLicenseCredit;
 };
 
 type EventVisualSource = Pick<Event,
-  "source" | "source_url" | "hero_image" | "hero_image_attribution" | "venue_place_slug"
+  "source" | "source_url" | "hero_image" | "hero_image_record" | "hero_image_attribution" | "venue_place_slug"
 >;
 
 // Preserve the established recovery keys and venue labels while the reviewed
@@ -165,36 +167,37 @@ const EVENT_IMAGE_POLICY: Readonly<
   Partial<
     Record<
       EventWithMeta["source"],
-      { hostname: string; pathnamePrefix?: string; caption: string }
+      { hostname: string; pathnamePrefix?: string; listing: RegExp; caption: string }
     >
   >
 > = {
   dfp: {
     hostname: "ik.imagekit.io",
     pathnamePrefix: "/vibemap/",
+    listing: /^https:\/\/(?:www\.)?downtownfrederick\.org\/vm-event\/[^/?#]+\/?(?:[?#].*)?$/i,
     caption: "Event image · Downtown Frederick Partnership",
   },
   "visit-frederick": {
     hostname: "assets.simpleviewinc.com",
     pathnamePrefix: "/sv-frederick-county/image/fetch/",
+    listing: /^https:\/\/(?:www\.)?visitfrederick\.org\/event\/[^?#]+/i,
     caption: "Event image · Visit Frederick",
   },
   fcpl: {
     hostname: "frederick.librarycalendar.com",
     pathnamePrefix: "/sites/default/files/",
+    listing: /^https:\/\/frederick\.librarycalendar\.com\/event\/[^/?#]+/i,
     caption: "Event image · Frederick County Public Libraries",
   },
   ticketmaster: {
     hostname: "s1.ticketm.net",
+    listing: /^https:\/\/(?:www\.)?ticketmaster\.com\/(?:[^/?#]+\/)?event\/[a-z0-9]+/i,
     caption: "Event image · Ticketmaster",
-  },
-  seatgeek: {
-    hostname: "seatgeek.com",
-    caption: "Event image · SeatGeek",
   },
   mdcc: {
     hostname: "static.wixstatic.com",
     pathnamePrefix: "/media/",
+    listing: /^https:\/\/(?:www\.)?deafmdcc\.org\/event-details(?:-registration)?\/[^/?#]+/i,
     caption: "Event image · Maryland Deaf Community Center",
   },
 };
@@ -204,7 +207,7 @@ export function reviewedEventVenuePhoto(venueSlug: string | undefined): EventCar
   return ownedEventVenueVisual(venueSlug) ?? licensedEventVenueVisual(venueSlug) ?? legacyEventVenueVisual(venueSlug);
 }
 
-function approvedProviderVisual(event: EventVisualSource): EventCardVisual | null {
+export function eventPublisherArtwork(event: EventVisualSource): EventCardVisual | null {
   if (!event.hero_image) return null;
   if (event.source === "venue-extract" && event.source_url && approvedVenueFeedImage(
     event.hero_image, event.source_url, event.venue_place_slug,
@@ -218,7 +221,10 @@ function approvedProviderVisual(event: EventVisualSource): EventCardVisual | nul
     };
   }
   const policy = EVENT_IMAGE_POLICY[event.source];
-  if (!policy) return null;
+  if (!policy || !event.source_url || !policy.listing.test(event.source_url)) return null;
+  // Older DFP archive rows may contain a page's social-share default.
+  // Only the listing's own dedicated image field can establish its subject.
+  if (event.source === "dfp" && event.hero_image_record !== event.source_url) return null;
 
   try {
     const url = new URL(event.hero_image);
@@ -242,11 +248,8 @@ function approvedProviderVisual(event: EventVisualSource): EventCardVisual | nul
     caption: policy.caption,
     key: `event:${event.hero_image}`,
     presentation: "artwork",
-    sourceHref:
-      typeof event.source_url === "string" &&
-      event.source_url.startsWith("https://")
-        ? event.source_url
-        : undefined,
+    sourceHref: event.source_url,
+    ...(event.source === "dfp" ? { publisherImageRecord: event.hero_image_record } : {}),
   };
 }
 
@@ -284,7 +287,7 @@ export function eventCardVisual(
   event: EventVisualSource,
   { venuePhotos = "all-approved" }: { venuePhotos?: "all-approved" | "owned-only" | "free-reviewed" } = {},
 ): EventCardVisual | null {
-  const providerVisual = approvedProviderVisual(event);
+  const providerVisual = eventPublisherArtwork(event);
   if (providerVisual) return providerVisual;
   if (venuePhotos === "free-reviewed") return reviewedEventVenuePhoto(event.venue_place_slug);
 
@@ -336,12 +339,12 @@ export function parseRecoveryEventVisual(value: unknown): EventCardVisual | null
     ...Object.keys(EVENT_IMAGE_POLICY) as EventVisualSource["source"][], "venue-extract",
   ];
   for (const source of sources) {
-    const known = approvedProviderVisual({
+    const known = eventPublisherArtwork({
       source, source_url: visual.sourceHref, hero_image: visual.src,
+      hero_image_record: typeof visual.publisherImageRecord === "string" ? visual.publisherImageRecord : undefined,
       ...(source === "venue-extract" ? { venue_place_slug: STEINHARDT_EVENT_ART.venueSlug } : {}),
     });
-    if (known && sameTuple(known)) return { src: known.src, key: known.key,
-      caption: known.caption, presentation: known.presentation, sourceHref: visual.sourceHref };
+    if (known && sameTuple(known)) return known;
   }
   return null;
 }

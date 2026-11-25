@@ -115,7 +115,7 @@ function officialSnapshot(hours?: Hours) {
     qualification: e.qualification ? { scope: e.qualification.scope, label: e.qualification.label,
       note: e.qualification.note, usage: e.qualification.usage } : null,
     exceptions: e.exceptions.map(item => ({ date: item.date, reason: item.reason,
-      closed: item.closed ?? null, closes_at: item.closes_at ?? null })).sort((a, b) => a.date.localeCompare(b.date)) };
+      closed: item.closed ?? null, opens_at: item.opens_at ?? null, closes_at: item.closes_at ?? null })).sort((a, b) => a.date.localeCompare(b.date)) };
 }
 
 function hoursMaintenance(place: MaintenancePlace, input: MaintenanceInput): HoursMaintenance {

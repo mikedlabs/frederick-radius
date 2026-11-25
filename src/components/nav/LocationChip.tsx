@@ -31,7 +31,7 @@ import { commitLocationScope } from "./locationScopeNavigation";
  * Dropdown uses inline state + a click-outside listener (vs a popover lib) —
  * the menu is small enough that the dependency wouldn't earn its bytes.
  */
-export default function LocationChip({ compact = false }: { compact?: boolean }) {
+export default function LocationChip() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { state, request } = useGeolocation();
@@ -139,10 +139,6 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
   } else if (scope === "county") {
     LabelIcon = Globe;
   }
-  // The short form is the area's own name, except the county: "Whole county"
-  // needs about 70px and the map header's 320px floor leaves 50px, so the
-  // short form stays "County" until the header frees room (TopBar geometry
-  // story MapWholeCounty measures this).
   const compactLabel = scope && scope !== "county" ? scopeLabel(scope) : "County";
 
   return (
@@ -162,7 +158,6 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
       <button
         ref={triggerRef}
         data-location-chip
-        data-compact={compact || undefined}
         type="button"
         onClick={() => {
           haptic("light");
@@ -174,44 +169,19 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
         aria-label={`Change town or location scope. Current scope: ${label}${detail ? `, ${detail}` : ""}`}
         title={`Town and location: ${label}${detail ? `, ${detail}` : ""}`}
         className="inline-flex h-11 min-w-11 max-w-[108px] items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] px-2 text-[13px] font-semibold leading-none transition hover:bg-[var(--app-bg-sunken)] sm:max-w-none sm:justify-start"
-        style={{ color: labelColor }}
+        style={{ color: `var(--masthead-location-ink, ${labelColor})` }}
       >
         <LabelIcon
           className={state.status === "loading" && scope === "nearme" ? "h-5 w-5 shrink-0 animate-spin sm:h-3.5 sm:w-3.5" : "h-5 w-5 shrink-0 sm:h-3.5 sm:w-3.5"}
           strokeWidth={1.75}
           aria-hidden
         />
-        {compact ? (
-          <>
-            {/* A complete short scope beats a clipped full name at the 320px
-                support floor. The map header swaps to the full label as soon
-                as 360px is available. */}
-            <span data-location-scope-label="compact" className="min-w-0 truncate">
-              {compactLabel}
-            </span>
-            <span data-location-scope-label="full" className="min-w-0 truncate sm:max-w-[160px]">
-              {label}
-            </span>
-          </>
-        ) : (
-          <>
-            {/* At the common 390px phone width, show one complete scope word
-                instead of squeezing "Frederick, MD" into a clipped chip.
-                Wider headers restore the full readout. */}
-            <span
-              data-location-scope-label="compact"
-              className="hidden min-w-0 truncate min-[390px]:block sm:hidden"
-            >
-              {compactLabel}
-            </span>
-            <span
-              data-location-scope-label="full"
-              className="hidden min-w-0 truncate sm:block sm:max-w-[160px]"
-            >
-              {label}
-            </span>
-          </>
-        )}
+        <span data-location-scope-label="compact" className="min-w-0 truncate sm:hidden">
+          {compactLabel}
+        </span>
+        <span data-location-scope-label="full" className="hidden min-w-0 truncate sm:block">
+          {label}
+        </span>
         <ChevronDown className="hidden h-3 w-3 opacity-60 min-[390px]:block" strokeWidth={2} aria-hidden />
       </button>
 
@@ -243,7 +213,7 @@ export default function LocationChip({ compact = false }: { compact?: boolean })
             </button>
           </div>
 
-          <div className="min-h-0 overflow-y-auto overscroll-contain">
+          <div data-location-options className="min-h-0 overflow-y-auto overscroll-contain">
           {/* Near me — sets scope AND requests the fix (the two go together;
               a nearme scope with no device fix falls back to home server-side
               but the granted position sharpens client surfaces). */}

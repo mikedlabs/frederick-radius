@@ -65,9 +65,11 @@ test.describe("Map core-response deadline", () => {
       await expect(page.getByText("Loading Frederick County places.", { exact: true })).toBeVisible();
       assertContext();
       await page.clock.fastForward(10_000);
-      const failure = page.getByRole("alert").filter({ hasText: "The place layer did not load." });
+      const map = page.getByRole("main");
+      const failure = map.getByRole("alert").filter({ hasText: "The place layer did not load." });
       await expect(failure).toBeVisible();
-      const retry = failure.getByRole("button", { name: "Try again", exact: true });
+      await expect(failure.getByRole("button")).toHaveCount(0);
+      const retry = map.getByRole("button", { name: "Try again", exact: true });
       await expect(retry).toBeVisible();
       expect((await retry.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
       expect(coreRequests).toBe(1);

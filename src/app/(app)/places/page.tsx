@@ -168,9 +168,9 @@ export default function PlacesIndexPage() {
           <SectionHeading title="Local favorites" />
           {/* Ruled place rows; the first is not singled out with a glow. The
               heading's own hairline opens the list, so it adds no top rule. */}
-          <ul>
+          <ul className="grid grid-cols-1 gap-x-8 lg:grid-cols-2">
             {favorites.map((p) => (
-              <li key={p.slug}>
+              <li key={p.slug} className="min-w-0">
                 <PlaceCard place={p} variant="row" />
               </li>
             ))}

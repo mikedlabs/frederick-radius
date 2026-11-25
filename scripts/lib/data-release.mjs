@@ -73,6 +73,8 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "public/place-photos/utica-covered-bridge-2022.jpg",
   "public/place-photos/civil-war-medicine-frontage.jpg",
   "public/history-photos/schifferstadt.jpg",
+  "src/data/roddy-road-archive-photo.ts",
+  "public/history-photos/roddy-road-covered-bridge.jpg",
   "public/history-photos/hessian-barracks.jpg",
   "public/history-photos/co-canal.jpg",
   "public/place-photos/delaplaine-exterior.jpg",

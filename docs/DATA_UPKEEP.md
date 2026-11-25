@@ -213,6 +213,22 @@ are a separate service and never supply grocery days. Both sources retain the
 ordinary native transport limits and seven-day expiry; no holiday calendar or
 image reuse rights are inferred.
 
+For a dated early closing, compare the grocery schedule in the store panel and
+the page header. Both must give the same local date and hours. The visible
+weekday row must mark the exception and show the same opening and earlier
+closing time. Keep the regular hours for that weekday in the weekly schedule and the
+early close on its own date. A pharmacy may have different hours that day.
+Each location requires review against its own original page.
+
+For Common Market’s 2026 Thanksgiving notice, the two stores share the dated
+7am–9pm window on November 24 and 25 and the November 26 closure. The footer
+continues to describe the ordinary week. A changed, duplicated or undated
+conflicting holiday announcement needs review against the original page.
+
+On Thanksgiving, a weekly schedule alone leaves the venue’s current hours
+unconfirmed. A dated schedule or accepted exception can establish that day’s
+opening or closure.
+
 Food Lion's three exact Crestwood, Yellow Springs and Thurmont pages bind only
 their primary GroceryStore identities and labeled Store Hours. Require the
 reviewed exact name, address and phone, seven visible weekday rows, GroceryStore

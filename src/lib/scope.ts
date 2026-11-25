@@ -23,6 +23,7 @@
  * Pure core (parse/resolve/label) has no clock, no DOM, no storage — it is
  * safe to import in a server component. Only get/set touch the browser.
  */
+import { roundCoord } from "@/lib/walkTime";
 import { isInFrederickCountyArea, type LngLat } from "@/lib/geo";
 import {
   isMunicipalitySlug,
@@ -39,6 +40,13 @@ export const SCOPE_PARAM = "in";
 export const SCOPE_CHANGE_EVENT = "fr:scope-change";
 
 const STORAGE_KEY = "fr:scope:v1";
+
+/** Device coordinates are useful only for implicit nearby ranking or an
+ * explicit Near me choice. Strip fix metadata and snap before any request. */
+export function deviceOriginForScope(scope: Scope | null, fix: LngLat | null): LngLat | null {
+  if (!fix || (scope !== null && scope !== "nearme")) return null;
+  return { lng: roundCoord(fix.lng), lat: roundCoord(fix.lat) };
+}
 
 /** The town slug a scope points at, or null (nearme / county carry none). */
 export function scopeTownSlug(scope: Scope | null): string | null {

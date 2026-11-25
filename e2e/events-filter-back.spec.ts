@@ -22,32 +22,44 @@ for (const width of [320, 390]) {
     await expect(page.locator("[data-events-interaction-ready]")).toHaveAttribute("data-events-interaction-ready", "true");
     const trigger = page.getByRole("button", { name: /^Filters/ });
     const dialog = page.getByRole("dialog", { name: "Event filters" });
-    await trigger.tap();
-    await dialog.getByRole("tab", { name: "What", exact: true }).tap();
-    await dialog.getByRole("button", { name: "Free", exact: true }).tap();
-    await dialog.getByRole("textbox", { name: "Filter the events shown" }).fill("local music");
-    await expect(page).toHaveURL(/free=true/);
-    const editedUrl = page.url();
-    await page.goBack();
+    // Hydration restores the legacy lens before the next effect mirrors all
+    // shareable filters into this same history entry. Capture the settled URL.
+    await expect(page).toHaveURL(url => url.pathname === "/events" &&
+      url.searchParams.get("when") === "weekend" && url.searchParams.get("lens") === "weekend" &&
+      url.searchParams.get("in") === "thurmont");
+    const appliedUrl = page.url();
+    const free = dialog.getByRole("button", { name: "Free", exact: true });
+    const search = dialog.getByRole("textbox", { name: "Filter the events shown" });
+    const openWhat = async () => {
+      await trigger.tap();
+      await dialog.getByRole("tab", { name: "What", exact: true }).tap();
+    };
+    for (const method of ["Back", "Cancel", "Escape"]) {
+      await openWhat();
+      await expect(free).toHaveAttribute("aria-pressed", "false");
+      await expect(search).toHaveValue("");
+      await free.tap();
+      await search.fill("local music");
+      await expect(page).toHaveURL(appliedUrl);
+      if (method === "Back") await page.goBack();
+      else if (method === "Cancel") await dialog.getByRole("button", { name: "Cancel" }).tap();
+      else await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+      await expect(trigger).toBeFocused();
+      await expect(trigger).not.toHaveAccessibleName(/local music/);
+      await expect(page).toHaveURL(appliedUrl);
+      await expect.poll(() => page.evaluate(() => window.history.state?.__frederickRadiusLayer ?? null)).toBeNull();
+    }
+    await openWhat();
+    await free.tap();
+    await search.fill("local music");
+    await dialog.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }).tap();
     await expect(dialog).toBeHidden();
     await expect(trigger).toBeFocused();
-    await expect(page).toHaveURL(editedUrl);
+    await expect(page).toHaveURL(/free=true/);
     await expect(trigger).toHaveAccessibleName(/local music/);
     await expect(page.locator("[data-event-filter-time]")).toHaveText("This weekend");
     await expect(page.locator("[data-event-filter-scope]")).toHaveText("Thurmont");
-
-    // Repeated explicit dismissal must consume each newly owned layer once.
-    for (const method of ["Done", "Escape"]) {
-      await trigger.tap();
-      await dialog.getByRole("tab", { name: "What", exact: true }).tap();
-      await expect(dialog.getByRole("button", { name: "Free", exact: true })).toHaveAttribute("aria-pressed", "true");
-      await expect(dialog.getByRole("textbox", { name: "Filter the events shown" })).toHaveValue("local music");
-      if (method === "Done") await dialog.getByRole("button", { name: "Done", exact: true }).tap();
-      else await page.keyboard.press("Escape");
-      await expect(dialog).toBeHidden(); await expect(trigger).toBeFocused();
-      await expect(page).toHaveURL(editedUrl);
-      await expect.poll(() => page.evaluate(() => window.history.state?.__frederickRadiusLayer ?? null)).toBeNull();
-    }
     await page.goBack();
     await expect(page).toHaveURL(/\/today(?:\?|$)/);
   });

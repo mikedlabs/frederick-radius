@@ -38,9 +38,9 @@ test.describe("Home Screen installation", () => {
       await page.goto("/install", { waitUntil: "domcontentloaded" });
       const content = page.locator("[data-install-page]");
       await expect(content.getByRole("heading", { level: 1 })).toHaveText("Radius on your Home Screen");
-      await expect(content).toContainText("not a separate App Store download");
-      await expect(content).toContainText("Live data needs an internet connection");
-      await expect(content).toContainText("They do not sync through a cloud account");
+      await expect(content).toContainText("Add the website from your browser");
+      await expect(content).toContainText("Reconnect to open saved addresses");
+      await expect(content).toContainText("Sign in to sync saved places across devices");
       await expect(content.getByRole("link", { name: "Open Radius" })).toHaveAttribute("href", "/today");
       const navigation = page.getByRole("navigation", { name: "Primary", exact: true });
       await expect(navigation.getByRole("link")).toHaveText(["Today", "Map", "Events", "Saved"]);

@@ -548,14 +548,15 @@ export const HIGH_VALUE_SOURCE_ENDPOINTS: readonly FeedHealthEndpoint[] = [
     group: "USGS Frederick water",
     sourceId: "usgs_water",
     url:
-      "https://waterservices.usgs.gov/nwis/iv/?format=json" +
-      "&countyCd=24021&parameterCd=00065,00060&siteStatus=active",
+      "https://api.waterdata.usgs.gov/ogcapi/v1/collections/latest-continuous/items" +
+      "?f=json&state_code=24&county_code=021&monitoring_location_id=USGS-01643000" +
+      "&parameter_code=00065&limit=1&properties=monitoring_location_id,parameter_code,time,value,unit_of_measure",
     critical: false,
     method: "GET",
-    maxBodyBytes: 16_384,
+    maxBodyBytes: 4_096,
     contentType: /json/i,
-    bodyPattern: /^\s*\{/,
-    accept: "application/json",
+    bodyPattern: /^(?=[\s\S]*"type"\s*:\s*"FeatureCollection")(?=[\s\S]*"monitoring_location_id"\s*:\s*"USGS-01643000")(?=[\s\S]*"unit_of_measure"\s*:\s*"ft")/,
+    accept: "application/geo+json",
   },
   {
     group: "FredScanner public incidents",

@@ -1,25 +1,13 @@
 "use client";
 
 import { MessageSquarePlus } from "lucide-react";
-import {
-  OPEN_FEEDBACK_EVENT,
-  PENDING_FEEDBACK_KEY,
-} from "@/lib/feedback-ui";
-
-function openFeedback() {
-  try {
-    window.sessionStorage.setItem(PENDING_FEEDBACK_KEY, "1");
-  } catch {
-    // The event still works when storage is unavailable.
-  }
-  window.dispatchEvent(new Event(OPEN_FEEDBACK_EVENT));
-}
+import { requestFeedback } from "@/lib/feedback-ui";
 
 export default function FeedbackLink() {
   return (
     <button
       type="button"
-      onClick={openFeedback}
+      onClick={event => requestFeedback(event.currentTarget)}
       className="tap-44 inline-flex items-center gap-2 rounded-full border px-3.5 py-2.5 text-[12px] font-semibold"
       style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
     >

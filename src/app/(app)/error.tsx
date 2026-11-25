@@ -57,7 +57,7 @@ export default function AppError({
           variant="secondary"
           iconLeft={<Compass className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
         >
-          Back to Today
+          Open Today
         </Button>
       </div>
     </div>

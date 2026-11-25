@@ -323,6 +323,15 @@ describe("parseVibemapEvents", () => {
     expect(e.source).toBe("dfp");
   });
 
+  it("distinguishes a published two-hour session from the identical internal expiry fallback", () => {
+    const [published] = parseVibemapEvents([vmRow({})], DFP_FEED, NOW, HORIZON, FETCHED);
+    const [inferred] = parseVibemapEvents([vmRow({ meta: { vibemap_event_end_date: "" } })], DFP_FEED, NOW, HORIZON, FETCHED);
+    expect(inferred.starts_at).toBe(published.starts_at);
+    expect(inferred.ends_at).toBe(published.ends_at);
+    expect(published.published_time).toBe("range");
+    expect(inferred.published_time).toBe("start");
+  });
+
   it("keeps the publisher's real modification time separate from fetch time", () => {
     const [event] = parseVibemapEvents(
       [
@@ -381,6 +390,7 @@ describe("parseVibemapEvents", () => {
       FETCHED,
     );
     expect(fromMeta.hero_image).toBe(image);
+    expect(fromMeta.hero_image_record).toBe(fromMeta.url);
 
     const socialImage =
       "https://ik.imagekit.io/vibemap/tr:w-1200,h-675,fo-auto/event.jpeg";
@@ -391,7 +401,8 @@ describe("parseVibemapEvents", () => {
       HORIZON,
       FETCHED,
     );
-    expect(fromYoast.hero_image).toBe(socialImage);
+    expect(fromYoast.hero_image).toBeUndefined();
+    expect(fromYoast.hero_image_record).toBeUndefined();
 
     const [wrongHost] = parseVibemapEvents(
       [vmRow({ meta: { vibemap_event_images: '["https://images.example.com/untrusted.jpg"]' } })],
