@@ -29,7 +29,12 @@ export type DealRow = {
    * special with no fixed day, shown honestly on its own shelf. */
   days: number[];
   source_url?: string;
+  /** "verified 2w ago" inside the check window, "last checked Jun 2026" past it. */
   verified: string | null;
+  /** True only while the recorded source check is inside the freshness
+   * window. A row without it prints its check date in muted ink and never
+   * wears the verified badge. */
+  verifiedCurrent: boolean;
   confidence: string;
 };
 

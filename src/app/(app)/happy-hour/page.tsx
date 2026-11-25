@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import GuideHeader from "@/components/layout/GuideHeader";
 import Link from "next/link";
-import { placesWithFieldHappyHour, fieldNotesFor, verifiedLabel } from "@/lib/loaders/fieldNotes";
+import {
+  FIELD_NOTE_CHECK_WINDOW_DAYS,
+  placesWithFieldHappyHour,
+  fieldNotesFor,
+  fieldNoteCheck,
+} from "@/lib/loaders/fieldNotes";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { parseHappyHour } from "@/lib/happyHour";
@@ -12,7 +17,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/happy-hour" },
   title: "Happy hour in Frederick County",
   description:
-    "What's on for happy hour around Frederick County right now. Source-checked schedules with the deal and where to park.",
+    "What's on for happy hour around Frederick County right now, with each schedule, the deal and where to park.",
 };
 
 export const revalidate = 600;
@@ -29,8 +34,11 @@ function easternNowParts(now: Date): { day: number; min: number } {
 
 /** A Date as Eastern minutes-since-midnight (for the golden-hour gauge). */
 /**
- * /happy-hour — the Field Notes flagship. Every spot is agent-VERIFIED at the
- * source (the moat). The page hands the verified set to HappyHourGuide ("The
+ * /happy-hour: the Field Notes flagship. Every spot was read at its source,
+ * and each row carries that check's age: only a check inside the window may
+ * draw the verified badge or let the strip say "verified", so the metadata
+ * above promises the schedule and the deal, not a current check, the same as
+ * /deals. The page hands the set to HappyHourGuide ("The
  * Last Pour"): a live city-magazine bar guide that opens on a "Pour of the
  * Moment" cover (the most time-sensitive on-now spot, its deal amount set huge
  * in gold) then a leader-dotted priced index of the county (venue name … gold
@@ -49,6 +57,9 @@ export default function HappyHourPage() {
     const p = clientPlaceBySlug(v.slug);
     if (!p) continue;
     const fn = fieldNotesFor(v.slug);
+    // One reading of the recorded check: the label says how old it is, and
+    // only a check inside the window may draw the verified badge.
+    const check = fieldNoteCheck(v.happy_hour.last_verified, now.getTime());
     rows.push({
       slug: v.slug,
       name: p.name,
@@ -58,7 +69,8 @@ export default function HappyHourPage() {
       parking: fn?.parking?.text,
       note: fn?.insider?.[0]?.text,
       sourceUrl: v.happy_hour.source_url,
-      verified: verifiedLabel(v.happy_hour.last_verified),
+      verified: check?.label ?? null,
+      verifiedCurrent: check?.current ?? false,
       schedule: v.happy_hour.schedule,
       windows: parseHappyHour(v.happy_hour.schedule),
       // Ship the venue's structured hours so the client guide can suppress a
@@ -67,9 +79,10 @@ export default function HappyHourPage() {
       hoursVerified: p.hours_verified ?? false,
     });
   }
-  // VERIFIED ONLY — the legacy unverified business-info happy hours were
-  // dropped (stale-name / duplicate problems). Everything here is confirmed at
-  // the source; the Field Notes pipeline grows it.
+  // FIELD NOTES ONLY: the legacy business-info happy hours were dropped
+  // (stale-name / duplicate problems). Everything here was read at its source
+  // on a recorded day, and each row says whether that check is still current;
+  // the Field Notes pipeline grows it.
 
   return (
     <div className="relative space-y-5">
@@ -83,7 +96,7 @@ export default function HappyHourPage() {
           No current happy hours are on file. Do you know one? <Link href="/submit/place" className="font-semibold underline">Tell us.</Link>
         </p>
       ) : (
-        <HappyHourGuide rows={rows} today={today} nowMin={nowMin} />
+        <HappyHourGuide rows={rows} today={today} nowMin={nowMin} checkWindowDays={FIELD_NOTE_CHECK_WINDOW_DAYS} />
       )}
 
       <p className="px-1 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>

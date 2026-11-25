@@ -72,8 +72,24 @@ function isMaintenanceNoise(text: string): boolean {
   return /\bbulb out\b|\bcamera\b|\btest event\b|sign (out|malfunction)/i.test(text);
 }
 
-function severity(e: RawEvent, text: string): ChartIncident["severity"] {
+/** CHART logs a signal repair as "Action Event @ ... [Traffic Control Signal]".
+ *  It is a work order for the signal shop, not a live incident on the road. */
+function isSignalWorkOrder(name: string): boolean {
+  return /^\s*action event\b/i.test(name) && /\[\s*traffic control signal\s*\]/i.test(name);
+}
+
+/**
+ * Severity comes from what CHART says about the event itself: its traffic
+ * alert flag, its name and its incident type. The action log is never read
+ * here. The action type "Signal Involved In Crash" names why a signal needs
+ * repair, and matching its word "crash" graded a days-old work order High and
+ * put it at the top of Live conditions (November 2026). A signal work order is
+ * Low unless CHART itself raises a traffic alert for it.
+ */
+function severity(e: RawEvent, name: string): ChartIncident["severity"] {
   if (e.trafficAlert === true) return "High";
+  if (isSignalWorkOrder(name)) return "Low";
+  const text = `${name} ${e.incidentType ?? ""}`;
   if (/crash|collision|overturned|closed|blocked|all lanes|fatal/i.test(text)) return "High";
   if (/construction|roadwork|work zone|disabled|shoulder|right lane|left lane/i.test(text)) return "Medium";
   return "Low";
@@ -222,6 +238,27 @@ export function roadAlias(road: string): string | undefined {
   return ROAD_ALIASES[road.toUpperCase().replace(/\s+/g, " ").trim()];
 }
 
+/**
+ * The street name CHART prints in parentheses right after the route, as in
+ * "MD 26 (MAIN ST) @ MD 75 (CHURCH ST)". Direction and lane codes such as
+ * "(WB/L)" or "(MB)" are not street names. Undefined when CHART names none.
+ */
+function chartStreetName(road: string, description: string): string | undefined {
+  const parts = road.trim().match(/^(I|US|MD)[-\s]?(\d+)$/i);
+  if (!parts) return undefined;
+  const named = description.match(
+    new RegExp(String.raw`\b${parts[1]}[-\s]?${parts[2]}\s*\(([^)]+)\)`, "i"),
+  );
+  const street = named?.[1].trim();
+  if (!street || /^(?:[NSEW]B|MB)(?:\/[LRC])?$/i.test(street)) return undefined;
+  return street;
+}
+
+function sameStreet(a: string, b: string): boolean {
+  const key = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return key(a) === key(b);
+}
+
 const BOUND: Record<string, string> = {
   nb: "northbound", sb: "southbound", eb: "eastbound", wb: "westbound",
 };
@@ -278,11 +315,18 @@ export function chartTypeSentence(incident: Pick<ChartIncident, "type" | "descri
   }
 }
 
-/** Subject-led hero sentence: "US 40 West (W Patrick St) has a reported incident." */
+/**
+ * Subject-led hero sentence: "US 40 West (W Patrick St) has a reported incident."
+ * The county-wide alias is dropped when CHART names a different street at this
+ * spot. MD 26 is Liberty Rd near Frederick and Main St in Libertytown, so the
+ * alias would put the event on the wrong street.
+ */
 export function chartHeroSentence(incident: Pick<ChartIncident, "road" | "direction" | "type" | "description">): string {
   const road = chartRoad(incident);
   const alias = incident.road ? roadAlias(incident.road) : undefined;
-  const subject = road ? (alias ? `${road} (${alias})` : road) : "A Frederick County road";
+  const charted = alias ? chartStreetName(incident.road, incident.description) : undefined;
+  const showAlias = Boolean(alias && (!charted || sameStreet(charted, alias)));
+  const subject = road ? (showAlias ? `${road} (${alias})` : road) : "A Frederick County road";
   const text = `${incident.description} ${incident.type}`.toLowerCase();
   let predicate: string;
   if (/signal|traffic control/.test(text)) predicate = "has a reported signal issue.";
@@ -319,7 +363,9 @@ function fmtEastern(t: Date): string {
 }
 
 /** Freshness tail with the one fact a reader wants: when it clears, else how
- *  long it has been running. "Clears ~5:00 PM" / "Started 25m ago". */
+ *  long it has been running. "Clears ~5:00 PM" / "Started 25m ago". From 48
+ *  hours on it counts whole days ("Started 5 days ago"), because "139h ago"
+ *  hides that a row is nearly a week old. */
 export function chartFreshnessTail(
   incident: Pick<ChartIncident, "started_at" | "expected_end">,
   now: Date,
@@ -334,7 +380,8 @@ export function chartFreshnessTail(
     const mins = Math.round((now.getTime() - start.getTime()) / 60000);
     if (mins < 1) return "Just reported";
     if (mins < 60) return `Started ${mins}m ago`;
-    return `Started ${Math.round(mins / 60)}h ago`;
+    if (mins < 48 * 60) return `Started ${Math.round(mins / 60)}h ago`;
+    return `Started ${Math.floor(mins / (24 * 60))} days ago`;
   }
   return "Active now";
 }
@@ -427,7 +474,7 @@ export async function getChartIncidentsFrederickResult(
         lat,
         lng,
         started_at: startMs ? new Date(startMs).toISOString() : null,
-        severity: severity(raw, text),
+        severity: severity(raw, name),
         lanes_affected: cleanChartLaneStatus(raw.lanesStatus),
       });
     }

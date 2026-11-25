@@ -14,7 +14,7 @@ import type { Hours } from "@/data/places";
 /**
  * HappyHourBrowser — the interactive, day-aware reveal for /happy-hour.
  *
- * A field-guide "almanac week": a 7-day strip shows how many verified happy
+ * A field-guide "almanac week": a 7-day strip shows how many listed happy
  * hours run each day (density at a glance, today marked), and tapping a day
  * reveals that day's spots — sorted by start time, the ones ON NOW flagged
  * inline, each showing its window FOR THAT DAY plus the full deal.
@@ -36,6 +36,9 @@ export type HHRow = {
   note?: string;
   sourceUrl?: string;
   verified: string | null;
+  /** True only while the recorded source check is inside the check window.
+   *  The verified badge reads this, never the label. */
+  verifiedCurrent?: boolean;
   schedule: string;
   windows: HHWindowLite[];
   /** Venue structured hours + verified flag, so the guide can suppress a live
@@ -148,7 +151,7 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
               <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: "var(--app-on-brand)" }} />
               {endsAt && endsAt < 1440 ? `till ${fmtMin(endsAt)}` : "on now"}
             </span>
-          ) : r.verified ? (
+          ) : r.verifiedCurrent ? (
             <BadgeCheck role="img" aria-label="verified at the source" className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-positive)" }} />
           ) : null}
         </div>
@@ -250,7 +253,7 @@ export default function HappyHourBrowser({ rows, today, nowMin }: { rows: HHRow[
 
         {forDay.total === 0 ? (
           <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-8 text-center text-[12.5px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            There are no verified happy hours on {DAY_FULL[day]} yet. Try another day.
+            No happy hours are listed for {DAY_FULL[day]} yet. Try another day.
           </p>
         ) : (
           <div className="space-y-3.5">
@@ -277,7 +280,7 @@ export default function HappyHourBrowser({ rows, today, nowMin }: { rows: HHRow[
         )}
       </div>
 
-      {/* ── Schedule-varies shelf — verified spots whose hours don't parse into
+      {/* ── Schedule-varies shelf: listed spots whose hours don't parse into
           a fixed day; shown honestly rather than dropped or pinned to a day. */}
       {varies.length > 0 && (
         <div className="space-y-2 pt-1">

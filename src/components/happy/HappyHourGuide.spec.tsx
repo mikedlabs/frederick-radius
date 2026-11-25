@@ -15,6 +15,7 @@ vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: { href: string; children: ReactNode }) => <a href={href} {...props}>{children}</a>,
 }));
 import HappyHourGuide from "./HappyHourGuide";
+import HappyHourBrowser from "./HappyHourBrowser";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -28,7 +29,9 @@ function row(overrides: Partial<HHRow> = {}): HHRow {
     town: "Frederick City",
     photo: PROXY,
     deal: "$5 drafts, $1 oysters, half off wings",
-    verified: "Oct 2026",
+    // The loader's shape: a label plus the flag that says the check is current.
+    verified: "verified 3d ago",
+    verifiedCurrent: true,
     schedule: "Daily, all day",
     windows: [{ days: [0, 1, 2, 3, 4, 5, 6], start: 0, end: 1440 }],
     ...overrides,
@@ -41,7 +44,7 @@ describe("HappyHourGuide lead cover", () => {
   beforeEach(() => { host = document.createElement("div"); document.body.append(host); root = createRoot(host); });
   afterEach(() => { act(() => root.unmount()); host.remove(); });
 
-  const render = (rows: HHRow[]) => act(async () => root.render(<HappyHourGuide rows={rows} today={2} nowMin={17 * 60} />));
+  const render = (rows: HHRow[]) => act(async () => root.render(<HappyHourGuide rows={rows} today={2} nowMin={17 * 60} checkWindowDays={60} />));
   const cover = () => host.querySelector<HTMLAnchorElement>("[data-happy-cover]")!;
   const load = async (width: number, height: number) => {
     const image = cover().querySelector("img")!;
@@ -123,5 +126,96 @@ describe("HappyHourGuide lead cover", () => {
     await act(async () => thumb.dispatchEvent(new Event("load")));
     expect(host.querySelector("article img")).toBeNull();
     expect(host.querySelector("article svg")).not.toBeNull();
+  });
+});
+
+describe("HappyHourGuide check strip", () => {
+  let root: Root;
+  let host: HTMLDivElement;
+  beforeEach(() => { host = document.createElement("div"); document.body.append(host); root = createRoot(host); });
+  afterEach(() => { act(() => root.unmount()); host.remove(); });
+
+  const current = (slug: string) => row({ slug, name: `Bar ${slug}`, verified: "verified 3d ago", verifiedCurrent: true });
+  const stale = (slug: string, month = "Jun 2026") => row({ slug, name: `Bar ${slug}`, verified: `last checked ${month}`, verifiedCurrent: false });
+  const undated = (slug: string) => row({ slug, name: `Bar ${slug}`, verified: null, verifiedCurrent: false });
+  const strip = async (rows: HHRow[], checkWindowDays = 60) => {
+    await act(async () => root.render(<HappyHourGuide rows={rows} today={2} nowMin={17 * 60} checkWindowDays={checkWindowDays} />));
+    return host.querySelector<HTMLElement>("[data-happy-check-strip]")!.textContent!;
+  };
+
+  it("says verified at source only when every check is current", async () => {
+    const text = await strip([current("a"), current("b")]);
+    expect(text).toContain("2 verified");
+    expect(text).toContain("at source");
+    expect(host.querySelector("[data-happy-check-age]")).toBeNull();
+  });
+
+  it("prints the shared month when every check is older and dated alike", async () => {
+    const text = await strip([stale("a"), stale("b")]);
+    expect(text).toContain("2 listed");
+    expect(text).toContain("last checked Jun 2026");
+    expect(text).not.toMatch(/verified|at source/);
+  });
+
+  it("counts the current checks when only some are current", async () => {
+    // (a) The state the page reaches as soon as one venue is re-checked.
+    let text = await strip([current("a"), stale("b")]);
+    expect(text).toContain("2 listed");
+    expect(text).toContain("1 of 2 checked in the last 60 days");
+    expect(text).not.toMatch(/verified|at source|last checked/);
+    // (b) Stale checks from different months.
+    text = await strip([current("a"), stale("b"), stale("c", "May 2026")]);
+    expect(text).toContain("1 of 3 checked in the last 60 days");
+    // (c) An undated row beside a current one is not called old.
+    text = await strip([undated("a"), current("b")]);
+    expect(text).toContain("1 of 2 checked in the last 60 days");
+    expect(text).not.toContain("older");
+  });
+
+  it("never gives an undated row a check date", async () => {
+    // (d) No row has a recorded check.
+    let text = await strip([undated("a"), undated("b")]);
+    expect(text).toContain("check dates not recorded");
+    expect(text).not.toMatch(/older|last checked|verified/);
+    // A June row beside an undated row: the June label would cover both.
+    text = await strip([stale("a"), undated("b")]);
+    expect(text).toContain("none checked in the last 60 days");
+    expect(text).not.toContain("last checked Jun 2026");
+    // Older rows from different months share no one label.
+    text = await strip([stale("a"), stale("b", "May 2026")]);
+    expect(text).toContain("none checked in the last 60 days");
+  });
+
+  it("follows the check window it is given", async () => {
+    expect(await strip([current("a"), stale("b")], 90)).toContain("1 of 2 checked in the last 90 days");
+  });
+});
+
+describe("HappyHourBrowser verified badge", () => {
+  let root: Root;
+  let host: HTMLDivElement;
+  beforeEach(() => { host = document.createElement("div"); document.body.append(host); root = createRoot(host); });
+  afterEach(() => { act(() => root.unmount()); host.remove(); });
+
+  it("draws the at-source badge only on a row whose check is current", async () => {
+    // Tuesday 8 to 10 PM, read at 5 PM: listed for today, not on now.
+    const evening = [{ days: [2], start: 20 * 60, end: 22 * 60 }];
+    const rows = [
+      row({ slug: "fresh", name: "Fresh Bar", windows: evening, verified: "verified 3d ago", verifiedCurrent: true }),
+      row({ slug: "june", name: "June Bar", windows: evening, verified: "last checked Jun 2026", verifiedCurrent: false }),
+      // A label without the flag is not a current check.
+      row({ slug: "bare", name: "Bare Bar", windows: evening, verified: "verified 3d ago", verifiedCurrent: undefined }),
+    ];
+    await act(async () => root.render(<HappyHourBrowser rows={rows} today={2} nowMin={17 * 60} />));
+    const badges = host.querySelectorAll('[aria-label="verified at the source"]');
+    expect(badges).toHaveLength(1);
+    expect(badges[0].closest("article")!.textContent).toContain("Fresh Bar");
+  });
+
+  it("tells an empty day plainly without calling the other days verified", async () => {
+    const rows = [row({ windows: [{ days: [5], start: 16 * 60, end: 18 * 60 }] })];
+    await act(async () => root.render(<HappyHourBrowser rows={rows} today={2} nowMin={17 * 60} />));
+    expect(host.textContent).toContain("No happy hours are listed for Tuesday yet. Try another day.");
+    expect(host.textContent).not.toMatch(/verified/i);
   });
 });

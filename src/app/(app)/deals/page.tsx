@@ -7,9 +7,9 @@ import { PageWide } from "@/components/layout/Page";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/deals" },
-  title: "Deals: source-checked daily specials in Frederick County",
+  title: "Deals: daily specials in Frederick County",
   description:
-    "Source-checked daily specials around Frederick County: taco Tuesdays, wing nights, crab feasts, and the deals locals plan their week around.",
+    "Daily specials around Frederick County, listed by day of the week. Each one links to its source and shows when it was last checked.",
 };
 
 export const revalidate = 600;
@@ -22,8 +22,10 @@ function easternDow(now: Date): number {
 
 /**
  * /deals — the Field Notes deals flagship (sibling of /happy-hour). Every
- * special is agent-VERIFIED at the source (the moat). The page hands the
- * verified set to a day-aware browser (DealsBrowser): a 7-day almanac strip
+ * special was read at its source, and each row states when: "verified" only
+ * inside the check window, a dated "last checked" past it, so the metadata
+ * above promises a source link and a date, not a current check. The page hands
+ * the set to a day-aware browser (DealsBrowser): a 7-day almanac strip
  * shows how many deals run each day, and tapping a day reveals that day's
  * specials by town, with the full offer and where it's from. The deals corpus
  * finally has a home; the /today deck see-more points here.
@@ -31,7 +33,7 @@ function easternDow(now: Date): number {
 export default function DealsPage() {
   const now = new Date();
   const today = easternDow(now);
-  const rows = allDeals();
+  const rows = allDeals(now);
 
   const venueCount = new Set(rows.map((row) => row.slug)).size;
 

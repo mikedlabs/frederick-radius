@@ -1,5 +1,7 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import {
+import DealsBrowser, {
   dealMatchesQuery,
   easternDayIndex,
   groupDealsByVenue,
@@ -19,7 +21,8 @@ function deal(overrides: Partial<DealRow> = {}): DealRow {
     fullOffer: "Tuesday: $5 drafts, 4 PM–7 PM",
     hours: "4 PM–7 PM",
     days: [2],
-    verified: "Verified July 2026",
+    verified: "verified 2w ago",
+    verifiedCurrent: true,
     confidence: "high",
     ...overrides,
   };
@@ -47,6 +50,73 @@ describe("groupDealsByVenue", () => {
     ]);
 
     expect(groups.map((group) => group.venue.slug)).toEqual(["another-place", "one-place"]);
+  });
+
+  it("lists a venue with a current source check ahead of stale ones", () => {
+    const stale = { verified: "last checked Jun 2026", verifiedCurrent: false };
+    const groups = groupDealsByVenue([
+      deal({ slug: "alpha", name: "Alpha Tavern", ...stale }),
+      deal({ slug: "zebra", name: "Zebra Grill" }),
+      deal({ slug: "beta", name: "Beta Pub", ...stale }),
+      // One current offer is enough to lift a venue that also has a stale one.
+      deal({ slug: "mixed", name: "Mixed House", ...stale }),
+      deal({ slug: "mixed", name: "Mixed House", offer: "Half-price wings" }),
+    ]);
+
+    expect(groups.map((group) => group.venue.slug)).toEqual([
+      "mixed",
+      "zebra",
+      "alpha",
+      "beta",
+    ]);
+    expect(groups[0].offers).toHaveLength(2);
+  });
+});
+
+describe("source-check label", () => {
+  // Tuesday, July 28, 2026 in Frederick, matching the fixture's deal day.
+  const nowIso = "2026-07-28T16:00:00Z";
+  const render = (rows: DealRow[]) =>
+    renderToStaticMarkup(
+      createElement(DealsBrowser, { rows, today: 2, nowIso }),
+    );
+  const badges = (html: string) => html.match(/lucide-badge-check/g) ?? [];
+
+  it("gives a current check the verified badge in the positive tone", () => {
+    const html = render([deal()]);
+
+    expect(html).toContain("Verified 2w ago");
+    expect(badges(html)).toHaveLength(1);
+    expect(html).toMatch(
+      /color:var\(--app-positive\)[^>]*><svg[^>]*lucide-badge-check/,
+    );
+  });
+
+  it("prints a stale check as a muted date with no badge", () => {
+    const html = render([
+      deal({ verified: "last checked Jun 2026", verifiedCurrent: false }),
+    ]);
+
+    expect(html).toContain("Last checked Jun 2026");
+    expect(html).not.toMatch(/Verified \d/);
+    expect(badges(html)).toHaveLength(0);
+    expect(html).toMatch(/color:var\(--app-ink-3\)[^>]*>Last checked Jun 2026/);
+  });
+
+  it("badges only the current offer when a venue has both", () => {
+    const html = render([
+      deal(),
+      deal({
+        offer: "Half-price wings",
+        headline: "Half-price wings",
+        verified: "last checked Jun 2026",
+        verifiedCurrent: false,
+      }),
+    ]);
+
+    expect(html).toContain("Verified 2w ago");
+    expect(html).toContain("Last checked Jun 2026");
+    expect(badges(html)).toHaveLength(1);
   });
 });
 

@@ -282,12 +282,38 @@ function IndexSection({ label, count, tone, items, nowMin }: { label: string; co
   );
 }
 
+/**
+ * What the completeness strip may say about the source checks. "verified" and
+ * the at-source seal need every row's check inside the window. Otherwise the
+ * strip counts the current checks, prints the one month every row shares, or
+ * says plainly that no row has a current or recorded check. An undated row is
+ * never given another row's date.
+ */
+export function happyHourCheckStrip(
+  rows: Pick<HHRow, "verified" | "verifiedCurrent">[],
+  windowDays: number,
+): { allCurrent: boolean; age: string | null } {
+  const current = rows.filter((r) => r.verifiedCurrent === true).length;
+  if (rows.length > 0 && current === rows.length) return { allCurrent: true, age: null };
+  if (current > 0) {
+    return { allCurrent: false, age: `${current} of ${rows.length} checked in the last ${windowDays} days` };
+  }
+  const labels = rows.map((r) => r.verified).filter((label): label is string => Boolean(label));
+  if (labels.length === 0) return { allCurrent: false, age: "check dates not recorded" };
+  const shared = new Set(labels);
+  if (labels.length === rows.length && shared.size === 1) return { allCurrent: false, age: labels[0] };
+  return { allCurrent: false, age: `none checked in the last ${windowDays} days` };
+}
+
 export default function HappyHourGuide({
-  rows, today, nowMin: seedMin,
+  rows, today, nowMin: seedMin, checkWindowDays,
 }: {
   rows: HHRow[];
   today: number;
   nowMin: number;
+  /** Days a source check counts as current. The server page passes the
+   *  loader's window so the strip never restates it as a literal. */
+  checkWindowDays: number;
 }) {
   const [mode, setMode] = useState<"now" | "week">("now");
   const [day, setDay] = useState(today);
@@ -369,25 +395,35 @@ export default function HappyHourGuide({
 
   const liveCount = live.length;
   const townCount = useMemo(() => new Set(rows.map((r) => r.town).filter(Boolean)).size, [rows]);
+  const { allCurrent: allChecksCurrent, age: checkAge } = useMemo(
+    () => happyHourCheckStrip(rows, checkWindowDays),
+    [rows, checkWindowDays],
+  );
 
   return (
     <div className="space-y-4">
-      {/* Completeness strip — answers "what's on now AND how complete is this?"
-          at a glance: the live count (vermilion), the verified total + town
-          reach, and the at-source seal. The toggle to the week planner sits
-          opposite. Counts are supporting detail, never the headline. */}
+      {/* Completeness strip: answers "what's on now AND how complete is this?"
+          at a glance: the live count (vermilion), the listed total + town
+          reach, then the at-source seal when every check is current or the
+          age of the checks when not (happyHourCheckStrip). The toggle to the
+          week planner sits opposite. Counts are supporting detail, never the
+          headline. */}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+        <p data-happy-check-strip className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
           <span className="inline-flex items-center gap-1.5 font-bold" style={{ color: liveCount > 0 ? "var(--app-link)" : "var(--app-ink-2)" }}>
             <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: liveCount > 0 ? "var(--app-brand)" : "var(--app-ink-3)" }} />
             <span aria-live="polite">{liveCount > 0 ? `${liveCount} on now` : later.length > 0 ? `next ${fmtMin(later[0].startsAt!)}` : "none on now"}</span>
           </span>
           <span aria-hidden>·</span>
-          <span style={{ color: "var(--app-ink-2)" }}>{rows.length} verified</span>
+          <span style={{ color: "var(--app-ink-2)" }}>{rows.length} {allChecksCurrent ? "verified" : "listed"}</span>
           <span aria-hidden>·</span>
           <span style={{ color: "var(--app-ink-2)" }}>{townCount} {townCount === 1 ? "town" : "towns"}</span>
           <span aria-hidden>·</span>
-          <span className="font-bold" style={{ color: "var(--app-positive)" }}>&#10003; at source</span>
+          {allChecksCurrent ? (
+            <span className="font-bold" style={{ color: "var(--app-positive)" }}>&#10003; at source</span>
+          ) : (
+            <span data-happy-check-age style={{ color: "var(--app-ink-2)" }}>{checkAge}</span>
+          )}
         </p>
         <div role="tablist" aria-label="View" className="flex shrink-0 items-center gap-1 rounded-full p-0.5" style={{ background: "var(--app-bg-sunken)", boxShadow: "var(--app-edge)" }}>
           {(["now", "week"] as const).map((m) => (
@@ -502,7 +538,7 @@ export default function HappyHourGuide({
             </button>
           )}
 
-          {/* Schedule varies — verified spots whose hours don't parse to a day. */}
+          {/* Schedule varies: listed spots whose hours don't parse to a day. */}
           {varies.length > 0 && (
             <section className="space-y-0.5">
               <div className="flex items-baseline gap-2 pb-0.5">

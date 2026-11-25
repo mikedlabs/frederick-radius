@@ -111,3 +111,44 @@ describe("TodaysDealsStack business media", () => {
     expect(html).not.toContain("<img");
   });
 });
+
+describe("TodaysDealsStack verified pill", () => {
+  const tue6pm = new Date("2026-07-14T18:00:00-04:00");
+  const checked = (slug: string, current: boolean): TodaysDeal => ({
+    ...deal(),
+    slug,
+    name: `Venue ${slug}`,
+    hours: "5–9 PM",
+    verified: current ? "verified 2d ago" : "last checked Jun 2026",
+    verifiedCurrent: current,
+  });
+  const html = (deals: TodaysDeal[], embedded = false) =>
+    renderToStaticMarkup(
+      createElement(TodaysDealsStack, { deals, weekday: "Tuesday", now: tue6pm, embedded }),
+    );
+
+  it("says Verified only when every shown special was checked inside the window", () => {
+    const markup = html([checked("one", true), checked("two", true)]);
+    expect(markup).toContain(">Verified</span>");
+    expect(markup).toContain("lucide-badge-check");
+  });
+
+  it("drops the pill when any shown special has an older check", () => {
+    for (const deals of [
+      [checked("one", true), checked("two", false)],
+      [checked("one", false), checked("two", false)],
+      // A row with no freshness flag (an older caller) is not current.
+      [{ ...deal(), slug: "bare", hours: "5–9 PM" }],
+    ]) {
+      const markup = html(deals);
+      expect(markup).not.toMatch(/verified/i);
+      expect(markup).not.toContain("lucide-badge-check");
+    }
+  });
+
+  it("judges only the specials it shows, not ones cut by the row limit", () => {
+    const markup = html([checked("one", true), checked("two", true), checked("three", false)], true);
+    expect(markup).not.toContain("/places/three");
+    expect(markup).toContain(">Verified</span>");
+  });
+});
