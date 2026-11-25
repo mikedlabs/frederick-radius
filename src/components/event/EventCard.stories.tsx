@@ -76,6 +76,84 @@ export const LegacyRowWithSave: Story = {
 };
 export const LegacyTile: Story = { args: { variant: "tile" } };
 
+/** Measures the Events board row's Save: outside the event link, at the
+ * trailing edge, clear of what sits above it, and owning its own tap. */
+async function trailingSave(canvasElement: HTMLElement) {
+  const article = canvasElement.querySelector<HTMLElement>("article")!;
+  const save = article.querySelector<HTMLElement>('[data-save-ref="event:story-concert"]')!;
+  await expect(save).not.toBeNull();
+  await expect(save.closest("a")).toBeNull();
+  await expect(save.closest("[data-event-row-action]")?.getAttribute("data-event-row-action")).toBe("trailing");
+  const box = save.getBoundingClientRect();
+  // An unboxed glyph on a real 44px box.
+  await expect(box.width).toBeGreaterThanOrEqual(44);
+  await expect(box.height).toBeGreaterThanOrEqual(44);
+  await expect(getComputedStyle(save).borderTopWidth).toBe("0px");
+  // It ends level with the facts, so the row is no taller for carrying it.
+  const facts = article.querySelector<HTMLElement>("[data-event-card-heading]")!.getBoundingClientRect();
+  await expect(box.left).toBeGreaterThanOrEqual(facts.right);
+  await expect(box.bottom).toBeLessThanOrEqual(facts.bottom + 5);
+  await expect(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest("button")).toBe(save);
+  await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  return { article, save, box };
+}
+
+/** The Events board row. Save is the unboxed bookmark under the category
+ * glyph, on the glyph's own axis, so the row keeps its height. */
+export const BoardRowSaveAt390: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { variant: "glance", saveControl: true },
+  play: async ({ canvasElement }) => {
+    const { article, box } = await trailingSave(canvasElement);
+    const glyph = article.querySelector<HTMLElement>("[data-event-row-glyph] svg")!.getBoundingClientRect();
+    await expect(box.top).toBeGreaterThanOrEqual(glyph.bottom);
+    await expect(Math.abs(box.left + box.width / 2 - (glyph.left + glyph.width / 2))).toBeLessThanOrEqual(1);
+  },
+};
+
+/** Below 360px the glyph gives its slot back, and Save keeps a narrow column
+ * of its own at the row's right edge. */
+export const BoardRowSaveAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { variant: "glance", saveControl: true },
+  play: async ({ canvasElement }) => {
+    const { article, box } = await trailingSave(canvasElement);
+    await expect(Math.abs(article.getBoundingClientRect().right - (box.right - 4))).toBeLessThanOrEqual(1);
+  },
+};
+
+/** With an approved picture, Save sits under the picture and never on it. */
+export const BoardRowSaveUnderPhotograph: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: {
+    variant: "glance", saveControl: true,
+    event: { ...sample, title: "Demonstration concert at Baker Park", venue_name: "Baker Park", venue_place_slug: "baker-park-frederick", municipality: "frederick", municipality_name: "Frederick" },
+  },
+  play: async ({ canvasElement }) => {
+    const { article, box } = await trailingSave(canvasElement);
+    const thumb = article.querySelector<HTMLElement>("[data-event-row-thumb]")!.getBoundingClientRect();
+    await expect(box.top).toBeGreaterThanOrEqual(thumb.bottom);
+    await expect(Math.abs(box.left + box.width / 2 - (thumb.left + thumb.width / 2))).toBeLessThanOrEqual(1);
+  },
+};
+
+/** A date-range listing in its run prints its closing date as the time and
+ * no first-day plate. The first day stays available to screen readers. */
+export const RunningRange: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: {
+    variant: "glance",
+    event: { ...sample, title: "Demonstration exhibit in its run", starts_at: "2026-08-20T12:00:00-04:00", ends_at: "2026-10-30T17:00:00-04:00" },
+  },
+  play: async ({ canvasElement }) => {
+    const when = canvasElement.querySelector<HTMLElement>("[data-event-row-when]")!;
+    await expect(within(when).getByText("through Oct 30")).toBeVisible();
+    const started = within(when).getByText("Started Aug 20");
+    await expect(started.classList.contains("sr-only")).toBe(true);
+    await expect(when.textContent).not.toMatch(/Thu|AUG/);
+  },
+};
+
 const longVenue = {
   ...sample, title: "Weeknight trivia", venue_name: "JoJo's Restaurant & Tap House",
   address: "16 East Patrick Street, Frederick, MD", municipality: "frederick", municipality_name: "Frederick",

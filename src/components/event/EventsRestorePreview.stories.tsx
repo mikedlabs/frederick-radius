@@ -77,6 +77,21 @@ export const IncompleteKnownRows: Story = {
     await geometry(canvasElement);
   },
 };
+/** A range in its run follows the dated rows and prints its closing date
+ * only, never its first day as the row's date. */
+export const RunningRangeAfterDatedRows: Story = {
+  args: { events: [
+    { ...fixture, slug: "offline-restore-exhibit", title: "Fictional exhibit in its run", starts_at: "2030-03-20T16:00:00.000Z", ends_at: "2030-05-10T21:00:00.000Z" },
+    fixture,
+  ] },
+  play: async ({ canvasElement }) => {
+    const links = [...canvasElement.querySelectorAll<HTMLAnchorElement>("a[data-events-preview-link]")];
+    expect(links.map(link => link.getAttribute("href"))).toEqual(["/events/offline-restore-preview", "/events/offline-restore-exhibit"]);
+    expect(within(links[1]).getByText("Running through May 10")).toBeVisible();
+    expect(links[1].querySelector("time")).toBeNull();
+    await geometry(canvasElement);
+  },
+};
 export const UnavailablePreview: Story = {
   args: { events: [], degraded: true },
   play: async ({ canvasElement }) => {

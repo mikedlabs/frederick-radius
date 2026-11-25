@@ -21,6 +21,11 @@ import {
 } from "@/lib/decision/telemetry";
 import { notifyError, notifyRemoved, notifySaved } from "@/lib/feedback/notify";
 
+/** The unboxed icon Save: a glyph on a real 44px target. The -m-1 keeps the
+ * 36px layout footprint the rows were built around, and hover dims the glyph
+ * instead of drawing a tile. ItineraryButton's plain shape shares it. */
+export const SAVE_ICON_CLASS = "tap-44 relative -m-1 grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] transition-opacity hover:opacity-75 active:scale-[0.92] motion-reduce:active:scale-100";
+
 export default function SaveButton({
   refType,
   refId,
@@ -194,10 +199,7 @@ export default function SaveButton({
       title={eventSaveUnavailable ? "Saved state unavailable" : mutation === "unconfirmed" ? "This change could not be confirmed." : renderedSaved ? "Saved" : "Save"}
       className={barLabel
         ? `${BAR_QUIET_CELL_CLASS} tap-44 relative flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 rounded-[var(--app-radius-md)] px-2 py-2 text-[0.6875rem] font-semibold leading-none transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]`
-        // Icon only: an unboxed glyph with a real 44px target. The -m-1
-        // keeps the 36px layout footprint the rows were built around; hover
-        // dims the glyph slightly instead of drawing a tile.
-        : "tap-44 relative -m-1 grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] transition-opacity hover:opacity-75 active:scale-[0.92] motion-reduce:active:scale-100"}
+        : SAVE_ICON_CLASS}
       style={{
         // A labeled Save reads as an action in ink; the saved state uses the
         // link color everywhere, matching the place page's Saved control.

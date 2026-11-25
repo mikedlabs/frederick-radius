@@ -5,7 +5,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 // VALUE import from the DATA-FREE formatter module, never from the loader:
 // a value import of loaders/events would drag its places-client static
 // import (1.8MB JSON) into every client bundle that renders an event card.
-import { eventDateBlock } from "@/lib/events/format";
+import { eventDateBlock, runningRangeStart } from "@/lib/events/format";
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import ItineraryButton from "@/components/saved/ItineraryButton";
@@ -42,6 +42,7 @@ export default function EventCard({
   showDate = true,
   headingLevel = 2,
   schedule,
+  saveControl = false,
 }: {
   event: EventWithMeta;
   schedule?: EventScheduleMark;
@@ -102,6 +103,11 @@ export default function EventCard({
   /** Feature only: h2 when the lead stands under the page title, h3 inside a
    * group section that already has its own h2. */
   headingLevel?: 2 | 3;
+  /** Browsing rows (glance, discovery, tile) only: put Save at the row's
+   * trailing edge. The Events board sets it so a person can save from the
+   * list. Place pages, collections and Today leave their rows as they are,
+   * and the "row" variant keeps its own Save under the facts. */
+  saveControl?: boolean;
 }) {
   const displayTitle = eventDisplayTitle(event);
   const status = event.status ?? "scheduled";
@@ -133,6 +139,11 @@ export default function EventCard({
   }
 
   const date = eventDateBlock(event);
+  // A date-range listing in its run (an exhibit that opened in September and
+  // closes in December) already prints "through Dec 8" as its time. Its
+  // first day is not the day to show, so no variant prints it as the date.
+  // This needs the page clock; a card without one keeps the published start.
+  const rangeStart = cardNow ? runningRangeStart(event, cardNow) : null;
   const cat = CATEGORY_BY_SLUG[event.category];
   // Lifecycle status — a cancelled or postponed event still shows
   // (a user looking for it needs to KNOW), but with a loud badge and
@@ -210,10 +221,18 @@ export default function EventCard({
       statusColor: statusForeground,
       cancelled: isCancelled,
       where: venueLabel,
-      showDate,
+      // The label stays available to screen readers; the column shows only
+      // the closing date.
+      showDate: rangeStart ? false : showDate,
+      dateLabel: rangeStart ? `Started ${rangeStart}` : undefined,
       layout: variant,
       glyph: event.category,
-      action: variant === "row" ? <ItineraryButton eventId={event.slug} label={`Add ${displayTitle} to itinerary`} /> : undefined,
+      action: variant === "row"
+        ? <ItineraryButton eventId={event.slug} eventName={displayTitle} />
+        : saveControl
+          ? <ItineraryButton eventId={event.slug} eventName={displayTitle} appearance="plain" />
+          : undefined,
+      actionPlacement: variant !== "row" && saveControl ? "trailing" as const : undefined,
       extra: recurrence || facts.length > 0 ? (
         <>
           {recurrence ? <p data-event-card-recurrence className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{recurrence}</p> : null}
@@ -270,7 +289,7 @@ export default function EventCard({
           {statusText && (
             <span className="font-semibold" style={{ color: statusForeground }}>{statusText} · </span>
           )}
-          {hideDate
+          {hideDate || rangeStart
             ? timingText
             : `${date.weekday} ${date.month} ${date.day}${timingText ? ` · ${timingText}` : ""}`}
         </span>
@@ -284,6 +303,11 @@ export default function EventCard({
   // not browsing: 4-5x more events per mobile viewport than the
   // default row variant. Surfaced via the /events density toggle.
   if (variant === "compact") {
+    // A range in its run anchors on its closing date, the same date the meta
+    // line prints as "through Dec 8", and says so where the weekday goes.
+    const pill = rangeStart
+      ? { ...eventDateBlock({ ...event, starts_at: event.ends_at }), weekday: "Ends" }
+      : date;
     return (
       <article
         {...decisionAttributes}
@@ -298,19 +322,19 @@ export default function EventCard({
             className="text-[10px] font-bold uppercase tracking-[0.1em]"
             style={{ color: accentText }}
           >
-            {date.month}
+            {pill.month}
           </span>
           <span
             className="font-data text-[17px] font-semibold"
             style={{ color: "var(--app-ink)" }}
           >
-            {date.day}
+            {pill.day}
           </span>
           <span
             className="text-[9px] font-medium uppercase"
             style={{ color: "var(--app-ink-3)" }}
           >
-            {date.weekday}
+            {pill.weekday}
           </span>
         </div>
 

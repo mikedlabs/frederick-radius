@@ -101,6 +101,47 @@ export const OwnedVenuePhotography: Story = {
 };
 export const LoadingDetails: Story = { args: { event: null, pending: true, onOpenFullPage: fn() } };
 
+/** Save is the first labeled action, with its word beside the bookmark. The
+ * three actions wrap as one set on a narrow phone and never push the sheet
+ * sideways. */
+const labeledActions: Story["play"] = async () => {
+  const dialog = await within(document.body).findByRole("dialog", { name: event.title });
+  const row = dialog.querySelector<HTMLElement>("[data-event-sheet-actions]")!;
+  const buttons = [...row.querySelectorAll<HTMLElement>("button")];
+  await expect(buttons.map(button => button.textContent)).toEqual(["Save", "Add to calendar", "Share"]);
+  await waitFor(() => expect(buttons[0]).toBeEnabled());
+  for (const button of buttons) {
+    button.scrollIntoView({ block: "center", behavior: "instant" });
+    const box = button.getBoundingClientRect();
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    await expect(box.right).toBeLessThanOrEqual(window.innerWidth);
+  }
+  await expect(dialog.querySelectorAll("[data-save-ref]")).toHaveLength(1);
+  await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth + 1);
+};
+export const LabeledSaveAt390: Story = { play: labeledActions };
+export const LabeledSaveAt320: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: labeledActions,
+};
+
+/** On a wide sheet the venue photograph stops at 26rem (416px) instead of
+ * filling the 760px panel, so the description stays near the facts. Phones
+ * keep the full-width frame. */
+export const MediaCappedOnDesktop: Story = {
+  globals: { viewport: { value: "radiusDesktop", isRotated: false } },
+  args: { event: { ...event, venue_name: "Baker Park Bandshell", venue_place_slug: "baker-park-bandshell" } },
+  play: async () => {
+    const dialog = await within(document.body).findByRole("dialog", { name: event.title });
+    const media = await waitFor(() => {
+      const node = dialog.querySelector<HTMLElement>("[data-event-venue-media]");
+      expect(node).not.toBeNull();
+      return node!;
+    });
+    if (window.innerWidth >= 640) await expect(media.getBoundingClientRect().width).toBeLessThanOrEqual(416);
+  },
+};
+
 export const VerifiedTicketedOuting: Story = {
   args: {
     event: {

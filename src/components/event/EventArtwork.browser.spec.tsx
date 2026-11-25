@@ -19,7 +19,7 @@ vi.mock("@/components/ui/BottomSheet", () => ({
   default: ({ present, children }: { present: boolean; children: (dismiss: () => void) => ReactNode }) => present ? <section role="dialog">{children(() => {})}</section> : null,
   SheetHandle: () => <button>Close</button>,
 }));
-vi.mock("@/components/saved/ItineraryButton", () => ({ default: ({ label }: { label: string }) => <button>{label}</button> }));
+vi.mock("@/components/saved/ItineraryButton", () => ({ default: ({ eventName }: { eventName: string }) => <button>Save {eventName}</button> }));
 vi.mock("@/components/event/EventActions", () => ({ default: () => null }));
 vi.mock("@/lib/decision/telemetry", () => ({ trackDecision: vi.fn() }));
 

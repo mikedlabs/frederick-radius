@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { eventDateBlock, formatEventWhen } from "./format";
+import { eventDateBlock, formatEventWhen, runningRangeStart } from "./format";
 import type { Event } from "@/data/events";
 
 const base = (over: Partial<Event>): Event =>
@@ -128,5 +128,45 @@ describe("eventDateBlock", () => {
     // The date plate still states the factual range START.
     expect(block.month).toBe("JAN");
     expect(block.day).toBe("29");
+  });
+});
+
+describe("runningRangeStart", () => {
+  // Site audit, November 25, 2026: "Open Abstract Studio" read "through Dec 8"
+  // over a "TUE SEP 8" date plate. The first day of a range in its run is not
+  // the day to print as the event's date.
+  const exhibit = base({ starts_at: "2026-09-08T16:00:00.000Z", ends_at: "2026-12-09T04:59:59.000Z" });
+
+  it("names the first day of a range that has opened and has not closed", () => {
+    expect(runningRangeStart(exhibit, new Date("2026-11-25T15:00:00.000Z"))).toBe("Sep 8");
+    expect(runningRangeStart(exhibit, new Date("2026-09-08T16:00:00.000Z"))).toBe("Sep 8");
+  });
+
+  it("leaves a range that opens later alone, because opening day is a real date", () => {
+    expect(runningRangeStart(exhibit, new Date("2026-09-01T15:00:00.000Z"))).toBeNull();
+  });
+
+  it("returns null once the range has closed", () => {
+    expect(runningRangeStart(exhibit, new Date("2026-12-09T04:59:59.000Z"))).toBeNull();
+  });
+
+  it("returns null for timed and all-day events that are under way", () => {
+    const now = new Date("2026-01-29T18:00:00.000Z");
+    expect(runningRangeStart(base({}), now)).toBeNull();
+    expect(runningRangeStart(base({ is_all_day: true, ends_at: "2026-02-03T05:00:00.000Z" }), now)).toBeNull();
+  });
+
+  it("returns null for an invalid clock", () => {
+    expect(runningRangeStart(exhibit, new Date("invalid"))).toBeNull();
+  });
+
+  it("answers only where the time slot prints the closing date", () => {
+    // A row whose time slot reads "Time not listed" still needs its date.
+    const now = new Date("2026-11-25T15:00:00.000Z");
+    const dateOnly = base({ ...exhibit, published_time: "date" });
+    expect(eventDateBlock(dateOnly).time).toBe("Time not listed");
+    expect(runningRangeStart(dateOnly, now)).toBeNull();
+    expect(eventDateBlock(exhibit).time).toBe("through Dec 8");
+    expect(runningRangeStart(exhibit, now)).toBe("Sep 8");
   });
 });

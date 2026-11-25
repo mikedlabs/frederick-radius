@@ -7,7 +7,7 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventReasons } from "@/lib/event-reasons";
 import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
 import { communicationAccessLabels } from "@/lib/events/communication-access";
-import { eventDateBlock } from "@/lib/events/format";
+import { eventDateBlock, runningRangeStart } from "@/lib/events/format";
 import { formatDistance } from "@/lib/geo";
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -94,6 +94,9 @@ export default function EventPosterCard({ event, visual, venuePhotos, allowVenue
   const artwork = visibleVisual?.presentation === "artwork" ? visibleVisual : null;
   const photoSrc = photo ? eventPosterPhotoSrc(photo.src) : null;
   const date = eventDateBlock(event);
+  // A range in its run prints "through <end>" as its time, so its first day
+  // is not the day to show. EventCard applies the same rule to its rows.
+  const rangeStart = cardNow ? runningRangeStart(event, cardNow) : null;
   const cat = CATEGORY_BY_SLUG[event.category];
   const categoryLabel = cat?.name ?? (event.category || "Event");
   const venueLabel = eventDecisionLocation(event);
@@ -147,6 +150,8 @@ export default function EventPosterCard({ event, visual, venuePhotos, allowVenue
       weekday={date.weekday}
       month={date.month}
       day={date.day}
+      showDate={!rangeStart}
+      dateLabel={rangeStart ? `Started ${rangeStart}` : undefined}
       startTime={date.time}
       timing={timingText}
       category={concise ? undefined : categoryLabel}

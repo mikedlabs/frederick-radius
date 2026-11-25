@@ -4,8 +4,10 @@ import { installSavedLocks } from "../../../tests/helpers/saved-locks";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { renderToString } from "react-dom/server";
 import ItineraryButton from "./ItineraryButton";
-import SaveButton from "./SaveButton";
+import SaveButton, { SAVE_ICON_CLASS } from "./SaveButton";
+import { LABELED_EVENT_ACTION_CLASS } from "@/components/event/EventActions";
 import { useSavedList } from "@/hooks/useSaved";
 
 const mocks = vi.hoisted(() => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
@@ -38,7 +40,7 @@ describe("Event detail save uses the Saved tab's device store", () => {
     await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); localStorage.clear();
   });
   async function render(fullPage = false) {
-    await act(async () => root.render(<><SavedSnapshot /><ItineraryButton eventId={EVENT} label="Add Donut Thursday to itinerary" />{fullPage && <SaveButton refType="event" refId={EVENT} label="Save Donut Thursday" />}</>));
+    await act(async () => root.render(<><SavedSnapshot /><ItineraryButton eventId={EVENT} eventName="Donut Thursday" />{fullPage && <SaveButton refType="event" refId={EVENT} label="Save Donut Thursday" />}</>));
   }
   function button(index = 0) { return container.querySelectorAll<HTMLButtonElement>("button")[index]; }
   function saved() { return JSON.parse(container.querySelector("output")!.textContent!); }
@@ -52,7 +54,7 @@ describe("Event detail save uses the Saved tab's device store", () => {
     const committed = localStorage.getItem(KEY);
     expect(JSON.parse(committed!)).toEqual(saved());
     expect(button().getAttribute("aria-pressed")).toBe("true");
-    expect(button().getAttribute("aria-label")).toBe("Remove Donut Thursday from Saved");
+    expect(button().getAttribute("aria-label")).toBe("Saved Donut Thursday");
     expect(mocks.toast.success).toHaveBeenCalled();
     await act(async () => root.render(null));
     await render();
@@ -180,7 +182,9 @@ describe("Event detail save uses the Saved tab's device store", () => {
     expect(button().disabled).toBe(true);
     expect(button().getAttribute("aria-busy")).toBe("true");
     expect(button().getAttribute("aria-pressed")).toBe("false");
-    expect(button().getAttribute("aria-label")).toBe("Saving Donut Thursday");
+    // aria-busy carries the pending write. The name keeps the state the
+    // visitor can see until the device confirms the change.
+    expect(button().getAttribute("aria-label")).toBe("Save Donut Thursday");
     expect(saved()).toEqual([]);
     expect(mocks.toast.success).not.toHaveBeenCalled();
     await click();
@@ -235,6 +239,107 @@ describe("Event detail save uses the Saved tab's device store", () => {
     expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
     expect(button().getAttribute("aria-pressed")).toBe("true");
     expect(mocks.toast.error).toHaveBeenLastCalledWith("Could not remove from Saved", expect.not.objectContaining({ action: expect.anything() }));
+  });
+
+  async function renderShape(appearance: "boxed" | "plain" | "labeled") {
+    await act(async () => root.render(<><SavedSnapshot /><ItineraryButton eventId={EVENT} eventName="Donut Thursday" appearance={appearance} /></>));
+  }
+
+  it("prints Save, then Saved, beside the bookmark in the labeled shape", async () => {
+    // Site audit, November 25, 2026: the event sheet's only Save control was
+    // a 36px bookmark with no visible word.
+    await renderShape("labeled");
+    expect(button().textContent).toBe("Save");
+    expect(button().getAttribute("aria-label")).toBe("Save Donut Thursday");
+    expect(button().getAttribute("data-save-ref")).toBe(`event:${EVENT}`);
+    await click();
+    expect(saved()).toEqual([{ type: "event", id: EVENT, saved_at: expect.any(String) }]);
+    expect(button().textContent).toBe("Saved");
+    expect(button().getAttribute("aria-pressed")).toBe("true");
+    // The visible word stays inside the accessible name.
+    expect(button().getAttribute("aria-label")).toBe("Saved Donut Thursday");
+    await click();
+    expect(button().textContent).toBe("Save");
+    expect(saved()).toEqual([]);
+  });
+
+  it("keeps the labeled word steady while a save is queued, and never claims Saved early", async () => {
+    // Review, November 25, 2026: "Removing…" was wider than "Saved" and pushed
+    // Share to a second line at 390px while another tab held the lock.
+    await renderShape("labeled");
+    const release = locks.hold();
+    await click();
+    expect(button().textContent).toBe("Save");
+    expect(button().getAttribute("aria-busy")).toBe("true");
+    expect(button().getAttribute("aria-pressed")).toBe("false");
+    expect(button().getAttribute("aria-label")).toBe("Save Donut Thursday");
+    await act(async () => { release(); });
+    expect(button().textContent).toBe("Saved");
+    const removal = locks.hold();
+    await click();
+    expect(button().textContent).toBe("Saved");
+    expect(button().getAttribute("aria-busy")).toBe("true");
+    expect(button().getAttribute("aria-label")).toBe("Saved Donut Thursday");
+    await act(async () => { removal(); });
+    expect(button().textContent).toBe("Save");
+    expect(saved()).toEqual([]);
+    await act(async () => root.render(null));
+    localStorage.setItem(KEY, "{unfinished");
+    await renderShape("labeled");
+    expect(button().textContent).toBe("Unavailable");
+    expect(button().disabled).toBe(true);
+  });
+
+  it("keeps the icon shapes wordless and gives every shape a 44px target class", async () => {
+    await renderShape("boxed");
+    expect(button().textContent).toBe("");
+    expect(button().className).toMatch(/\btap-44\b/);
+    expect(button().className).toMatch(/\bborder\b/);
+    await renderShape("plain");
+    expect(button().textContent).toBe("");
+    expect(button().getAttribute("aria-label")).toBe("Save Donut Thursday");
+    // An unboxed glyph on a real 44px box, for a list of rows.
+    expect(button().className).toMatch(/\bh-11\b/);
+    expect(button().className).toMatch(/\bw-11\b/);
+    expect(button().className).not.toMatch(/\bborder\b/);
+    await renderShape("labeled");
+    expect(button().className).toMatch(/\bmin-h-11\b/);
+    expect(button().className).toMatch(/\btap-44-y\b/);
+  });
+
+  it("reserves the width of Saved in the labeled shape, so the action row keeps its wrap", async () => {
+    await renderShape("labeled");
+    const word = button().querySelector("[data-save-word]")!;
+    expect(word.textContent).toBe("Save");
+    // A hidden "Saved" shares the word's grid cell, so Save and Saved are one width.
+    expect(word.className).toContain("after:content-['Saved']");
+    expect(word.className).toContain("after:invisible");
+    expect(word.firstElementChild!.className).toMatch(/\bcol-start-1\b.*\brow-start-1\b/);
+  });
+
+  it("shares its icon and labeled class strings with SaveButton and EventActions", async () => {
+    await renderShape("plain");
+    for (const token of SAVE_ICON_CLASS.split(" ")) expect(button().classList.contains(token)).toBe(true);
+    await renderShape("labeled");
+    for (const token of LABELED_EVENT_ACTION_CLASS.split(" ")) expect(button().classList.contains(token)).toBe(true);
+  });
+
+  it("does not claim Saved state unavailable before the device store is read", () => {
+    // Review, November 25, 2026: the static /events HTML named every row's
+    // Save "Saved state unavailable for <title>" until hydration.
+    for (const appearance of ["boxed", "plain", "labeled"] as const) {
+      const host = document.createElement("div");
+      host.innerHTML = renderToString(<ItineraryButton eventId={EVENT} eventName="Donut Thursday" appearance={appearance} />);
+      const placeholder = host.querySelector("button")!;
+      expect(placeholder.outerHTML).not.toMatch(/unavailable/i);
+      expect(placeholder.getAttribute("aria-hidden")).toBe("true");
+      expect(placeholder.getAttribute("tabindex")).toBe("-1");
+      expect(placeholder.disabled).toBe(true);
+      expect(placeholder.hasAttribute("title")).toBe(false);
+      expect(placeholder.hasAttribute("aria-label")).toBe(false);
+      expect(placeholder.getAttribute("data-save-ref")).toBe(`event:${EVENT}`);
+      expect(placeholder.textContent).toBe(appearance === "labeled" ? "Save" : "");
+    }
   });
 
   it("reports unsupported coordination without changing readable event saves", async () => {

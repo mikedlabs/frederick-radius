@@ -19,7 +19,9 @@ type EventActionsEvent = {
 };
 
 const ICON = "grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-95";
-const LABELED =
+/** The labeled action shape. ItineraryButton's labeled Save shares it, so the
+ * three buttons in the event sheet stay one set. */
+export const LABELED_EVENT_ACTION_CLASS =
   "tap-44-y inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-3 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]";
 
 export default function EventActions({
@@ -121,7 +123,7 @@ export default function EventActions({
           onClick={addToCalendar}
           aria-label={`Add ${event.title} to calendar`}
           title="Add to calendar"
-          className={labeled ? LABELED : ICON}
+          className={labeled ? LABELED_EVENT_ACTION_CLASS : ICON}
           style={{
             color: labeled ? "var(--app-ink-2)" : "var(--app-ink-3)",
             borderColor: labeled ? "var(--app-border)" : undefined,
@@ -137,7 +139,7 @@ export default function EventActions({
           onClick={share}
           aria-label={copied ? "Link copied" : `Share ${event.title}`}
           title={copied ? "Link copied" : "Share"}
-          className={labeled ? LABELED : ICON}
+          className={labeled ? LABELED_EVENT_ACTION_CLASS : ICON}
           style={{
             color: copied
               ? "var(--app-positive)"
