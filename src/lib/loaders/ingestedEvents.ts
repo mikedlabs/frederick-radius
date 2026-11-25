@@ -33,6 +33,7 @@ import {
 } from "@/lib/events/attendance";
 import { classifyEvent } from "@/lib/events/classify";
 import { storedCopyCategory } from "@/lib/events/county-category";
+import { reviewedVenueNameForAddress } from "@/lib/events/venue-resolver";
 import { cleanEventSlug } from "@/lib/events/normalize";
 import { FREDERICK_COUNTY_BBOX, type LngLat } from "@/lib/geo";
 import { resolveFrederickMunicipality } from "@/lib/location";
@@ -256,7 +257,12 @@ function occurrenceToCard(
     is_recurring: isRecurring,
     // Cancelled dates are lifecycle updates, never promised upcoming dates.
     recurrence_text: isRecurring ? `${scheduledCount} upcoming dates` : undefined,
-    venue_name: attendance_mode === "online" ? "Online" : (s.venueName ?? ""),
+    // A county, city or Mount Airy feed that prints only a street address gets
+    // its reviewed venue name, the same rule the live feeds use. The slug above
+    // was already computed, so shared links do not move.
+    venue_name: attendance_mode === "online"
+      ? "Online"
+      : (reviewedVenueNameForAddress({ venue_name: s.venueName, address: s.address, source }) ?? s.venueName ?? ""),
     address: attendance_mode === "online" ? "" : (s.address ?? ""),
     geom,
     municipality,

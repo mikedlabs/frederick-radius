@@ -662,7 +662,10 @@ const cachedAssemble = unstable_cache(
   // hours late), an 11:59 PM or 12:59 AM placeholder end is no end, county
   // and campus rows take title-only categories, and standing-program
   // publishers rank as programs. Cached times, categories and order change.
-  ["unified-events-v40"],
+  // v41: county and Mount Airy rows that named only a street address carry
+  // their reviewed venue name, and library programs are free unless their
+  // own text states a price. Cached venue names and free flags change.
+  ["unified-events-v41"],
   // Tagged "events" (isr-1) so the daily ingest crons can revalidateTag the
   // assembled /today + /events pages on demand the moment fresh rows land,
   // instead of fresh data waiting out the cache TTL + a cold-miss request.
