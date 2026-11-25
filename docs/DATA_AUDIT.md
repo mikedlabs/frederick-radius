@@ -98,7 +98,7 @@ but need a PIA request to the county health dept — owner letter, not code.
 - **SeeClickFix 311** — `seeclickfix.ts` (keyless, 300).
 - **FirstEnergy/Potomac Edison outages** — `firstenergy.ts` (public report.js, 600).
 - **FAA airport status** — `faa-airports.ts` (nasstatus.faa.gov, 120); **METARs** via `aviationweather.ts` (900).
-- **Local news** — `news.ts` (Google News RSS, 3600), `local-news.ts` (1800), `local-news-sources.ts` (Patch/FNP/MD Matters registry); `reddit.ts` (r/frederickmd, 900).
+- **Local news** — `news.ts` (Google News RSS, 3600, headlines from the past 7 days only), `local-news.ts` (1800), `local-news-sources.ts` (Patch/FNP/MD Matters registry); `reddit.ts` (r/frederickmd, 900).
 - **Parking** — curated `parking-garages.ts` (12 decks); `parking-live.ts` (`unstable_cache` 60s — **no real live feed exists**); `/api/cron/parking-alerts` is implemented but deliberately unscheduled until a licensed feed is wired; `/api/cron/parking-forecast` (30 min, LIVE — predicts crunch from event starts, no external feed); ParkMobile deep links in `deeplinks.ts`.
 - **Feed health** — `feed-registry.ts` (11 keyed + 11 keyless feeds catalog, powers /admin/data-health), `feed-snapshot.ts` + Supabase `feed_snapshots`; `/api/cron/link-health` is implemented but unscheduled until recurring link checks are explicitly enabled; `alerts.ts` (internal admin alerting).
 
@@ -273,3 +273,10 @@ Repo inspection (`src/lib/integrations/`, `src/data/local-news-sources.ts`) show
 ## Cross-cutting legal notes
 
 Government feeds (DNR, FAA, SWPC, CHART, county/city GIS, AgendaCenter) are public records — attribute and link. The three that need care: eBird (recheck Cornell API terms; no bulk redistribution), iNaturalist (per-record CC licensing), Google Pollen (Maps Platform display terms). Never reproduce FNP's inspection compilations or LexisNexis crime-map data.
+
+**Field Notes check window.** A deal or happy-hour check counts as current
+for `FIELD_NOTE_CHECK_WINDOW_DAYS` (60) days after its recorded date, and a
+date more than two days ahead of the clock counts as unrecorded. Only a
+current check may draw a verified badge or use the word "verified" on
+/deals, /happy-hour and Today's Specials. A summary line says "verified"
+only when every row it covers is current.
