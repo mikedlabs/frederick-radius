@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { splitLocation } from "./ical-live";
+import { jsonArrayFeedRowInstants, splitLocation } from "./ical-live";
 
 describe("splitLocation venue sanity", () => {
   it("rejects a location field that is actually a description dump", () => {
@@ -47,6 +47,17 @@ const DFP_FEED: FeedSpec = {
   format: "vibemap",
   default_venue: "Downtown Frederick",
   default_geom: { lng: -77.4109, lat: 39.4137 },
+  default_municipality: "frederick",
+  default_category: "community",
+};
+
+const FCC_FEED: FeedSpec = {
+  source: "fcc",
+  source_label: "Frederick Community College",
+  url: "https://api.calendar.moderncampus.net/pubcalendar/edb420ae-0d61-4c0c-90af-26e2dfad9adf/events",
+  format: "moderncampus",
+  default_venue: "Frederick Community College",
+  default_geom: { lng: -77.4392, lat: 39.4568 },
   default_municipality: "frederick",
   default_category: "community",
 };
@@ -175,6 +186,49 @@ describe("official-feed classification and venue corrections", () => {
     expect(feedCategory(DFP_FEED, "Pub Crawl", "Starts downtown at 7.")).toBe("bar");
     expect(feedCategory(DFP_FEED, "Fall Beer Release", "New seasonal pours.")).toBe("brewery");
     expect(feedCategory(DFP_FEED, "Linganore Wine Weekend", "Tastings all afternoon.")).toBe("winery");
+  });
+
+  it("does not read College Park or a career fair as a park or a market", () => {
+    // Production categories on Nov 9, 2026 were Parks & trails and Markets.
+    expect(
+      feedCategory(
+        FCC_FEED,
+        "On Campus Recruitment UMD, College Park Biocomputational Engineering",
+        "Meet a transfer representative in the lobby.",
+      ),
+    ).toBe("community");
+    expect(feedCategory(FCC_FEED, "Public Safety Career and College Fair", "")).toBe("community");
+    expect(feedCategory(DFP_FEED, "Fall Job Fair", "Employers from across the county.")).toBe("community");
+    // A real market and a real park walk keep their categories.
+    expect(feedCategory(DFP_FEED, "Holiday Makers Market", "Local vendors.")).toBe("market");
+    expect(feedCategory(DFP_FEED, "Baker Park Bird Walk", "Meet at the bandshell.")).toBe("outdoors");
+  });
+
+  it("classifies a campus row from its title, not from building names in the description", () => {
+    // "Linganore Hall" made information sessions wineries, and the
+    // "Athletics Center" made a headshot session a sports event.
+    expect(
+      feedCategory(FCC_FEED, "Nursing Information Session", "Linganore Hall (L Building), Room L-203."),
+    ).toBe("community");
+    expect(
+      feedCategory(FCC_FEED, "Free Professional Headshots for FCC Students", "Athletics Center lobby."),
+    ).toBe("community");
+    // The title still carries a real category when it states one.
+    expect(feedCategory(FCC_FEED, "FCC Chamber Ensemble Recital", "Visual & Performing Arts Center.")).toBe("music");
+    expect(feedCategory(FCC_FEED, "Fall Jazz Concert", "Visual & Performing Arts Center.")).toBe("music");
+    // A venue calendar keeps reading its descriptions.
+    expect(feedCategory(DFP_FEED, "Friday on the Creek", "Live music with a local band.")).toBe("music");
+  });
+
+  it("reads a musical ensemble as music without reading a theater company's name as one", () => {
+    const HOOD_FEED: FeedSpec = { ...FCC_FEED, source: "hood", source_label: "Hood College" };
+    expect(feedCategory(HOOD_FEED, "Hood String Ensemble: “The Universal Vibe\"", "")).toBe("music");
+    // Music is matched before theater, so a bare "ensemble" would have
+    // filed every Maryland Ensemble Theatre listing under music.
+    expect(
+      feedCategory(DFP_FEED, "Death and the Girl", "Presented by Maryland Ensemble Theatre on the main stage."),
+    ).not.toBe("music");
+    expect(feedCategory(DFP_FEED, "Maryland Ensemble Theatre: Oh Crit!", "")).toBe("theater");
   });
 
   it("does not find the word art inside Partner Hours", () => {
@@ -402,5 +456,74 @@ describe("parseVibemapEvents", () => {
     expect(e.placement).toBeUndefined();
     expect(e.geom).toEqual(DFP_FEED.default_geom);
     expect(e.url).toBe("https://downtownfrederick.org/vm-event/open-mic/");
+  });
+});
+
+// ── Modern Campus (FCC) timezone handling ───────────────────────────
+
+describe("jsonArrayFeedRowInstants", () => {
+  const eastern = (iso: string | null) =>
+    iso === null
+      ? null
+      : new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/New_York",
+          weekday: "short",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(iso));
+
+  // Rows copied from the live FCC feed on Nov 9, 2026 (standard time).
+  it("reads Modern Campus wall times as UTC in standard time", () => {
+    const night = jsonArrayFeedRowInstants("moderncampus", {
+      title: "Dual Enrollment Information Night",
+      startDatetime: "2026-11-09T23:30",
+      endDatetime: "2026-11-10T01:00",
+    });
+    expect(night.startsAtISO).toBe("2026-11-09T23:30:00.000Z");
+    expect(night.rawEndsAtISO).toBe("2026-11-10T01:00:00.000Z");
+    // An information night runs 6:30 to 8:00 PM, not 11:30 PM to 1:00 AM.
+    expect(eastern(night.startsAtISO)).toBe("Mon 6:30 PM");
+    expect(eastern(night.rawEndsAtISO)).toBe("Mon 8:00 PM");
+
+    const recruitment = jsonArrayFeedRowInstants("moderncampus", {
+      title: "On Campus Recruitment UMD, College Park Biocomputational Engineering",
+      startDatetime: "2026-11-09T15:00",
+      endDatetime: "2026-11-09T18:00",
+    });
+    // Production showed this 10 AM to 1 PM table as 3:00 PM to 6:00 PM.
+    expect(eastern(recruitment.startsAtISO)).toBe("Mon 10:00 AM");
+    expect(eastern(recruitment.rawEndsAtISO)).toBe("Mon 1:00 PM");
+  });
+
+  it("reads Modern Campus wall times as UTC in daylight time", () => {
+    // FCC's own registration page lists College Night at 6:00 PM to 7:30 PM
+    // Eastern Daylight Time.
+    const collegeNight = jsonArrayFeedRowInstants("moderncampus", {
+      title: "College Night",
+      startDatetime: "2026-10-07T22:00",
+      endDatetime: "2026-10-07T23:30",
+    });
+    expect(eastern(collegeNight.startsAtISO)).toBe("Wed 6:00 PM");
+    expect(eastern(collegeNight.rawEndsAtISO)).toBe("Wed 7:30 PM");
+  });
+
+  it("keeps reading Presence rows from their explicit UTC fields", () => {
+    const row = jsonArrayFeedRowInstants("presence", {
+      eventName: "Senior Formal",
+      startDateTimeUtc: "2026-11-14T00:00:00Z",
+      endDateTimeUtc: "2026-11-14T03:00:00Z",
+      // A Modern Campus field on a Presence row must be ignored.
+      startDatetime: "2026-11-13T12:00",
+    });
+    expect(row.startsAtISO).toBe("2026-11-14T00:00:00.000Z");
+    expect(row.rawEndsAtISO).toBe("2026-11-14T03:00:00.000Z");
+  });
+
+  it("returns null for a date-only or missing start", () => {
+    // The art-gallery exhibition row carries only startDate, so it has no
+    // clock time to convert and the fetcher skips it.
+    const row = jsonArrayFeedRowInstants("moderncampus", { title: "Exhibition", startDate: "2026-11-07" });
+    expect(row.startsAtISO).toBeNull();
+    expect(row.rawEndsAtISO).toBeNull();
   });
 });

@@ -244,8 +244,22 @@ async function approveNativeAutomatedPrRuns(options) {
           associationState: associationState(run, candidate.identity),
           associationCount: Array.isArray(run.pull_requests) ? run.pull_requests.length : null })) });
     };
+    const sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+    // Run ID -> the attempt this script approved and GitHub accepted with 201.
+    const approvedAttempts = new Map();
+    // For about a second after GitHub restarts a run this script approved, the
+    // run's list row and its detail can report different attempts. Only that
+    // case earns a second look: the same run ID and check suite, one read on
+    // the approved attempt and the other on the next one.
+    const readsStraddleRestart = (list, detail) => {
+      const approved = approvedAttempts.get(list.id);
+      return approved !== undefined && detail.id === list.id && detail.check_suite_id === list.check_suite_id
+        && detail.run_attempt !== list.run_attempt
+        && [list.run_attempt, detail.run_attempt].every((attempt) => attempt === approved || attempt === approved + 1);
+    };
     const latest = async (workflow, discovery = false, batchGuard = false) => {
       let pinnedIdentity;
+      let restartReadWaits = 0;
       // Listing responses can omit PR associations even when the individual
       // run response has them. The list discovers run identities; the newest
       // run's detail must establish its exact PR. Both endpoints must agree on
@@ -256,6 +270,17 @@ async function approveNativeAutomatedPrRuns(options) {
         const response = (await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: workflow.id,
           branch, head_sha: headSha, event: "pull_request", exclude_pull_requests: false, per_page: 100 })).data;
         const rows = response.workflow_runs;
+        // GitHub may not list a run for a few seconds after creating it. On
+        // 2026-11-21 and 2026-11-22 the first list read came 4 to 8 seconds
+        // after both gates were created and failed the check below, before any
+        // approval. An empty list during discovery is noted on the receipt and
+        // read again inside the existing four-read budget. A list that has
+        // rows must still be complete on that read.
+        if (discovery && read < 4 && Array.isArray(rows) && rows.length === 0) {
+          noteAssociations(workflow, "discovery-empty", rows, read);
+          await sleep(4000);
+          continue;
+        }
         requireThat(Array.isArray(rows) && safeId(response.total_count) && response.total_count === rows.length
           && rows.length < 100 && new Set(rows.map((row) => row.id)).size === rows.length,
         `Missing, ambiguous or incomplete native runs for ${workflow.file}. Manual owner approval is required.`);
@@ -281,6 +306,19 @@ async function approveNativeAutomatedPrRuns(options) {
         const latestDetail = (await github.rest.actions.getWorkflowRun({ owner, repo, run_id: latestList.id })).data;
         noteAssociations(workflow, discovery ? "discovery-detail" : "pre-approval-detail", [latestDetail], read);
         validateRunSource(latestDetail, workflow, candidate.identity);
+        // From 2026-11-11 to 2026-11-24 a late read on one side of a restart
+        // stopped 5 of the 40 approval jobs here, four of them after both gates
+        // were approved and went on to pass. Read both again, at most three
+        // times 750 ms apart. This only waits: the reads must still agree before
+        // anything is accepted, and the checks below then judge the agreed run.
+        if (readsStraddleRestart(latestList, latestDetail) && restartReadWaits < 3) {
+          restartReadWaits += 1;
+          receipt.restartReadWaits = (receipt.restartReadWaits || 0) + 1;
+          // The list may now show the next attempt, and this is the same read.
+          pinnedIdentity = undefined; read -= 1;
+          await sleep(750);
+          continue;
+        }
         requireThat(latestDetail.id === latestList.id && latestDetail.run_attempt === latestList.run_attempt
           && latestDetail.check_suite_id === latestList.check_suite_id,
         "Independent native run ID, attempt or check suite changed during discovery.");
@@ -299,7 +337,7 @@ async function approveNativeAutomatedPrRuns(options) {
         }
         requireThat(discovery && read < 4,
           "Native run PR association metadata remains empty; exact owner-reviewed native runs remain held.");
-        await (options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms))))(4000);
+        await sleep(4000);
       }
     };
     const pinned = [];
@@ -313,8 +351,6 @@ async function approveNativeAutomatedPrRuns(options) {
     for (const { run } of pinned) requireThat(heldForApproval(run) || alreadyRunningOrPassed(run),
       "An existing native gate failed, was cancelled, skipped or has an uncertain state. Owner attention is required.");
     const progressed = new Set(pinned.filter(({ run }) => alreadyRunningOrPassed(run)).map(({ run }) => run.id));
-    // Run ID -> the attempt this script approved and GitHub accepted with 201.
-    const approvedAttempts = new Map();
     // GitHub restarts an approved action_required run as the next attempt of
     // the same run ID and check suite (run_attempt 1 becomes 2, as observed on
     // run 42775375255). That restart is the expected result of our own write,
@@ -413,7 +449,7 @@ async function approveNativeAutomatedPrRuns(options) {
         if (alreadyRunningOrPassed(after)) break;
         requireThat(heldForApproval(after) && observation < 3,
           "Approval transition is not independently verified for the exact native run and attempt. Do not retry automatically.");
-        await (options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms))))(750);
+        await sleep(750);
       }
       write.transitionVerified = true;
       progressed.add(run.id);

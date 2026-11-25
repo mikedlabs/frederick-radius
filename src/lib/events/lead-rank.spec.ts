@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isRoutineProgram,
+  isPublisherProgram,
   eventLeadTier,
   eventProminence,
   compareForLead,
@@ -51,6 +52,95 @@ describe("eventLeadTier", () => {
     const storytime = ev({ title: "Family Storytime", hero_image: "thumb.jpg", starts_at: "2026-06-20T14:00:00Z" });
     const carnival = ev({ title: "Firemen's Carnival", starts_at: "2026-06-20T23:00:00Z" });
     expect([storytime, carnival].sort(compareForLead)[0]).toBe(carnival);
+  });
+});
+
+// Titles, feed ids and links below are copied from the production board on
+// Nov 9, 2026, when 774 of 975 listed events ranked as draws.
+describe("isPublisherProgram", () => {
+  it("treats a program publisher's ordinary rows as programs", () => {
+    expect(isPublisherProgram({ source: "fcc", title: "On Campus Recruitment UMD, College Park Biocomputational Engineering" })).toBe(true);
+    expect(isPublisherProgram({ source: "fcc", title: "Hood College: Instant Decision Day" })).toBe(true);
+    expect(isPublisherProgram({ source: "mount-st-marys", title: "Club Tennis Practice" })).toBe(true);
+    expect(isPublisherProgram({ source: "county", title: "Line Dance @ Urbana" })).toBe(true);
+    expect(isPublisherProgram({ source: "city-frederick", title: "Cardio Sculpt" })).toBe(true);
+    expect(isPublisherProgram({ source: "fcpl", title: "Meet-a-Book Monday (Ages 5-10)" })).toBe(true);
+    expect(isPublisherProgram({ source: "msd", title: "Noon Dismissal for Students" })).toBe(true);
+  });
+
+  it("keeps the same publishers' outings as draws", () => {
+    expect(isPublisherProgram({ source: "mount-st-marys", title: "Mount Men’s Basketball vs. Drexel" })).toBe(false);
+    expect(isPublisherProgram({ source: "fcpl", title: "Celtic Harp Trio" })).toBe(false);
+    expect(isPublisherProgram({ source: "fcpl", title: "Christmas in Thurmont: Holiday Sing-along" })).toBe(false);
+    expect(isPublisherProgram({ source: "county", title: "Thurmont Community Ambulance Service-Gun Dinner" })).toBe(false);
+    expect(isPublisherProgram({ source: "county", title: "FSK Post No. 11 Veterans Day Ceremony" })).toBe(false);
+    expect(isPublisherProgram({ source: "fcc", title: "FCC Chamber Ensemble Recital" })).toBe(false);
+    expect(isPublisherProgram({ source: "hood", title: "Hood String Ensemble, Fall 2026 Concert" })).toBe(false);
+    expect(isPublisherProgram({ source: "elc", title: "Kris Kringle Parade" })).toBe(false);
+  });
+
+  it("does not let an outing word rescue a class, a rehearsal or an admissions errand", () => {
+    expect(isPublisherProgram({ source: "city-frederick", title: "Musical Theatre Class" })).toBe(true);
+    expect(isPublisherProgram({ source: "hood", title: "Concert Band Rehearsal" })).toBe(true);
+    expect(isPublisherProgram({ source: "fcc", title: "Campus Tour" })).toBe(true);
+    expect(isPublisherProgram({ source: "fcc", title: "Dual Enrollment Information Night" })).toBe(true);
+  });
+
+  it("treats both congregation calendars the same way", () => {
+    expect(isPublisherProgram({ source: "elc", title: "Wednesday Evening Dinners" })).toBe(true);
+    expect(isPublisherProgram({ source: "isf", title: "Community Potluck" })).toBe(true);
+    expect(isPublisherProgram({ source: "elc", title: "Historic Houses of Worship Holiday Tour" })).toBe(false);
+  });
+
+  it("separates Delaplaine classes from exhibitions by the registrar's course link", () => {
+    expect(isPublisherProgram({
+      source: "delaplaine",
+      title: "Pen and Ink",
+      source_url: "https://delaplaine.org/event/27-2-dr06/",
+    })).toBe(true);
+    expect(isPublisherProgram({
+      source: "delaplaine",
+      title: "Advanced Ceramics Studio",
+      source_url: "https://delaplaine.org/event/27-2-ce07/",
+    })).toBe(true);
+    expect(isPublisherProgram({
+      source: "delaplaine",
+      title: "Johan Lowie - Silent Witness",
+      source_url: "https://delaplaine.org/event/johan-lowie-silent-witness/",
+    })).toBe(false);
+    expect(isPublisherProgram({
+      source: "delaplaine",
+      title: "Art at Noon: Felix Gonzalez-Torres at Glenstone",
+      source_url: "https://delaplaine.org/event/art-at-noon-felix-gonzalez-torres-at-glenstone/",
+    })).toBe(false);
+  });
+
+  it("leaves venue, downtown and fire company calendars alone", () => {
+    expect(isPublisherProgram({ source: "dfp", title: "Board Game Night" })).toBe(false);
+    expect(isPublisherProgram({ source: "venue-extract", title: "Pour House Trivia" })).toBe(false);
+    expect(isPublisherProgram({ source: "fcvfra", title: "Vigilant Hose Co Friday Bingo" })).toBe(false);
+    expect(isPublisherProgram({ source: "monocacy", title: "Food Truck: D's Delights" })).toBe(false);
+    // A shape with no feed id keeps today's behavior.
+    expect(isPublisherProgram({ title: "Club Tennis Practice" })).toBe(false);
+  });
+
+  it("ranks an evening show ahead of an earlier campus table", () => {
+    const table = ev({
+      title: "Frederick Health Hospital Recruitment Table",
+      source: "fcc",
+      category: "community",
+      starts_at: "2026-11-10T15:00:00Z",
+    });
+    const show = ev({
+      title: "the Whippits - Size Doesn't Matter Tour! Special Tuesday Punk Show!",
+      source: "venue-extract",
+      category: "music",
+      starts_at: "2026-11-11T00:30:00Z",
+    });
+    expect(eventLeadTier(table)).toBe(1);
+    expect(eventLeadTier(show)).toBe(0);
+    expect([table, show].sort(compareForLead)[0]).toBe(show);
+    expect(pickLeadEvent([table, show])).toBe(show);
   });
 });
 

@@ -151,8 +151,11 @@ export async function GET(request: NextRequest) {
       // Both Map and global Find use the same durable archive contract. A
       // resolved snapshot may still be degraded because the archive is stale,
       // missing, or timed out; that state is not a healthy empty calendar.
+      // Both read the shared envelope that Events reads, so a search does not
+      // depend on a fresh database read finishing inside the budget.
       const snapshot = await loadEventArchiveSnapshot(new Date(), {
         timeoutMs: EVENT_BROWSE_SNAPSHOT_TIMEOUT_MS,
+        cache: true,
       });
       const events = searchEventsFromSnapshot(snapshot);
       eventCoverage = events.coverage;

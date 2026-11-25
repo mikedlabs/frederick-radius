@@ -9,7 +9,7 @@ import {
  * fix (#436, applied to events). County/municipal feeds publish a mix of
  * real public events, board meetings, trash reminders, facility rentals,
  * social-page artifacts, and cancelled items all as "events"; the category
- * is blank for the county feed, so the old `isCivicEvent` (category ===
+ * was blank for the county feed then, so the old `isCivicEvent` (category ===
  * "civic") couldn't catch any of them and they leaked into "What's on".
  *
  * Classify by TITLE only (descriptions are noise — matching them flagged

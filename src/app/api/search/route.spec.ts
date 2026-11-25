@@ -116,9 +116,10 @@ describe("GET /api/search map fast path", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    // The shared envelope, not a database read per search.
     expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledWith(
       expect.any(Date),
-      { timeoutMs: 2500 },
+      { timeoutMs: 2500, cache: true },
     );
     expect(body.results).toContainEqual(
       expect.objectContaining({
@@ -312,7 +313,7 @@ describe("GET /api/search map fast path", () => {
 
   it.each(["Schifferstadt", "public restroom", "coffee events tonight", "public restroom events tonight"])("keeps mixed or event-shaped global query %s on the archive path", async query => {
     await GET(request(query, "global"));
-    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledExactlyOnceWith(expect.any(Date), { timeoutMs: 2500 });
+    expect(mocks.loadEventArchiveSnapshot).toHaveBeenCalledExactlyOnceWith(expect.any(Date), { timeoutMs: 2500, cache: true });
   });
 
   it("waits for the archive and returns its matching event for an otherwise unanswered title", async () => {

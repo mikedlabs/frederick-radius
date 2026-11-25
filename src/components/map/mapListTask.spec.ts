@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   activeMapTask,
   parseMapTaskArea,
@@ -497,6 +497,23 @@ describe("committed task area and documented coffee ranking", () => {
     expect(eventSource.features.map(f => f.properties.id)).toEqual(["inside-event"]);
     expect(rows.filter(r => r.kind === "event").map(r => r.event.slug)).toEqual(eventSource.features.map(f => f.properties.id));
     expect(mapPointInTaskArea({ lng: NaN, lat: 39.41 }, area)).toBe(false);
+  });
+
+  it("stops pulsing an event at its bounded end, not at an 11:59 PM placeholder", () => {
+    vi.useFakeTimers();
+    try {
+      // 1 PM Eastern start with a placeholder end, viewed at 8 PM Eastern.
+      vi.setSystemTime(new Date("2026-11-10T01:00:00.000Z"));
+      const stamped = { slug: "stamped", lng: -77.41, lat: 39.41, starts_at: "2026-11-09T18:00:00.000Z", ends_at: "2026-11-10T04:59:00.000Z" };
+      const real = { slug: "real", lng: -77.41, lat: 39.41, starts_at: "2026-11-09T23:00:00.000Z", ends_at: "2026-11-10T02:00:00.000Z" };
+      const weights = Object.fromEntries(
+        buildEventsGeoJson([stamped, real]).features.map((f) => [f.properties.id, f.properties.weight]),
+      );
+      expect(weights.stamped).toBe(0.5);
+      expect(weights.real).toBe(5);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("restores a prior URL area and resets it for a changed task without retaining a prior selection's bounds", () => {
