@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatTime, formatWindows, isAllDayWindow, getOpenStatus, formatHoursLine, isClosedNow } from "./hours";
+import { formatTime, formatWindows, isAllDayWindow, getOpenStatus, formatHoursLine, isClosedNow, hoursForDate } from "./hours";
 import type { Hours } from "@/data/places";
 
 describe("formatTime", () => {
@@ -86,5 +86,19 @@ describe("unconfirmed status labels", () => {
   it("keeps unknown and unverified as distinct states despite their shared public label", () => {
     expect(getOpenStatus(undefined, { verified: true })).toEqual({ state: "unknown" });
     expect(getOpenStatus({ mon: [{ open: "09:00", close: "17:00" }] }, { verified: false })).toEqual({ state: "unverified" });
+  });
+});
+
+
+describe("Thanksgiving visit decisions", () => {
+  const weekly: Hours = { wed: [{ open: "08:00", close: "18:00" }], thu: [{ open: "08:00", close: "18:00" }], fri: [{ open: "08:00", close: "18:00" }] };
+  it("withholds weekly-only opening and closure predictions on the Frederick holiday date", () => {
+    for (const at of ["2026-11-26T14:00:00Z", "2026-11-27T03:00:00Z", "2027-11-25T16:00:00Z"]) {
+      expect(getOpenStatus(weekly, { verified: true }, new Date(at))).toEqual({ state: "unknown" });
+      expect(hoursForDate(weekly, new Date(at))).toBeUndefined();
+    }
+    expect(getOpenStatus(weekly, { verified: true }, new Date("2026-11-26T02:00:00Z"))).toEqual({ state: "closed" });
+    expect(getOpenStatus({ wed: [{ open: "18:00", close: "02:00" }] }, { verified: true }, new Date("2026-11-26T03:00:00Z"))).toEqual({ state: "unknown" });
+    expect(getOpenStatus(weekly, { verified: true }, new Date("2026-11-27T15:00:00Z")).state).toBe("open");
   });
 });

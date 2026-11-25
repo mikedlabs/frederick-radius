@@ -1,9 +1,73 @@
 import { expect, test, type Locator } from "@playwright/test";
+import { registerWebkitLoopbackDocumentSeam } from "./webkit-loopback-document";
 
 test.use({ isMobile: true, hasTouch: true });
 const COMPASS_PINS_KEY = "fr.compass.pins.v1";
 const DEFAULT_PINNED_TOOLS = ["Ask Radius", "Near me", "County status", "Nearby essentials"];
 const activate = (locator: Locator) => locator.tap();
+
+test("touch tablets keep the index, focused filter and results through rotation", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto("/compass", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true", { timeout: 30_000 });
+  const tasks = await page.locator('section[aria-labelledby="compass-browse-heading"]').boundingBox();
+  const pins = await page.locator('section[aria-labelledby="compass-pinned-heading"]').boundingBox();
+  expect(tasks && pins && pins.x >= tasks.x + tasks.width).toBe(true);
+
+  const index = page.getByRole("button", { name: "Browse the full tool index" });
+  await index.tap();
+  const dialog = page.getByRole("dialog", { name: "All tools" });
+  const categories = dialog.getByRole("navigation", { name: "Tool categories" });
+  const firstSection = dialog.locator("#compass-tools-decide");
+  const rail = await categories.boundingBox();
+  const rows = await firstSection.boundingBox();
+  expect(rail && rows && rows.x >= rail.x + rail.width).toBe(true);
+  const filter = dialog.getByRole("searchbox");
+  await filter.fill("restroom");
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await expect(filter).toHaveValue("restroom");
+  await expect(filter).toBeFocused();
+  await expect(dialog.getByRole("link", { name: /^Find a restroom/ })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(1);
+  await expect.poll(() => dialog.evaluate(node => {
+    const box = node.getBoundingClientRect();
+    return Math.abs(2 * box.x + box.width - window.innerWidth);
+  })).toBeLessThanOrEqual(2);
+  expect(await dialog.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+  await page.keyboard.press("Escape");
+  await expect(index).toBeFocused();
+});
+
+test.describe("Tools on a keyboard and mouse", () => {
+  test.use({ isMobile: false, hasTouch: false, viewport: { width: 1366, height: 768 } });
+
+  test("the side panel keeps its categories visible and returns keyboard focus", async ({ page }) => {
+    await page.goto("/compass", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-compass-ready]")).toHaveAttribute("data-compass-ready", "true");
+    const index = page.getByRole("button", { name: "Browse the full tool index" });
+    await index.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "All tools" });
+    const lastCategory = dialog.getByRole("navigation", { name: "Tool categories" }).getByRole("button").last();
+    await expect(lastCategory).toBeInViewport();
+    await lastCategory.focus();
+    await lastCategory.press("Enter");
+    const lastGroup = dialog.locator('[id^="compass-tools-"]').last();
+    await expect(lastGroup.getByRole("heading")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(lastGroup.locator("[data-tool-link]").first()).toBeFocused();
+    await expect.poll(() => dialog.evaluate(node =>
+      Math.abs(node.getBoundingClientRect().right - window.innerWidth),
+    )).toBeLessThanOrEqual(2);
+    const filter = dialog.getByRole("searchbox");
+    await filter.fill("restroom");
+    await filter.press("ArrowDown");
+    await expect(dialog.locator("[data-tool-link]").first()).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(index).toBeFocused();
+  });
+});
 
 for (const width of [320, 375, 390, 430]) {
   test(`Tools exposes one readable intent action set at ${width}px`, async ({ page }) => {
@@ -13,6 +77,15 @@ for (const width of [320, 375, 390, 430]) {
     await expect(compass).toHaveAttribute("data-compass-ready", "true");
     const find = compass.getByRole("link", { name: "Find a place, service, event, or answer" });
     await expect(find).toBeVisible(); await expect(find).toHaveAttribute("href", "/search");
+    const essentials = compass.getByRole("navigation", { name: "Everyday essentials" });
+    for (const [name, href] of [["Parking", "/parking"], ["Restrooms", "/map?amenity=restroom"], ["Emergency", "/emergency"]]) {
+      const link = essentials.getByRole("link", { name, exact: true });
+      await expect(link).toHaveAttribute("href", href);
+      await expect(link).toBeInViewport();
+      const box = await link.boundingBox();
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+    }
     await expect(compass.getByRole("searchbox")).toHaveCount(0);
     const chapters = compass.locator("[data-compass-intent]");
     await expect(chapters).toHaveCount(4);
@@ -68,6 +141,15 @@ test("Tools keeps the full index secondary, filters tools and returns to the sel
   await expect(dialog.getByRole("button", { name: /^Pin / })).toHaveCount(0);
   await activate(dialog.getByRole("button", { name: "All tools", exact: true }));
   dialog = page.getByRole("dialog", { name: "All tools", exact: true });
+  const picker = dialog.getByRole("combobox", { name: "Jump to a tool category" });
+  await expect(picker).toBeVisible();
+  const lastOption = picker.getByRole("option").last();
+  await expect(picker.getByRole("option")).toHaveCount(10);
+  await picker.selectOption((await lastOption.getAttribute("value"))!);
+  const lastGroup = dialog.locator('[id^="compass-tools-"]').last();
+  await expect(lastGroup.getByRole("heading")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(lastGroup.locator("[data-tool-link]").first()).toBeFocused();
   const filter = dialog.getByRole("searchbox", { name: "Search tools in this section" });
   await expect(filter).toBeVisible(); await filter.fill("GasBuddy");
   const outside = dialog.getByRole("link", { name: /Gas prices/ });
@@ -132,3 +214,5 @@ test("Tools sends a typed need through shared Find without making people choose 
   await expect(page).toHaveURL(/\/amenities\?need=trash$/);
   await expect(page.getByRole("button", { name: "Trash", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
+
+registerWebkitLoopbackDocumentSeam();

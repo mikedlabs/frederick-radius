@@ -29,7 +29,7 @@ import { isChainName } from "@/lib/category-ranking";
 import { getOpenStatus } from "@/lib/hours";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { encodeSpec, shareSafeInputs, type PlanInputs, type PlanSpec } from "@/lib/plan/plan-token";
+import { encodeSpec, planAreaName, shareSafeInputs, type PlanInputs, type PlanSpec } from "@/lib/plan/plan-token";
 
 export { encodeSpec, decodeSpec } from "@/lib/plan/plan-token";
 export type { PlanInputs, PlanSpec } from "@/lib/plan/plan-token";
@@ -1001,7 +1001,7 @@ function titleFor(input: PlanInputs, now: Date): string {
   if (input.audience === "date") return seg === "evening" ? "Date night" : `${article} ${seg} date`;
   if (input.audience === "friends") return `${article} ${seg} with friends`;
   if (input.audience === "family") return `A family ${seg}`;
-  if (input.audience === "visitor") return `${article} ${seg} in Frederick`;
+  if (input.audience === "visitor") return `${article} ${seg} in ${planAreaName(input)}`;
   return `A solo ${seg}`;
 }
 
@@ -1009,10 +1009,7 @@ function summaryFor(input: PlanInputs, stops: PlanStop[]): string {
   if (stops.length === 0) {
     return "Could not find a good match. Try a different vibe, more time, or a wider start.";
   }
-  const town = input.municipality
-    ? MUNICIPALITIES.find((item) => item.slug === input.municipality)?.name
-    : null;
-  const area = town ?? "Frederick County";
+  const area = planAreaName(input);
   const total = hoursPhrase(plannedMinutes(stops));
   return `${stops.length === 1 ? "One stop" : `${stops.length} stops`} in ${area}, with ${total} scheduled.`;
 }

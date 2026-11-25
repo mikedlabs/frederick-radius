@@ -85,6 +85,15 @@ function holidayTable(year: number): Map<string, Holiday> {
   return map;
 }
 
+/** The US Thanksgiving civil date used by published venue and parking schedules. */
+export function thanksgivingDate(year: number): string {
+  return `${year}-11-${nthWeekday(year, 10, 4, 4)}`;
+}
+
+export function isThanksgivingDate(date: string): boolean {
+  return date === thanksgivingDate(Number(date.slice(0, 4)));
+}
+
 /** The federal holiday observed on the given instant's Eastern date, or null. */
 export function holidayOn(date: Date): Holiday | null {
   const { year, month, day } = easternParts(date);

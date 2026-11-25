@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { EventScheduleMark } from "@/lib/events/day-schedule";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import type { EventWithMeta } from "@/lib/loaders/events";
 // VALUE import from the DATA-FREE formatter module, never from the loader:
@@ -40,8 +41,10 @@ export default function EventCard({
   venuePhotos = "all-approved",
   showDate = true,
   headingLevel = 2,
+  schedule,
 }: {
   event: EventWithMeta;
+  schedule?: EventScheduleMark;
   /**
    * Layout density, from smallest to largest editorial weight:
    *   `utility`: TINY one-line muted row (civic meetings, recurring
@@ -124,6 +127,7 @@ export default function EventCard({
         live={confirmedLive}
         nowISO={nowISO}
         headingLevel={headingLevel}
+        schedule={schedule}
       />
     );
   }
@@ -192,6 +196,7 @@ export default function EventCard({
     ].filter(Boolean) as string[];
     const recurrence = event.is_recurring && event.recurrence_text ? event.recurrence_text : null;
     const row = {
+      schedule,
       slug: event.slug,
       title: displayTitle,
       weekday: date.weekday,

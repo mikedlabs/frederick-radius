@@ -1,3 +1,4 @@
+import CityGarageStatus from "@/components/place/CityGarageStatus";
 import { stampEventProvenance } from "@/lib/provenance";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -7,6 +8,7 @@ import { AlertCircle, Apple, ArrowRight, CalendarCheck, Car, ChevronDown, Extern
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
+import { isCityGarage } from "@/data/parking-garages";
 import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/lib/integrations/deeplinks";
 import { isCommerceSearchLink, resolveCommerceLinks } from "@/lib/commerce/links";
 import LiveOpenStatus from "@/components/place/LiveOpenStatus";
@@ -168,8 +170,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     place.description_reviewed ?? false,
   );
   const hoursConfirmed = placeHoursProvenance(place);
-  const googleUrl = googleMapsDirections(place.geom.lat, place.geom.lng);
-  const appleUrl = appleMapsDirections(place.geom.lat, place.geom.lng, place.name);
+  const cityGarage = isCityGarage(place.slug);
+  const directionsMode = cityGarage ? "driving" : undefined;
+  const googleUrl = googleMapsDirections(place.geom.lat, place.geom.lng, directionsMode);
+  const appleUrl = appleMapsDirections(place.geom.lat, place.geom.lng, place.name, directionsMode);
   const actions = actionsForPlace(place);
   const parkActions = actions.filter((a) => a.category === "park");
   const socialActions = actions.filter((a) => a.category === "social");
@@ -365,12 +369,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               {/* Recomputed against the visitor's clock (LiveOpenStatus):
                   the ISR-baked value said "Closing soon" while HoursBlock said
                   "Closed" around closing time (fresh-eyes audit, Jul 2026). */}
-              <LiveOpenStatus
-                hours={place.hours}
-                verified={place.hours_verified ?? false}
-                initial={place.open_status}
-                hoursCheckedAt={placeFreshnessEvidence(place).hours}
-              />
+              {cityGarage ? <CityGarageStatus /> : (
+                <LiveOpenStatus
+                  hours={place.hours}
+                  verified={place.hours_verified ?? false}
+                  initial={place.open_status}
+                  hoursCheckedAt={placeFreshnessEvidence(place).hours}
+                />
+              )}
               {place.price_band && (
                 <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>
                   {"$".repeat(place.price_band)}
@@ -529,7 +535,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       {parkActions.length > 0 && (
         <IntegrationRow
           icon={Car}
-          title="Pay for parking"
+          title={cityGarage ? "Garage parking" : "Pay for parking"}
           actions={parkActions}
         />
       )}
@@ -546,7 +552,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           says "Hours not recently confirmed" with its date, so there is no
           second hours block repeating it. The phone bar and the desktop row
           carry Call and Website. */}
-      {place.hours ? (
+      {cityGarage ? null : place.hours ? (
         <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} provenance={hoursConfirmed ?? undefined} />
       ) : hasGoogleHours ? (
         <GoogleHours lines={place.google_hours!} />
@@ -567,7 +573,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             style={{ color: "var(--app-ink)" }}
           >
             <Globe className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-2)" }} />
-            {place.hours || hasGoogleHours ? "Official website" : "Check hours on the official website"}
+            {cityGarage || place.hours || hasGoogleHours ? "Official website" : "Check hours on the official website"}
           </a>
         </p>
       )}
@@ -858,7 +864,7 @@ function IntegrationRow({
 }: {
   icon: typeof Phone;
   title: string;
-  actions: Array<{ key: string; label: string; href: string }>;
+  actions: Array<{ key: string; label: string; href: string; external: boolean }>;
 }) {
   return (
     <section className="space-y-2">
@@ -874,10 +880,10 @@ function IntegrationRow({
             variant="secondary"
             size="md"
             href={a.href}
-            target="_blank"
-            rel="noopener noreferrer"
+            target={a.external ? "_blank" : undefined}
+            rel={a.external ? "noopener noreferrer" : undefined}
             className="text-[15px]"
-            iconRight={<ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
+            iconRight={a.external ? <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} /> : undefined}
           >
             {a.label}
           </Button>

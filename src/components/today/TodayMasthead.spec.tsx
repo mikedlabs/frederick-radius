@@ -135,7 +135,7 @@ describe("Today compact weather disclosure", () => {
       temperatureF: null, highF: null, lowF: null, sun: null, issuedAt: null,
     }));
     expect(html).toContain("Flash Flood Warning is active.");
-    expect(html).toContain("The NWS forecast is briefly unavailable.");
+    expect(html).toContain("Forecast unavailable");
     expect(html).not.toContain("<details");
     expect(html.match(/href="\/pulse\?open=weather"/g)).toHaveLength(1);
     expect(html).not.toContain("70°");
@@ -143,8 +143,6 @@ describe("Today compact weather disclosure", () => {
     const stats = doc.querySelector("[data-weather-stats]");
     expect(stats?.textContent).toMatch(/Sunrise\s*7:17\s*AM/i);
     expect(stats?.textContent).toMatch(/Sunset\s*6:36\s*PM/i);
-    expect(stats?.textContent).toMatch(/High\s*–unavailable/i);
-    expect(stats?.textContent).toMatch(/Low\s*–unavailable/i);
-    expect(stats?.textContent).toMatch(/unavailable/i);
+    expect(stats?.textContent).not.toMatch(/High|Low|unavailable/i);
   });
 });

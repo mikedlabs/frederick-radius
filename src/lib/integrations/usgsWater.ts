@@ -1,48 +1,21 @@
-/**
- * USGS real-time water — Frederick County stream & river gauges.
- *
- * The USGS Instantaneous Values service publishes live gage height and
- * streamflow for every active gauge in Frederick County (Monocacy,
- * Catoctin Creek, Potomac, Linganore, …) — keyless, free, public.
- * This is genuine live civic-safety context (rising water), not another
- * directory list. Fetched server-side with a 15-minute revalidate (the
- * gauges report every 15 min), normalized to a typed WaterSite.
- * Graceful []: a feed hiccup never throws into a page.
- *
- * HONEST SCOPING (confirmed live against the service, 2026-05):
- *  - We surface the latest real reading + its timestamp ONLY. We do
- *    NOT compute or show a flood "stage"/"status" (action/minor/…):
- *    those need per-site NWS AHPS thresholds, and inventing a flood
- *    status would be dishonest and unsafe. Flood FORECASTS are NWS's
- *    job; we link out and say so.
- *  - Each site appears once per parameter in the feed, so we group by
- *    USGS site code and merge gage height + streamflow into one site.
- *  - USGS encodes "no reading" as the variable's noDataValue (e.g.
- *    -999999); those are dropped, never shown as a real level.
- *  - Flood STAGE context (added 2026-06): six county gauges are NWS
- *    forecast points with official flood thresholds (see floodStage.ts).
- *    We attach those static, sourced thresholds so a surface can classify
- *    the live reading against them — still NWS's classification, not ours.
- */
+/** USGS Water Data OGC API. Recent height and discharge observations may
+ * be provisional. Flood thresholds come only from NWS. */
 import { resolveMunicipality } from "@/lib/connect";
 import { FLOOD_STAGES, type FloodStages } from "@/lib/integrations/floodStage";
 
-const ENDPOINT =
-  "https://waterservices.usgs.gov/nwis/iv/?format=json" +
-  "&countyCd=24021&parameterCd=00065,00060&siteStatus=active";
-const TIMEOUT_MS = 15_000;
-// Frederick County bbox [south, west, north, east].
-const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
+import { GAUGE_HOURS, type GaugeHistory, type GaugePeriod } from "@/lib/rivers/gaugeHistory";
+export { usgsGaugeReadingsUrl } from "@/lib/rivers/gaugeHistory";
 
-const PARAM_GAGE_HEIGHT = "00065"; // feet
-const PARAM_STREAMFLOW = "00060"; // cubic feet per second
-
+const COLLECTIONS = "https://api.waterdata.usgs.gov/ogcapi/v1/collections";
+const CACHE_SECONDS = 900;
+const HOUR = 60 * 60 * 1000;
+const MAX_READING_AGE = 2 * HOUR;
 export type Reading = { value: number; at: string };
 
 export type WaterSite = {
   /** USGS site code, e.g. "01643000". */
   id: string;
-  /** Raw USGS site name, ALL-CAPS (page title-cases for display). */
+  /** Name published for the USGS monitoring location. */
   name: string;
   /** Short label derived from the name, e.g. "MONOCACY RIVER". */
   river: string;
@@ -71,245 +44,199 @@ export type WaterSitesResult = {
   available: boolean;
 };
 
-type IvValue = { value?: unknown; dateTime?: unknown };
-type IvTimeSeries = {
-  sourceInfo?: {
-    siteName?: unknown;
-    siteCode?: Array<{ value?: unknown }>;
-    geoLocation?: { geogLocation?: { latitude?: unknown; longitude?: unknown } };
-  };
-  variable?: {
-    variableCode?: Array<{ value?: unknown }>;
-    noDataValue?: unknown;
-  };
-  values?: Array<{ value?: IvValue[] }>;
+type Feature = {
+  id?: unknown;
+  properties?: Record<string, unknown>;
+  geometry?: { type?: string; coordinates?: unknown[] } | null;
 };
 
-function num(v: unknown): number | undefined {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
-  return Number.isFinite(n) ? n : undefined;
+function collectionUrl(collection: string, params: Record<string, string>): URL {
+  const url = new URL(`${COLLECTIONS}/${collection}/items`);
+  url.search = new URLSearchParams({
+    f: "json",
+    state_code: "24",
+    county_code: "021",
+    agency_code: "USGS",
+    ...params,
+  }).toString();
+  return url;
 }
 
-/** Most recent valid reading in a USGS values block (skips noData). */
-function latestReading(
-  block: IvValue[] | undefined,
-  noData: number,
-): { value: number; at: string } | null {
-  if (!Array.isArray(block)) return null;
-  let best: { value: number; at: string } | null = null;
-  for (const v of block) {
-    const value = num(v?.value);
-    const at = typeof v?.dateTime === "string" ? v.dateTime : "";
-    if (value == null || !at) continue;
-    if (value === noData || value <= -99999) continue; // USGS "no reading"
-    const t = +new Date(at);
-    if (!Number.isFinite(t)) continue;
-    if (!best || t > +new Date(best.at)) best = { value, at };
+/** Keep each response below the Next fetch cache's per-entry size limit.
+ * Only the cursor supplied by USGS can change between pages. */
+async function readCollection(url: URL, revalidate: number, signal: AbortSignal): Promise<Feature[]> {
+  const features: Feature[] = [];
+  const seen = new Set<string>();
+  for (let page = 0; page < 25; page++) {
+    const res = await fetch(url.toString(), {
+      headers: { Accept: "application/geo+json" },
+      next: { revalidate },
+      signal,
+    });
+    if (!res.ok) throw new Error(`USGS returned ${res.status}`);
+    const body = await res.json();
+    if (body?.type !== "FeatureCollection" || !Array.isArray(body.features) || !Array.isArray(body.links)) {
+      throw new Error("USGS returned an invalid feature collection");
+    }
+    features.push(...body.features);
+    const next = body.links.find((link: { rel?: string } | null) => link?.rel === "next");
+    if (!next) return features;
+    const nextUrl = new URL(next.href, url);
+    const cursor = nextUrl.searchParams.get("cursor");
+    if (nextUrl.origin !== url.origin || nextUrl.pathname !== url.pathname || !cursor || seen.has(cursor)) {
+      throw new Error("Invalid USGS page cursor");
+    }
+    seen.add(cursor);
+    url.searchParams.set("cursor", cursor);
   }
-  return best;
+  throw new Error("Incomplete USGS collection");
 }
 
-/** "CATOCTIN CREEK NEAR MIDDLETOWN, MD" -> "CATOCTIN CREEK". A pure
- *  substring of the real USGS name — nothing invented. */
 function riverOf(name: string): string {
-  const cut = name.split(
-    /\s+(?:NEAR|AT|ABOVE|BELOW|NR|BL|AB)\s+|,\s*MD\b/i,
-  )[0];
-  return cut.trim() || name;
+  return name.split(/\s+(?:NEAR|AT|ABOVE|BELOW|NR|BL|AB)\s+|,\s*MD\b/i)[0].trim() || name;
 }
 
-/**
- * Pure: USGS IV JSON → WaterSite[]. Groups the per-parameter series by
- * site code, keeps the latest real gage-height / streamflow reading,
- * drops out-of-county and reading-less sites (never guessed). Sorted by
- * name. Exported for unit tests without the live endpoint.
- */
-export function normalizeWaterSites(raw: unknown): WaterSite[] {
-  const series = (raw as { value?: { timeSeries?: IvTimeSeries[] } })?.value
-    ?.timeSeries;
-  if (!Array.isArray(series)) return [];
-  const [s, w, n, e] = BBOX;
+type Series = { height: Map<number, number>; flow: Map<number, number> };
 
-  const bySite = new Map<string, WaterSite>();
-  for (const ts of series) {
-    const si = ts?.sourceInfo;
-    const code =
-      typeof si?.siteCode?.[0]?.value === "string"
-        ? (si.siteCode[0].value as string)
-        : undefined;
-    const name = typeof si?.siteName === "string" ? si.siteName.trim() : "";
-    if (!code || !name) continue;
-    const lat = num(si?.geoLocation?.geogLocation?.latitude);
-    const lng = num(si?.geoLocation?.geogLocation?.longitude);
-    if (lat == null || lng == null) continue;
-    if (lat < s || lat > n || lng < w || lng > e) continue;
-
-    const paramCode =
-      typeof ts?.variable?.variableCode?.[0]?.value === "string"
-        ? (ts.variable.variableCode[0].value as string)
-        : "";
-    const noData = num(ts?.variable?.noDataValue) ?? -999999;
-    const reading = latestReading(ts?.values?.[0]?.value, noData);
-    if (!reading) continue;
-
-    let site = bySite.get(code);
-    if (!site) {
-      site = {
-        id: code,
-        name,
-        river: riverOf(name),
-        floodStages: FLOOD_STAGES[code],
-        municipality: resolveMunicipality({ lng, lat }).municipality.slug,
-        lng,
-        lat,
-      };
-      bySite.set(code, site);
-    }
-    if (paramCode === PARAM_GAGE_HEIGHT) site.gageHeightFt = reading.value;
-    else if (paramCode === PARAM_STREAMFLOW) site.streamflowCfs = reading.value;
-    // Track the freshest timestamp across this site's parameters.
-    if (!site.observedAt || +new Date(reading.at) > +new Date(site.observedAt)) {
-      site.observedAt = reading.at;
-    }
+function groupReadings(observations: Feature[], since: number, now: number): Map<string, Series> {
+  const sites = new Map<string, Series>();
+  for (const feature of observations) {
+    const p = feature?.properties;
+    if (!p || p.statistic_id !== "00011" || typeof p.monitoring_location_id !== "string") continue;
+    const code = /^USGS-(\d{8,15})$/.exec(p.monitoring_location_id)?.[1];
+    const height = p.parameter_code === "00065" && p.unit_of_measure === "ft";
+    const flow = p.parameter_code === "00060" && p.unit_of_measure === "ft^3/s";
+    if (!code || (!height && !flow) || typeof p.time !== "string") continue;
+    const at = Date.parse(p.time);
+    const value = typeof p.value === "string" && p.value.trim() ? Number(p.value) : p.value;
+    if (!Number.isFinite(at) || at < since || at > now) continue;
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= -99999) continue;
+    const series = sites.get(code) ?? {
+      height: new Map<number, number>(),
+      flow: new Map<number, number>(),
+    };
+    (height ? series.height : series.flow).set(at, value);
+    sites.set(code, series);
   }
+  return sites;
+}
 
-  return [...bySite.values()]
-    .filter((x) => x.gageHeightFt != null || x.streamflowCfs != null)
-    .sort((a, b) => a.name.localeCompare(b.name));
+/** Only publish a parameter whose own latest observation is current. The
+ * series still contains every valid measurement in the requested window. */
+function currentSeries(series: Map<number, number>, now: number): Reading[] {
+  const sorted = sortedReadings(series);
+  const last = sorted.at(-1);
+  return last && Date.parse(last.at) >= now - MAX_READING_AGE ? sorted : [];
+}
+
+function sortedReadings(series?: Map<number, number>): Reading[] {
+  if (!series) return [];
+  return [...series].sort(([a], [b]) => a - b).map(([at, value]) => ({ at: new Date(at).toISOString(), value }));
+}
+
+function joinStations(
+  stations: Feature[],
+  readings: Map<string, Series>,
+  now: number,
+  history: boolean,
+): WaterSite[] {
+  const sites: WaterSite[] = [];
+  for (const station of stations) {
+    const p = station?.properties;
+    const code = typeof station?.id === "string" ? /^USGS-(\d{8,15})$/.exec(station.id)?.[1] : undefined;
+    const series = code ? readings.get(code) : undefined;
+    const coordinates = station?.geometry?.coordinates;
+    const name = typeof p?.monitoring_location_name === "string" ? p.monitoring_location_name.trim() : "";
+    if (!code || !series || !name || p?.state_code !== "24" || p.county_code !== "021" ||
+      station.geometry?.type !== "Point" || !Array.isArray(coordinates)) continue;
+    const [lng, lat] = coordinates;
+    if (typeof lng !== "number" || !Number.isFinite(lng) || Math.abs(lng) > 180 ||
+        typeof lat !== "number" || !Number.isFinite(lat) || Math.abs(lat) > 90) continue;
+
+    const height = currentSeries(series.height, now);
+    const flow = currentSeries(series.flow, now);
+    const latestHeight = height.at(-1);
+    const latestFlow = flow.at(-1);
+    if (!latestHeight && !latestFlow) continue;
+    const site: WaterSite = {
+      id: code, name, river: riverOf(name), lng, lat,
+      municipality: resolveMunicipality({ lng, lat }).municipality.slug,
+    };
+    if (latestHeight) {
+      site.gageHeightFt = latestHeight.value;
+      site.floodStages = FLOOD_STAGES[code];
+      site.observedAt = latestHeight.at;
+      if (history) site.gageHistory = height;
+    }
+    if (latestFlow) {
+      site.streamflowCfs = latestFlow.value;
+      if (!site.observedAt || latestFlow.at > site.observedAt) site.observedAt = latestFlow.at;
+      if (history) site.streamflowHistory = flow;
+    }
+    sites.push(site);
+  }
+  return sites.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function readObservations(period: GaugePeriod | undefined, siteId: string | undefined, signal: AbortSignal) {
+  const now = Date.now();
+  const duration = period ? GAUGE_HOURS[period] * HOUR : MAX_READING_AGE;
+  const bucket = Math.floor(now / (CACHE_SECONDS * 1000)) * CACHE_SECONDS * 1000;
+  // A shared 15-minute URL makes server-side caching effective across visitors.
+  // Filter the extra minutes at each end against the exact window after fetching.
+  const datetime = `${new Date(bucket - duration).toISOString()}/${new Date(bucket + CACHE_SECONDS * 1000).toISOString()}`;
+  const url = collectionUrl(period ? "continuous" : "latest-continuous", {
+    ...(siteId ? { monitoring_location_id: `USGS-${siteId}` } : {}),
+    parameter_code: "00065,00060",
+    statistic_id: "00011",
+    properties: "monitoring_location_id,parameter_code,statistic_id,unit_of_measure,time,value",
+    skipGeometry: "true",
+    datetime,
+    limit: "4000",
+  });
+  const rows = await readCollection(url, CACHE_SECONDS, signal);
+  return { readings: groupReadings(rows, now - duration, now), now };
+}
+
+/** Historical readings may remain useful after a gauge stops reporting.
+ * This endpoint doesn't contribute to current-condition or flood status. */
+export async function getGaugeHistory(siteId: string, period: GaugePeriod): Promise<GaugeHistory> {
+  const { readings, now } = await readObservations(period, siteId, AbortSignal.timeout(12_000));
+  const series = readings.get(siteId);
+  return { end: new Date(now).toISOString(), height: sortedReadings(series?.height), flow: sortedReadings(series?.flow) };
+}
+
+async function readWaterSites(period?: GaugePeriod): Promise<WaterSitesResult> {
+  const signal = AbortSignal.timeout(15_000);
+  try {
+    const { readings, now } = await readObservations(period, undefined, signal);
+    const ids = [...readings.keys()].sort();
+    if (!ids.length) return { available: true, data: [] };
+    // Observation features omit names. Join real station metadata for the
+    // reporting gauges, cached for a day and bounded to Maryland county 021.
+    const stations = await readCollection(collectionUrl("monitoring-locations", {
+      monitoring_location_number: ids.join(","),
+      properties: "monitoring_location_name,state_code,county_code",
+      limit: "1000",
+    }), 86400, signal);
+    return { data: joinStations(stations, readings, now, Boolean(period)), available: true };
+  } catch {
+    return { data: [], available: false };
+  }
 }
 
 export async function getFrederickWaterSites(): Promise<WaterSite[]> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(ENDPOINT, {
-      signal: ctrl.signal,
-      headers: { Accept: "application/json" },
-      // Gauges report every ~15 min; match that and keep it cheap.
-      next: { revalidate: 900 },
-    });
-    if (!res.ok) return [];
-    return normalizeWaterSites(await res.json());
-  } catch {
-    return []; // network/feed hiccup — degrade silently, never fabricate
-  } finally {
-    clearTimeout(timer);
-  }
+  return (await readWaterSites()).data;
 }
 
-/**
- * Same as getFrederickWaterSites() but each WaterSite also carries
- * gageHistory / streamflowHistory arrays for the last `period`
- * window. Period is a USGS ISO-8601 duration: "PT6H" = 6 hours,
- * "P1D" = 1 day, "P7D" = 7 days. The 24h variant returns ~96 readings per gauge
- * (every 15 min) and is what the /rivers dashboard sparklines render.
- *
- * History readings are sorted oldest-first so a sparkline can draw
- * left-to-right without re-sorting.
- */
-export async function getFrederickWaterSitesWithHistory(
-  period: "PT6H" | "P1D" | "P7D" = "P1D",
-): Promise<WaterSite[]> {
+export async function getFrederickWaterSitesWithHistory(period: GaugePeriod = "P1D"): Promise<WaterSite[]> {
   return (await getFrederickWaterSitesWithHistoryResult(period)).data;
 }
 
-/** Health-aware history read for trust-sensitive surfaces such as Pulse. */
-export async function getFrederickWaterSitesWithHistoryResult(
-  period: "PT6H" | "P1D" | "P7D" = "P1D",
-): Promise<WaterSitesResult> {
-  const endpoint = `${ENDPOINT}&period=${period}`;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(endpoint, {
-      signal: ctrl.signal,
-      headers: { Accept: "application/json" },
-      next: { revalidate: 900 },
-    });
-    if (!res.ok) return { data: [], available: false };
-    return {
-      data: normalizeWaterSitesWithHistory(await res.json()),
-      available: true,
-    };
-  } catch {
-    return { data: [], available: false };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** Same grouping as normalizeWaterSites but every series's full
- *  history is captured (sorted oldest-first), and the latest reading
- *  populates the headline fields. */
-export function normalizeWaterSitesWithHistory(raw: unknown): WaterSite[] {
-  const series = (raw as { value?: { timeSeries?: IvTimeSeries[] } })?.value
-    ?.timeSeries;
-  if (!Array.isArray(series)) return [];
-  const [s, w, n, e] = BBOX;
-
-  const bySite = new Map<string, WaterSite>();
-  for (const ts of series) {
-    const si = ts?.sourceInfo;
-    const code =
-      typeof si?.siteCode?.[0]?.value === "string"
-        ? (si.siteCode[0].value as string)
-        : undefined;
-    const name = typeof si?.siteName === "string" ? si.siteName.trim() : "";
-    if (!code || !name) continue;
-    const lat = num(si?.geoLocation?.geogLocation?.latitude);
-    const lng = num(si?.geoLocation?.geogLocation?.longitude);
-    if (lat == null || lng == null) continue;
-    if (lat < s || lat > n || lng < w || lng > e) continue;
-
-    const paramCode =
-      typeof ts?.variable?.variableCode?.[0]?.value === "string"
-        ? (ts.variable.variableCode[0].value as string)
-        : "";
-    const noData = num(ts?.variable?.noDataValue) ?? -999999;
-    const block = ts?.values?.[0]?.value ?? [];
-
-    const history: Reading[] = [];
-    for (const v of block) {
-      const value = num(v?.value);
-      const at = typeof v?.dateTime === "string" ? v.dateTime : "";
-      if (value == null || !at) continue;
-      if (value === noData || value <= -99999) continue;
-      const t = +new Date(at);
-      if (!Number.isFinite(t)) continue;
-      history.push({ value, at });
-    }
-    if (history.length === 0) continue;
-    history.sort((a, b) => +new Date(a.at) - +new Date(b.at));
-    const latest = history[history.length - 1];
-
-    let site = bySite.get(code);
-    if (!site) {
-      site = {
-        id: code,
-        name,
-        river: riverOf(name),
-        floodStages: FLOOD_STAGES[code],
-        municipality: resolveMunicipality({ lng, lat }).municipality.slug,
-        lng,
-        lat,
-      };
-      bySite.set(code, site);
-    }
-    if (paramCode === PARAM_GAGE_HEIGHT) {
-      site.gageHeightFt = latest.value;
-      site.gageHistory = history;
-    } else if (paramCode === PARAM_STREAMFLOW) {
-      site.streamflowCfs = latest.value;
-      site.streamflowHistory = history;
-    }
-    if (!site.observedAt || +new Date(latest.at) > +new Date(site.observedAt)) {
-      site.observedAt = latest.at;
-    }
-  }
-
-  return [...bySite.values()]
-    .filter((x) => x.gageHeightFt != null || x.streamflowCfs != null)
-    .sort((a, b) => a.name.localeCompare(b.name));
+/** Preserve the distinction between a valid empty observation window and a
+ * failed or incomplete provider request for the Pulse coverage indicator. */
+export function getFrederickWaterSitesWithHistoryResult(period: GaugePeriod = "P1D"): Promise<WaterSitesResult> {
+  return readWaterSites(period);
 }
 
 /**

@@ -25,8 +25,11 @@ import {
 } from "@/lib/quality/search-index-health";
 
 const DATABASE_DEADLINE_MS = 1_000;
-const SOURCE_LEDGER_DEADLINE_MS = 1_000;
-const OPERATIONAL_READINESS_DEADLINE_MS = 2_000;
+// The runtime role shares one pooled connection across its evidence reads.
+// Include queueing as well as SQL time; the ingest ledger alone can take
+// more than 1.8s. These are bounded monitor reads, outside visitor pages.
+const SOURCE_LEDGER_DEADLINE_MS = 4_000;
+const OPERATIONAL_READINESS_DEADLINE_MS = 5_000;
 // Public readiness follows the actual two-hour worker schedules, not the
 // nightly reporter's narrow handoff window. These budgets allow one delayed
 // invocation without letting a dead cron look current indefinitely.
@@ -374,31 +377,37 @@ async function defaultOperationalReadiness(
       )
     ),
     migration_state AS (
-      SELECT group_name,
+      SELECT required.group_name,
              bool_and(
-               (object_kind = 'column'
+               (required.object_kind = 'column'
                  AND EXISTS (
                    SELECT 1
-                   FROM information_schema.columns AS available
+                   FROM pg_namespace AS namespace
                    JOIN pg_class AS relation
-                     ON relation.relname = available.table_name
-                   JOIN pg_namespace AS namespace
-                     ON namespace.oid = relation.relnamespace
-                    AND namespace.nspname = available.table_schema
-                   WHERE available.table_schema = 'public'
-                     AND available.table_name = relation_name
-                     AND available.column_name = column_name
+                     ON relation.relnamespace = namespace.oid
+                   JOIN pg_attribute AS attribute
+                     ON attribute.attrelid = relation.oid
+                   WHERE namespace.nspname = 'public'
+                     AND relation.relname = required.relation_name
                      AND relation.relrowsecurity = true
+                     AND attribute.attname = required.column_name
+                     AND attribute.attnum > 0
+                     AND NOT attribute.attisdropped
+                     AND has_column_privilege(
+                       relation.oid,
+                       attribute.attnum,
+                       'SELECT, INSERT, UPDATE, REFERENCES'
+                     )
                  ))
                OR
-               (object_kind = 'function'
+               (required.object_kind = 'function'
                  AND EXISTS (
                    SELECT 1
                    FROM pg_proc AS routine
                    WHERE routine.oid = to_regprocedure(
-                     'public.' || function_signature
+                     'public.' || required.function_signature
                    )
-                     AND pg_get_function_result(routine.oid) = function_result
+                     AND pg_get_function_result(routine.oid) = required.function_result
                      AND routine.prosecdef = true
                      AND routine.provolatile = 's'
                      AND routine.proisstrict = true
@@ -429,8 +438,8 @@ async function defaultOperationalReadiness(
                      )
                  ))
              ) AS ready
-      FROM requirements
-      GROUP BY group_name
+      FROM requirements AS required
+      GROUP BY required.group_name
     ),
     heartbeat_sources AS (
       SELECT unnest(${heartbeatSources}::text[]) AS source_slug

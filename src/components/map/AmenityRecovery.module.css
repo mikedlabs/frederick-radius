@@ -1,0 +1,34 @@
+/* The desktop dock sits above the map. Reserve its lane when the list itself
+   provides the recovery heading. The mobile dock already reserves its bottom lane. */
+@media (min-width: 1024px) {
+  :global(.dock-host[data-map-error] .map-error-fallback) .list {
+    padding-top: calc(var(--map-dock-height, 0px) + var(--app-space-4));
+  }
+}
+
+@media (max-width: 600px) {
+  :global(.map-error-fallback) .heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .6rem;
+  }
+  .heading :global(.map-error-fallback-actions) {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 8rem;
+  }
+}
+
+/* With large text the status can fill the entire short map viewport. Keep it
+   with the requested results in one scrollable lane above/below the dock. */
+:global(.map-error-fallback) .taskResults .heading {
+  margin-bottom: .75rem;
+  padding-inline: 0;
+  padding-top: 0;
+}
+@media (min-width: 1024px) {
+  :global(.dock-host[data-map-error] .map-error-fallback) .taskResults {
+    margin-top: calc(var(--map-dock-height, 0px) + var(--app-space-2));
+  }
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { reachModeHref } from "@/components/radius/reach";
 import {
   useCallback,
   useEffect,
@@ -29,6 +30,7 @@ import {
 import "mapbox-gl/dist/mapbox-gl.css";
 import { sunTimes } from "@/lib/sun";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import { directionsHref } from "@/lib/map/directionsHref";
 import type { SmartMapDefault } from "@/lib/map/smartDefaults";
 import { useMode } from "@/hooks/useMode";
 import { defaultsFor } from "@/lib/mode-defaults";
@@ -46,8 +48,10 @@ import { useMapTabResumeQuery } from "@/hooks/useMapTabResumeQuery";
 import { rememberMapTabView } from "@/lib/primary-tab-session";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult } from "@/lib/search/index";
+import { roundCoord } from "@/lib/walkTime";
 import {
   getScope,
+  deviceOriginForScope,
   parseScope,
   scopeTownSlug,
   scopeToParam,
@@ -57,6 +61,9 @@ import {
   type Scope,
 } from "@/lib/scope";
 import { normalizeMapReturnTo } from "@/lib/map-return";
+import AmenityFallbackList from "./AmenityFallbackList";
+import { CountyLocatorWorkspace, type LocatorArea } from "./CountyLocator";
+import recoveryLayout from "./AmenityRecovery.module.css";
 import { mapFallbackResults } from "./mapFallbackResults";
 import { getIntentByKey } from "@/data/intents";
 import { TIME_WINDOW_LABEL } from "./dockCaption";
@@ -796,7 +803,7 @@ export default function AppMap({
   // moves the initial camera when the route explicitly opts in. Keeping those
   // decisions separate makes county browse local without changing its frame.
   const [locationSeed] = useState(() =>
-    resolveMapLocationSeed(readCachedPosition(), recenterToKnownLocation),
+    resolveMapLocationSeed(deviceOriginForScope(null, readCachedPosition()), recenterToKnownLocation),
   );
   const effectiveCenter: [number, number] = locationSeed.camera
     ? [locationSeed.camera.lng, locationSeed.camera.lat]
@@ -1669,16 +1676,19 @@ export default function AppMap({
           available?: boolean;
           status?: "ok" | "degraded" | "unavailable";
           alerts?: unknown[];
+          countyBulletin?: string[];
         };
         if (!active) return;
+        const countyBulletin = body.countyBulletin?.join(" ");
         if (body.available === false || body.status === "unavailable" || !Array.isArray(body.alerts)) {
-          setTransitAlertSnapshot({ status: "error", count: 0 });
+          setTransitAlertSnapshot({ status: "error", count: 0, countyBulletin });
         } else if (body.status === "degraded") {
-          setTransitAlertSnapshot({ status: "stale", count: body.alerts.length });
+          setTransitAlertSnapshot({ status: "stale", count: body.alerts.length, countyBulletin });
         } else {
           setTransitAlertSnapshot({
             status: body.alerts.length > 0 ? "ready" : "empty",
             count: body.alerts.length,
+            countyBulletin,
           });
         }
       } catch (error) {
@@ -2674,7 +2684,7 @@ export default function AppMap({
     if (id === "within-15-minutes") {
       haptic("light");
       track("map_scene", { scene: id });
-      window.history.pushState(null, "", "/map?mode=radius&minutes=15");
+      window.history.pushState(null, "", reachModeHref(explicitSearchScope ?? getScope(), 15));
       window.dispatchEvent(new PopStateEvent("popstate"));
       return;
     }
@@ -3382,7 +3392,7 @@ export default function AppMap({
   // layer with no marks. Wait for optional OSM enrichment, then keep only
   // groups that have at least one verified point and make the URL truthful.
   useEffect(() => {
-    if (osmLoading || osmError || amenityGroups.size === 0) return;
+    if (!mapLoaded || mapError || osmLoading || osmError || amenityGroups.size === 0) return;
     const unavailable = [...amenityGroups].filter(
       (key) => (amenityGroupCounts[key] ?? 0) === 0,
     );
@@ -3407,7 +3417,7 @@ export default function AppMap({
     setGeoMsg(
       `No verified map points are available yet for ${labels.join(", ")}.`,
     );
-  }, [amenityGroupCounts, amenityGroups, osmError, osmLoading]);
+  }, [amenityGroupCounts, amenityGroups, mapLoaded, mapError, osmError, osmLoading]);
   const communityReportCount = extraAmenities.filter((point) =>
     point.category_slug.startsWith("report-"),
   ).length;
@@ -3460,11 +3470,13 @@ export default function AppMap({
     const t = setTimeout(async () => {
       const params = new URLSearchParams({ q: term, limit: String(MAP_SEARCH_RESULT_LIMIT), origin: "map" });
       params.set(SCOPE_PARAM, scopeToParam(resultScope));
-      // About 11m precision is plenty for nearest-first ranking and avoids
-      // sending an unnecessarily exact coordinate.
-      if (userLoc || !mapQueryNeedsDeviceLocation(term)) {
-        params.set("lat", origin.lat.toFixed(4));
-        params.set("lng", origin.lng.toFixed(4));
+      // An explicit town or county overrides any device origin on the API.
+      // In Near me, only a still-fresh fix can stand in for the visitor.
+      const deviceOrigin = () => deviceOriginForScope(explicitSearchScope ?? getScope(), userLoc && readCachedPosition());
+      const rankingOrigin = resultScope === "nearme" ? deviceOrigin() : null;
+      if (rankingOrigin) {
+        params.set("lat", String(rankingOrigin.lat));
+        params.set("lng", String(rankingOrigin.lng));
       }
       try {
         const response = await fetch(`/api/search?${params.toString()}`, {
@@ -3494,7 +3506,7 @@ export default function AppMap({
         setSearchMatches(local);
         if (local.length > 0) {
           setSearchSettledQuery(term);
-          const routedCandidates = userLoc && !mapError
+          const routedCandidates = deviceOrigin() && !mapError
             ? local
                 .filter(
                   (result) =>
@@ -3522,13 +3534,15 @@ export default function AppMap({
             });
             if (ctrl.signal.aborted || requestId !== searchRequestRef.current) return;
 
+            const walkingOrigin = deviceOrigin();
+            if (!walkingOrigin) return;
             const matrixResponse = await fetch("/api/travel-matrix", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               signal: ctrl.signal,
               body: JSON.stringify({
                 profile: "walking",
-                origin: userLoc,
+                origin: walkingOrigin,
                 destinations: routedCandidates.map((result) => ({
                   lng: result.lng,
                   lat: result.lat,
@@ -3585,6 +3599,9 @@ export default function AppMap({
         searchSessionRef.current = sessionToken;
         if (!sessionAlreadyStarted) searchSessionStartedAtRef.current = now;
         searchSessionSuggestCountRef.current += 1;
+        const providerCenter = (explicitSearchScope ?? getScope()) === "county"
+          ? { lng: FREDERICK[0], lat: FREDERICK[1] }
+          : viewCenterRef.current ?? { lng: initialCenter[0], lat: initialCenter[1] };
         const fallbackResponse = await fetch("/api/map/search-fallback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3593,9 +3610,9 @@ export default function AppMap({
             action: "suggest",
             q: term,
             sessionToken,
-            proximity: origin,
+            proximity: { lng: roundCoord(providerCenter.lng), lat: roundCoord(providerCenter.lat) },
             limit: 4,
-            ...(searchRouteRef.current
+            ...(deviceOrigin() && searchRouteRef.current
               ? {
                   route: searchRouteRef.current,
                   routeGeometry: "polyline6",
@@ -3692,7 +3709,7 @@ export default function AppMap({
       searchRetrieveAbortRef.current = null;
       searchRetrieveInFlightRef.current = null;
     };
-  }, [explicitSearchTown, isBrowseMap, mapError, places, q, resetSearchBoxSession, resultScope, searchAttempt, userLoc]);
+  }, [explicitSearchScope, explicitSearchTown, initialCenter, isBrowseMap, mapError, places, q, resetSearchBoxSession, resultScope, searchAttempt, userLoc]);
 
   const placesBySlug = useMemo(() => {
     // globalThis.Map: the bare `Map` is react-map-gl's component here.
@@ -3721,7 +3738,9 @@ export default function AppMap({
     }
     if (r.temporary && r.provider === "Mapbox") {
       const mapboxId = r.mapbox_id ?? r.id.replace(/^mapbox:/, "");
-      const origin = userLoc ?? viewCenter ?? searchFallbackOriginRef.current;
+      const providerCenter = (explicitSearchScope ?? getScope()) === "county"
+        ? { lng: FREDERICK[0], lat: FREDERICK[1] }
+        : viewCenter ?? { lng: initialCenter[0], lat: initialCenter[1] };
       if (!mapboxId) {
         setSearchMatches((current) =>
           expireTemporaryMapboxSuggestions(current),
@@ -3811,7 +3830,7 @@ export default function AppMap({
             action: "retrieve",
             mapboxId,
             sessionToken,
-            proximity: origin,
+            proximity: { lng: roundCoord(providerCenter.lng), lat: roundCoord(providerCenter.lat) },
           }),
         });
         const body = (response.ok ? await response.json() : null) as {
@@ -4696,6 +4715,64 @@ export default function AppMap({
                   ? "guidance"
                   : "rest";
 
+  const recoveryPlace = peekPlace?.slug === selectedSlug ? peekPlace : selectedPlace;
+  const recoveryVenue = selectedEvent?.venue_place_slug ? placesBySlug.get(selectedEvent.venue_place_slug) : null;
+  const recoveryArea: LocatorArea = {
+    town: scopeTownSlug(resultScope),
+    point: recoveryPlace?.geom
+      ? { ...recoveryPlace.geom, label: recoveryPlace.name, kind: "Selected place" }
+      : recoveryVenue?.geom
+        ? { ...recoveryVenue.geom, label: recoveryVenue.name, kind: "Selected event" }
+        : null,
+  };
+
+  const recoveryHeading = mapError && (
+    <div className={`map-error-fallback-head ${recoveryLayout.heading}`}>
+      <div>
+        <h2
+          id="map-error-title"
+          className="font-sans text-base font-semibold"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Frederick County map
+        </h2>
+        <p
+          className="mt-1 max-w-xl text-xs leading-relaxed"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Street map unavailable. Browse the county locator and results.
+        </p>
+        {(osmLoading || osmError) && (
+          <p className="mt-1 text-xs" style={{ color: "var(--app-ink-2)" }} data-map-recovery-source-status>
+            {osmLoading ? "Checking for additional OpenStreetMap locations…" : "Additional OpenStreetMap locations are unavailable."}
+          </p>
+        )}
+      </div>
+      <div className="map-error-fallback-actions">
+        {MAP_RENDERER_CONFIGURED && !mapUnsupported && (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+            style={{
+              borderColor: "var(--app-border)",
+              color: "var(--app-ink-2)",
+            }}
+          >
+            Reload map
+          </button>
+        )}
+        <Link
+          href="/places"
+          className="tap-44 inline-flex min-h-11 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+          style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
+        >
+          All places
+        </Link>
+      </div>
+    </div>
+  );
+
   return (
     <div
       className={
@@ -4778,59 +4855,31 @@ export default function AppMap({
         <TimeScrubber floating hour={scrubHour} onChange={setScrubHour} />
       )}
 
-        {mapError && (
+        {mapError && (amenityGroups.size > 0 && !q.trim() ? (
+          <div className="map-error-fallback">
+            <div className={`map-list ${recoveryLayout.list}`}>
+              <AmenityFallbackList
+                key={`${[...amenityGroups].join(",")}:${resultScope}`}
+                groups={[...amenityGroups]}
+                amenities={amenities}
+                osmPlaces={osmPlaces}
+                extraAmenities={extraAmenities}
+                origin={userLoc}
+                town={scopeTownSlug(resultScope)}
+                sourceStatus={osmLoading ? "Checking for additional OpenStreetMap locations…" : osmError ? "Additional OpenStreetMap locations are unavailable." : undefined}
+                onRetry={MAP_RENDERER_CONFIGURED && !mapUnsupported ? () => window.location.reload() : undefined}
+              />
+            </div>
+          </div>
+        ) : (
           <section
             className="map-error-fallback"
             aria-labelledby="map-error-title"
           >
-            <div className="map-error-fallback-head" role="alert">
-              <div>
-                <h2
-                  id="map-error-title"
-                  className="font-sans text-base font-semibold"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  {!MAP_RENDERER_CONFIGURED
-                    ? "Map view unavailable"
-                    : mapUnsupported
-                    ? "This browser cannot draw the map"
-                    : "The map is temporarily unavailable"}
-                </h2>
-                <p
-                  className="mt-1 max-w-xl text-xs leading-relaxed"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {!MAP_RENDERER_CONFIGURED
-                    ? "Search the available results below."
-                    : mapUnsupported
-                    ? "Find the same results in the list below."
-                    : "Use the list below, or reload the map."}
-                </p>
-              </div>
-              <div className="map-error-fallback-actions">
-                {MAP_RENDERER_CONFIGURED && !mapUnsupported && (
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="tap-44 inline-flex items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      color: "var(--app-ink-2)",
-                    }}
-                  >
-                    Reload map
-                  </button>
-                )}
-                <Link
-                  href="/places"
-                  className="tap-44 inline-flex min-h-9 items-center rounded-[var(--app-radius-md)] border px-3.5 py-1.5 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-                  style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
-                >
-                  All places
-                </Link>
-              </div>
-            </div>
-            {taskList ? <div className="map-list" role="region" aria-label="Available results without the map">
+            {!taskList && recoveryHeading}
+            {taskList ? <div className={`map-list ${recoveryLayout.taskResults}`} role="region" aria-label="Available results without the map">
+              {recoveryHeading}
+              <CountyLocatorWorkspace area={recoveryArea} resultsFirst>
               <MapListPeek
                 list={taskList}
                 expanded
@@ -4847,7 +4896,9 @@ export default function AppMap({
                 onPickPlace={(place) => void pickSearch({ id: `place:${place.slug}`, type: "place", title: place.name, href: `/places/${place.slug}` } as SearchResult)}
                 onPickEvent={(event) => void pickSearch({ id: `event:${event.slug}`, type: "event", title: event.title, href: `/events/${event.slug}` } as SearchResult)}
               />
+              </CountyLocatorWorkspace>
             </div> : <MapList
+              locatorArea={recoveryArea}
               places={rankedPlaces ?? mapFallbackResults(inViewPlaces, searchMatchesForSurface, q, explicitSearchTown, "place")}
               events={rankedEvents ?? mapFallbackResults(visibleEvents, searchMatchesForSurface, q, explicitSearchTown, "event")}
               userLoc={userLoc}
@@ -4862,7 +4913,7 @@ export default function AppMap({
               onPickEvent={(event) => void pickSearch({ id: `event:${event.slug}`, type: "event", title: event.title, href: `/events/${event.slug}` } as SearchResult)}
             />}
           </section>
-        )}
+        ))}
         {/* A geolocation denial or failure has to be visible where the user
             just tapped locate. On the dock surface it anchors above the locate
             FAB (bottom-right); dock-less embeds keep the centered toast. Before,
@@ -4952,7 +5003,7 @@ export default function AppMap({
             "{N} verified OSM places" chip was a permanent floating count with
             no tap target (pure top-left noise once everything had loaded), so
             on a healthy map nothing shows here now. */}
-        {(osmLoading || osmError) && (
+        {!mapError && (osmLoading || osmError) && (
           <div
             className={`absolute left-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated-solid)] px-2.5 py-1 text-[11px] font-medium ${
               dock ? "top-[168px]" : "top-3"
@@ -7240,24 +7291,33 @@ export default function AppMap({
 
           {/* Historic Covered Bridges — HTML markers for custom styling */}
           {showCoveredBridges &&
-            coveredBridges.features.map((feature, i) => {
+            coveredBridges.features.map((feature) => {
               const geometry = feature.geometry as { type: string; coordinates: [number, number] };
               if (geometry.type !== "Point") return null;
               const [lng, lat] = geometry.coordinates;
+              const name = (feature.properties?.name as string) || "covered bridge";
               return (
                 <Marker
-                  key={`bridge:${i}`}
-                  longitude={lng as number}
-                  latitude={lat as number}
+                  key={`bridge:${lng},${lat}`}
+                  ref={exposeMarkerChild}
+                  longitude={lng}
+                  latitude={lat}
                   anchor="bottom"
                 >
-                  <button
-                    type="button"
-                    title={(feature.properties?.name as string) || "Covered Bridge"}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--color-primary,#ef4444)] bg-white text-[var(--color-primary,#ef4444)] shadow-[0_2px_10px_rgba(34,28,21,0.28)] hover:bg-[var(--color-primary,#ef4444)] hover:text-white transition-colors"
+                  <a
+                    href={directionsHref(lat, lng)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`Directions to ${name}`}
+                    aria-label={`Directions to ${name}`}
+                    tabIndex={isPointInView(lng, lat) ? 0 : -1}
+                    onClick={(event) => event.stopPropagation()}
+                    className="group grid h-11 w-11 place-items-center rounded-full"
                   >
-                    <Landmark size={14} />
-                  </button>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[var(--color-primary,#ef4444)] bg-white text-[var(--color-primary,#ef4444)] shadow-[0_2px_10px_rgba(34,28,21,0.28)] transition-colors group-hover:bg-[var(--color-primary,#ef4444)] group-hover:text-white">
+                      <Landmark size={14} aria-hidden />
+                    </span>
+                  </a>
                 </Marker>
               );
             })}

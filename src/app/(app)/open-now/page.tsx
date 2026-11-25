@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import GuideHeader from "@/components/layout/GuideHeader";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { ArrowLeft, MapIcon, ArrowRight } from "lucide-react";
+import { MapIcon, ArrowRight } from "lucide-react";
 import {
   getOpenNowSnapshot,
   likelyOpenPlaces,
@@ -212,41 +213,13 @@ export default async function OpenNowPage() {
     <div className="relative space-y-6">
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <Link
-          href="/today"
-          className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-full px-2 hover:underline"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Today
-        </Link>
-      </nav>
-
-      {/* Masthead — the almanac dateline over the serif headline; the count
-          rides the mono support line, never the h1. */}
-      <header>
-        <div aria-hidden className="fg-rule mb-2" />
-        <p
-          className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Frederick County · {dateline} · {asOf}
-        </p>
-        <h1
-          className="mt-1 font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Open now
-        </h1>
-        <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-          {snapshot.count > 0
-            ? `${snapshot.count} ${snapshot.count === 1 ? "place is" : "places are"} confirmed open`
-            : likely.length > 0
-              ? "Some places are usually open at this hour, but their hours are not recently confirmed."
-              : "No county listings have recently checked hours confirming they are open."}
-        </p>
-      </header>
+      <GuideHeader title="Open now" href="/today" parent="Today" detail={`${dateline} · ${asOf} Eastern`}>
+        {snapshot.count > 0
+          ? `${snapshot.count} ${snapshot.count === 1 ? "place is" : "places are"} confirmed open.`
+          : likely.length > 0
+            ? "Some places are usually open at this hour. Check with the venue before going."
+            : "No county listings have recently checked hours confirming they are open."}
+      </GuideHeader>
 
       {/* Where the list ranks from — always shown, always changeable, writes
           the shared scope (beta feedback 2026-07-12: no way to change location

@@ -24,7 +24,7 @@ changing for the task. Each PR carries one concern.
 |-------------------|-------------------|----------------------------------------|
 | `--font-sans`     | System sans (`-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`) | Product titles, body, navigation, labels, controls |
 | `--font-serif`    | System sans | Compatibility alias for older interface components |
-| `--font-display`  | Libre Caslon Display | The wordmark beside the Ripple in the top bar (`.font-brand`), shown at `sm` and wider on routes without a Back button, and a rare editorial signature on a few specialty guide pages (`.font-editorial`). No page title or content on Today, Map, Events, Saved, Find, Tools, Settings, Ask, place pages, or event pages uses it |
+| `--font-display`  | Libre Caslon Display | The wordmark beside the Ripple (`.font-brand`), the single photographic cover story headline on Today, and selected specialty guide headlines (`.font-editorial`) |
 | `--font-mono`, `--font-data` | System sans (tabular numerals come from the `.font-mono` and `.font-data` classes) | Times, distances, counts, tabular data |
 
 Product UI uses the system sans already on the device. Public Sans is not
@@ -35,8 +35,7 @@ Regular only; never simulate a bold or italic display cut. Technical data uses
 the same system sans with tabular numerals through `.font-mono` or
 `.font-data`, so a separate mono family is unnecessary. Legacy `.font-serif`
 components intentionally compute to system sans. Use `.font-brand` for the
-wordmark and `.font-editorial` only for a rare editorial signature on a
-specialty guide page. Do not
+wordmark and `.font-editorial` for the cover story on Today and selected specialty guide headlines. Do not
 download a new family or rename packaged Public Sans as a system font.
 
 Map canvas labels use the cartographic face supplied by Mapbox. That exception
@@ -64,11 +63,7 @@ are baked in, so don't set `leading-*` on these.
 
 Normal paragraph text on a phone should be 15 to 16 px. Eleven to 13 px is
 reserved for short supporting data, never instructions or a multi-sentence
-explanation. Product headings use system sans. Libre Caslon Display sets the
-header wordmark in the top bar and is a rare editorial signature on a few
-specialty guide pages, at 18 px or larger. No page title or content on Today,
-Map, Events, Saved, Find, Tools, Settings, Ask, place pages, or event pages
-uses it; every title there is heavy system sans.
+explanation. Product headings use system sans. Libre Caslon Display sets the header wordmark, the photographic cover story headline on Today and selected specialty guide headlines, at 18 px or larger. Other product titles and all controls use system sans.
 
 Plus `.eyebrow` for uppercase 11px with `0.1em` tracking.
 

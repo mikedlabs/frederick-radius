@@ -1,22 +1,26 @@
 import { CarFront, TrainFront } from "lucide-react";
 import { fieldNotesFor, recordedFieldNoteVerificationDate } from "@/lib/loaders/fieldNotes";
 import { eventParkingDirections, type EventParkingDecision } from "@/lib/events/parking";
+import { BRUNSWICK_CANCELLATION, COUNTY_TRANSIT_BULLETIN_URL, MARC_HOLIDAY_URL, brunswickCancelled, countyTransitException } from "@/lib/transit-service-calendar";
 import { eventNearbyStation } from "@/lib/events/travel";
 import Link from "next/link";
 import PlaceSectionLabel from "@/components/place/PlaceSectionLabel";
 
 /** Source-backed venue notes and coordinate proximity, with no route or service assumptions. */
-export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parkingDecision }: {
+export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parkingDecision, eventDay }: {
   geom: { lng: number; lat: number };
   venuePlaceSlug?: string;
   geoPrecise: boolean;
+  eventDay?: string;
   parkingDecision: EventParkingDecision | null;
 }) {
   const parkingNote = venuePlaceSlug ? fieldNotesFor(venuePlaceSlug)?.parking : undefined;
   const verified = recordedFieldNoteVerificationDate(parkingNote?.last_verified);
-  const garageLine = parkingNote ? null : eventParkingDirections(parkingDecision);
+  const garageLine = parkingNote ? null : eventParkingDirections(parkingDecision, eventDay);
   const station = geoPrecise ? eventNearbyStation(geom) : null;
-  if (!parkingNote && !garageLine && !station) return null;
+  const notice = eventDay ? countyTransitException(eventDay) : null;
+  const noTrain = Boolean(eventDay && brunswickCancelled(eventDay));
+  if (!parkingNote && !garageLine && !station && !notice) return null;
 
   return (
     <section aria-label="Getting there" className="max-w-[720px] border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
@@ -37,12 +41,13 @@ export default function GettingThere({ geom, venuePlaceSlug, geoPrecise, parking
             </div>
           </li>
         )}
+        {notice && <li><p>{notice.text}</p><a className="tap-44 inline-flex items-center text-[12px] font-semibold underline" href={COUNTY_TRANSIT_BULLETIN_URL}>County transit bulletin (PDF)</a></li>}
         {station && (
           <li className="flex items-start gap-2.5">
             <TrainFront className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
             <div className="min-w-0">
-              <p>{station.name} MARC station is {station.distanceLabel} away in a straight line. Check outbound and return service for the event date before planning the trip.</p>
-              <Link prefetch={false} href="/transit" className="tap-44 inline-flex items-center text-[12px] font-semibold underline" style={{ color: "var(--app-cool-text)" }}>Check train schedules</Link>
+              <p>{station.name} MARC station is {station.distanceLabel} away in a straight line. {noTrain ? BRUNSWICK_CANCELLATION : "Check outbound and return service for the event date before planning the trip."}</p>
+              <a href={noTrain ? MARC_HOLIDAY_URL : "/transit"} className="tap-44 inline-flex items-center text-[12px] font-semibold underline" style={{ color: "var(--app-cool-text)" }}>{noTrain ? "MARC holiday schedule" : "Check train schedules"}</a>
             </div>
           </li>
         )}

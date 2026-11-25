@@ -22,6 +22,7 @@ import { placeCardPhotoPlan, recordPlaceCardPhotoResult, selectedPlaceCardPhoto,
   type PlaceCardPhotoResult, type PlaceCardPhotoState } from "@/lib/place-card-photo";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { EventPin, MapPinPlace } from "./types";
+import { CountyLocatorWorkspace, type LocatorArea } from "./CountyLocator";
 
 /**
  * MapList — the map's list face. The same currently-filtered pins, turned
@@ -151,6 +152,7 @@ export default function MapList({
   userLoc,
   sortOrigin,
   failureMode = false,
+  locatorArea,
   searchState = "ready",
   showSearchFeedback = true,
   preserveOrder = false,
@@ -171,6 +173,7 @@ export default function MapList({
   /** The WebGL recovery surface is intentionally short and varied. It must
    * not turn a graphics failure into a 200-row directory. */
   failureMode?: boolean;
+  locatorArea?: LocatorArea;
   /** An unfinished request is not evidence of zero matches. */
   searchState?: "pending" | "unavailable" | "ready";
   showSearchFeedback?: boolean;
@@ -198,12 +201,8 @@ export default function MapList({
   const empty = rows.length === 0 && eventRows.length === 0;
   const searchIncomplete = empty && searchState !== "ready";
 
-  return (
-    <div
-      className="map-list"
-      role="region"
-      aria-label={failureMode ? "Available results without the map" : "Map results, as a list"}
-    >
+  const content = (
+    <>
       {title && <h2 className="mb-1 px-2 text-[16px] font-semibold text-[var(--app-ink)]">{title}</h2>}
       {note && <p className="mb-2 px-2 text-[12px] leading-snug text-[var(--app-ink-3)]">{note}</p>}
       {searchState === "unavailable" && !empty && showSearchFeedback && <div className="mb-2 px-2 text-[13px] text-[var(--app-ink-2)]" role="status"><p>Unable to verify the full search. Available local matches are still shown.</p>{onRetrySearch && <button type="button" onClick={onRetrySearch} className="min-h-11 font-semibold text-[var(--app-link)]">Try again</button>}</div>}
@@ -316,6 +315,15 @@ export default function MapList({
           )}
         </div>
       )}
+    </>
+  );
+  return (
+    <div
+      className="map-list"
+      role="region"
+      aria-label={failureMode ? "Available results without the map" : "Map results, as a list"}
+    >
+      {locatorArea ? <CountyLocatorWorkspace area={locatorArea}>{content}</CountyLocatorWorkspace> : content}
     </div>
   );
 }

@@ -158,6 +158,7 @@ export function useReversibleHistoryLayer({
   onDismiss,
   returnScrollY: requestedReturnScrollY,
   preserveUrlOnDismiss = false,
+  retainEntryFor,
 }: {
   active: boolean;
   id: string;
@@ -166,6 +167,8 @@ export function useReversibleHistoryLayer({
   returnScrollY?: number | null;
   /** Only an in-place editor may commit its latest query to the underlying entry. */
   preserveUrlOnDismiss?: boolean;
+  /** A resumable result detail pushes a destination above the existing layer. */
+  retainEntryFor?: (path: string) => boolean;
 }) {
   const dismissRef = useRef(onDismiss);
   const returnScrollYRef = useRef<number | null>(null);
@@ -293,6 +296,8 @@ export function useReversibleHistoryLayer({
       const path = `${destination.pathname}${destination.search}${destination.hash}`;
       if (preserveUrlOnDismiss && currentLayerId() === id) {
         leave(() => window.location.assign(destination));
+      } else if (currentLayerId() === id && retainEntryFor?.(path)) {
+        window.location.assign(destination);
       } else if (currentLayerId() === id) {
         // Replace the temporary overlay entry itself. App Router transitions
         // can be overwritten by the same-URL history layer's pending restore;
@@ -308,7 +313,7 @@ export function useReversibleHistoryLayer({
         window.location.assign(path);
       }
     },
-    [id, preserveUrlOnDismiss, leave],
+    [id, preserveUrlOnDismiss, leave, retainEntryFor],
   );
 
   return useMemo(

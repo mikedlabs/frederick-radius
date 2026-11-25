@@ -6,6 +6,15 @@ const spec: PlanSpec = { v: 1, i: { audience: "date", vibe: "cultural", duration
 const row = (token = encodeSpec(spec)) => ({ token, title: "A local date", saved_at: "2026-10-12T12:30:00.000Z" });
 
 describe("separate saved outing contract", () => {
+  it.each([["brunswick", "Brunswick"], ["frederick", "Frederick City"], [undefined, "Frederick County"]])(
+    "repairs only the former generated visitor heading for %s and preserves the exact record", (municipality, name) => {
+      const token = encodeSpec({ ...spec, i: { ...spec.i, audience: "visitor", municipality } });
+      const original = { ...row(token), title: "An evening in Frederick" };
+      expect(parseSavedOutings(JSON.stringify([original]))).toEqual([{ ...original, title: `An evening in ${name}` }]);
+      const custom = { ...original, title: "Our favorite place in Frederick" };
+      expect(parseSavedOutings(JSON.stringify([custom]))).toEqual([custom]);
+    },
+  );
   it("reopens the exact dated token and all original ordered constraints", () => {
     const original = row();
     const stored = parseSavedOutings(JSON.stringify([original]));

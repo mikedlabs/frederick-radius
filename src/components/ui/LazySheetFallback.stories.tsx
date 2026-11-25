@@ -10,12 +10,13 @@ const meta = {
   parameters: { layout: "fullscreen" },
   args: {
     label: "Loading event details",
+    fullPageLabel: "Event details in Radius",
     onClose: fn(),
     onOpenFullPage: fn(),
     returnFocusRef: createRef<HTMLElement>(),
   },
   play: async ({ canvas, args, userEvent }) => {
-    const escape = canvas.getByRole("button", { name: "Open full page" });
+    const escape = canvas.getByRole("button", { name: "Event details in Radius" });
     await expect(canvas.getByRole("dialog", { name: "Loading event details" })).toBeVisible();
     await expect(escape).toBeVisible();
     await expect(escape.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
@@ -36,6 +37,6 @@ export const PlaceLoading: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole("dialog", { name: "Loading place details" })).toBeVisible();
     await expect(canvas.getAllByRole("button", { name: "Close" })).toHaveLength(2);
-    await expect(canvas.queryByRole("button", { name: "Open full page" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Event details in Radius" })).toBeNull();
   },
 };

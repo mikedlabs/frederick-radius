@@ -580,6 +580,12 @@
     ],
     "deals": [
       {
+        "text": "Wednesday wine special, 4–9 p.m. Half-price bottles of wine with the purchase of two entrées. Check with JoJo’s for holiday availability.",
+        "source_url": "https://jojosrestauranttaphouse.com/specials",
+        "confidence": "high",
+        "last_verified": "2026-11-24"
+      },
+      {
         "text": "26 rotating drafts plus a full bar (wine, whiskey, craft cocktails) in the tap house side.",
         "source_url": "https://jojosrestauranttaphouse.com/about/",
         "confidence": "high",

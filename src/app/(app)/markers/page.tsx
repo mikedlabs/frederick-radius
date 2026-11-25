@@ -7,14 +7,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import MarkersExplorer from "@/components/markers/MarkersExplorer";
-import { wikimediaUrl, LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
-
-// Editorial hero for the page itself: the red Roddy Road covered bridge, the
-// visual shorthand for "history on the ground". Reuses the single verified
-// Commons entry (file + attribution) from LANDMARK_PHOTOS so the filename and
-// credit never drift between here and the place hero.
-const MARKERS_HERO =
-  LANDMARK_PHOTOS["historic-roddy-road-covered-bridge-thurmont"];
+import { RODDY_ROAD_ARCHIVE_PHOTO as bridge } from "@/data/roddy-road-archive-photo";
 
 export const metadata: Metadata = {
   // Orphan-by-design like /trails and /rivers: real content, reachable by URL +
@@ -54,37 +47,36 @@ export default async function MarkersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Editorial hero — a real photograph of the county's most iconic
-          landmark carries identity before the eye reaches a word, then the
-          serif title sits on a soft dark gradient so it stays readable. */}
       <header className="space-y-3">
-        <div className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
-          <div className="relative h-40 w-full sm:h-60">
+        <div className="grid grid-cols-[minmax(0,1fr)_35%] overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-[var(--app-bg-elevated)]">
+          <div className="flex flex-col justify-center gap-2 px-4 py-6 sm:px-7">
+            <h1 className="display-2">Markers &amp; landmarks</h1>
+            <p className="text-sm leading-snug text-[var(--app-ink-2)]">
+              Roddy Road Covered Bridge, near Thurmont
+            </p>
+            <p className="text-xs leading-normal text-[var(--app-ink-2)]">
+              Photographed {bridge.review.capture_period}
+            </p>
+          </div>
+          <div className="relative min-h-40 sm:min-h-52">
             <Image
-              src={wikimediaUrl(MARKERS_HERO.file, 1200)}
-              alt=""
-              aria-hidden
+              src={bridge.image.src}
+              alt={bridge.image.alt}
               fill
               priority
-              sizes="(max-width: 768px) 100vw, 640px"
+              sizes="(max-width: 960px) 35vw, 340px"
               className="object-cover"
-              style={{ objectPosition: "center 38%" }}
+              style={{ objectPosition: bridge.objectPosition }}
             />
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.25) 55%, transparent 90%)",
-              }}
-            />
-            <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-              <p className="eyebrow" style={{ color: "rgba(255,255,255,0.82)" }}>
-                Frederick County · on the ground
-              </p>
-              <h1 className="display-2 text-white">Markers &amp; landmarks</h1>
-            </div>
           </div>
         </div>
+        <p className="text-xs leading-normal text-[var(--app-ink-2)]">
+          <a href={bridge.image.source_url} className="underline underline-offset-2">
+            {bridge.image.creator}, Library of Congress
+          </a>
+          {" · "}
+          <a href={bridge.image.license.url} className="underline underline-offset-2">{bridge.image.license.label}</a>
+        </p>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           Search roadside marker text from MDOT and National Register sites from
           the National Park Service. For longer local stories, see{" "}
@@ -153,19 +145,6 @@ export default async function MarkersPage() {
           )}
         </>
       )}
-
-      <footer className="pt-2">
-        <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-          Photo:{" "}
-          <a href={MARKERS_HERO.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--app-ink-2)" }}>
-            {MARKERS_HERO.author}
-          </a>{" "}
-          · {MARKERS_HERO.license} · via{" "}
-          <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer" style={{ color: "var(--app-ink-2)" }}>
-            Wikimedia Commons
-          </a>
-        </p>
-      </footer>
     </div>
   );
 }

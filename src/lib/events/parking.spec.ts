@@ -22,9 +22,9 @@ describe("event parking decision", () => {
     expect(eventParkingDirections(parking)).toContain(
       `Carroll Creek Garage is ${parking?.distanceLabel} away in a straight line.`,
     );
-    expect(eventParkingDirections(parking)).toContain(
-      "Garage parking is $1 / hour; the overnight maximum is $5.",
-    );
+    expect(eventParkingDirections(parking, "2026-11-26")).toContain("Free Nov 26–29");
+    expect(eventParkingDirections(parking, "2026-12-05")).toContain("Sat 8 AM–Mon 6 AM");
+    expect(eventParkingDirections(parking, "2027-02-05")).toContain("$12 weekday maximum · $5 weekday nights and weekend days");
     expect(eventParkingDirections(parking)).not.toContain("Garage garage");
     expect(eventParkingDirections(parking)).not.toMatch(/minute.walk/);
   });

@@ -274,7 +274,7 @@ test("failed seeded metadata stays usable in the same layer without automatic en
     await expect(sheet.getByRole("status")).toHaveText("More details are unavailable. You can keep browsing or open the full page.");
     await expect(sheet.getByRole("heading", { name: places[0].name, exact: true })).toBeVisible();
     await expect(sheet.getByRole("link", { name: "Directions", exact: true })).toBeVisible();
-    const fullPage = sheet.getByRole("link", { name: "See full page", exact: true });
+    const fullPage = sheet.getByRole("link", { name: "Place details in Radius", exact: true });
     await expect(fullPage).toHaveAttribute("href", `/places/${creekSlug}?returnTo=${encodeURIComponent(new URL(selectedUrl).pathname + new URL(selectedUrl).search)}`);
     expectNoAutomaticPlaceMetadata(boundary.requests);
     expect(await page.evaluate(() => history.state.__frederickRadiusLayer)).toBe(layer);

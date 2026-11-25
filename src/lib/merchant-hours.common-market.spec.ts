@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { collectMerchantOfficialHours, fetchMerchantHoursPage, parseMerchantOfficialHours } from "../../scripts/lib/merchant-official-hours";
 import { MERCHANT_HOURS_SOURCES, acceptReviewedMerchantHoursCandidate, merchantHoursForPlace, type MerchantHoursArtifact, type MerchantHoursSource } from "./merchant-hours";
-import { getOpenStatus } from "./hours";
+import { getOpenStatus, hoursForDate } from "./hours";
 
 const url = "https://www.commonmarket.coop/";
 const slugs = ["common-market-frederick", "common-market"];
@@ -40,6 +40,33 @@ describe("Common Market exact grocery hours", () => {
       expect(merchantHoursForPlace(place(source), artifact, new Date(row.expires_at))).toEqual({ enrolled: true });
       expect(merchantHoursForPlace({ ...place(source), category: "coffee" }, artifact, now)).toEqual({ enrolled: true });
       expect(merchantHoursForPlace({ ...place(source), website: "https://another.example/" }, artifact, now)).toEqual({ enrolled: true });
+    }
+  });
+
+  const banner = '<h2 class="slide-title"><span>thanksgiving hours</span><strong>Tues 11/24 &amp; Weds 11/25 7am - 9pm. CLOSED THANKSGIVING DAY</strong></h2>';
+  const holidayObservation = new Date("2026-11-23T16:00:00Z");
+  const holidayRow = (source: MerchantHoursSource, notice: string, at = holidayObservation) => parseMerchantOfficialHours(source, {
+    url, html: html.replace("</body>", `${notice}</body>`), observedAt: at.toISOString(),
+  }, at);
+  it("uses the shared holiday opening windows on the two named dates at both stores", () => {
+    for (const source of sources()) {
+      const row = holidayRow(source, banner);
+      const hours = merchantHoursForPlace(place(source), { schema_version: 1, places: [row], review: [] }, holidayObservation).hours!;
+      for (const day of ["24", "25"]) {
+        const at = new Date(`2026-11-${day}T12:30:00Z`);
+        expect(hoursForDate(hours, at)).toEqual([{ open: "07:00", close: "21:00" }]);
+        expect(getOpenStatus(hours, { verified: true }, at)).toMatchObject({ state: "open" });
+      }
+      expect(hoursForDate(hours, new Date("2026-11-26T16:00:00Z"))).toEqual([]);
+      expect(hoursForDate(hours, new Date("2026-11-27T16:00:00Z"))).toEqual([{ open: "08:00", close: "21:00" }]);
+    }
+  });
+  it("withholds changed, conflicting or out-of-year Thanksgiving notices", () => {
+    for (const source of sources()) {
+      for (const changed of [banner.replace("11/24", "11/25"), banner + banner, banner + "<p>Closed on Christmas</p>"]) {
+        expect(() => holidayRow(source, changed)).toThrow();
+      }
+      expect(() => holidayRow(source, banner, new Date("2027-11-23T16:00:00Z"))).toThrow();
     }
   });
 

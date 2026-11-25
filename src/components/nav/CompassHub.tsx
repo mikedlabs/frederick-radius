@@ -32,6 +32,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import ToolDeckDialog from "@/components/nav/ToolDeckDialog";
+import styles from "./ToolsLayout.module.css";
 import { TOOL_ICONS } from "@/components/tools/toolIcons";
 import {
   RADIUS_TOOLS,
@@ -58,6 +59,11 @@ import {
 } from "./toolDeckModel";
 
 const RECENT_TOOLS_KEY = "fr.compass.recent.v1";
+const EVERYDAY_TOOLS = [
+  { id: "parking", label: "Parking" },
+  { id: "restrooms", label: "Restrooms" },
+  { id: "emergency", label: "Emergency" },
+] as const;
 export const ALL_COMPASS_TOOLS_ID = "all-tools";
 
 export function compassShortcutGridClass(itemCount: number): string {
@@ -685,6 +691,10 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
     const item = itemById.get(id);
     return item ? [item] : [];
   });
+  const everydayItems = EVERYDAY_TOOLS.flatMap(({ id, label }) => {
+    const item = itemById.get(id);
+    return item ? [{ item, label }] : [];
+  });
   // Noon is the stable server/first-client snapshot. Once local settings are
   // hydrated, the row quietly changes to the device's current daypart.
   const localHour = hydrated ? new Date().getHours() : 12;
@@ -708,6 +718,7 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
   // whole board would empty this row permanently - and "what you opened
   // last" is worth more at the top of a long page, not less.
   const visibleDestinationHrefs = new Set([
+    ...everydayItems.map(({ item }) => item.href),
     ...pinnedItems.map((item) => item.href),
     "/today",
     "/map",
@@ -750,29 +761,19 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
     : [];
   return (
     <div
-      className="space-y-5"
+      className={`space-y-5 ${styles.hub}`}
       data-compass-ready={hydrated ? "true" : "false"}
     >
-      <div hidden={embeddedInToolsDrawer && deckView !== null} className="space-y-5">
-        <header
-          // No horizontal bleed: the header text, the Find field and this
-          // rule share the rows' left edge, and the rule is inset like every
-          // other rule on the page.
-          className="-mt-4 border-b pb-4 pt-4 sm:-mt-6 sm:pt-5 lg:mt-0"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-            Tools
-          </p>
-          <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-tight sm:text-[32px]">
-            What do you need?
+      <div hidden={embeddedInToolsDrawer && deckView !== null} className="space-y-4">
+        <header className="-mt-4 pt-4 sm:-mt-6 sm:pt-5 lg:mt-0">
+          <h1 className="text-[28px] font-semibold leading-tight tracking-tight sm:text-[32px]">
+            Local tools
           </h1>
           <Link
             ref={findLauncherRef}
             href="/search"
             prefetch={false}
             data-compass-find
-            aria-label="Find a place, service, event, or answer"
             onClick={(event) => {
               // The existing Tools drawer already owns modal input. Let this
               // real search destination clear that route rather than stacking Find.
@@ -788,18 +789,27 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
               haptic("light");
               requestFind("global");
             }}
-            className="tactile-interactive mt-4 flex min-h-16 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 py-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+            className="tactile-interactive mt-3 flex min-h-12 items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated-solid)] px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
             style={{ borderColor: "var(--app-control-border)", color: "var(--app-ink)" }}
           >
             <Search className="h-5 w-5 shrink-0" style={{ color: "var(--app-link)" }} strokeWidth={2} aria-hidden />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[16px] font-semibold leading-tight">Find places and events</span>
-              <span className="mt-1 block text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                Search a name, a need, or a question.
-              </span>
-            </span>
+            <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug">Find a place, service, event, or answer</span>
             <ArrowRight className="h-4 w-4 shrink-0" style={{ color: "var(--app-ink-2)" }} strokeWidth={2} aria-hidden />
           </Link>
+          <nav aria-label="Everyday essentials" className="mt-1 grid grid-cols-3 border-b" style={{ borderColor: "var(--app-border)" }}>
+            {everydayItems.map(({ item, label }) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                prefetch={false}
+                {...intentProps(item)}
+                className="flex min-h-12 items-center justify-center gap-1.5 rounded-[var(--app-radius-sm)] px-1 text-[14px] font-semibold outline-none hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)]"
+              >
+                <item.icon className="h-4 w-4 shrink-0 max-[359px]:hidden" style={{ color: item.id === "emergency" ? "var(--app-danger)" : item.color }} aria-hidden />
+                {label}
+              </Link>
+            ))}
+          </nav>
         </header>
 
         {contextualItem && contextualSuggestion ? (
@@ -811,25 +821,27 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
           />
         ) : null}
 
-        <CompassIntentBoard
-          intents={COMPASS_INTENT_DEFINITIONS}
-          groups={groups}
-          liveKeys={deckLiveKeys}
-          onOpen={openDeck}
-          intentProps={intentProps}
-          ready={hydrated}
-        />
-
-        {recentItems.length > 0 ? (
-          <RecentTools items={recentItems} intentProps={intentProps} />
-        ) : null}
-
-        <PinnedTools
-          items={pinnedItems}
-          intentProps={intentProps}
-          onManage={() => openDeck("all", true)}
-          ready={hydrated}
-        />
+        <div className={styles.hubColumns}>
+          <CompassIntentBoard
+            intents={COMPASS_INTENT_DEFINITIONS}
+            groups={groups}
+            liveKeys={deckLiveKeys}
+            onOpen={openDeck}
+            intentProps={intentProps}
+            ready={hydrated}
+          />
+          <div className="min-w-0 space-y-4">
+            <PinnedTools
+              items={pinnedItems}
+              intentProps={intentProps}
+              onManage={() => openDeck("all", true)}
+              ready={hydrated}
+            />
+            {recentItems.length > 0 ? (
+              <RecentTools items={recentItems} intentProps={intentProps} />
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <ToolDeckDialog
@@ -844,9 +856,7 @@ export default function CompassHub({ embeddedInToolsDrawer = false }: { embedded
         description={
           editingPins
             ? `Pin up to ${TOOL_DECK_PIN_LIMIT} tools for quick access on this device.`
-            : selectedIntent?.description ??
-              selectedGroup?.description ??
-              "Browse by category or search for a specific tool."
+            : selectedIntent?.description ?? selectedGroup?.description
         }
         onClose={closeDeck}
       >
@@ -952,7 +962,7 @@ function PinnedTools({
       </div>
 
       {items.length > 0 ? (
-        <ul className={compassShortcutGridClass(items.length)}>
+        <ul className={`${compassShortcutGridClass(items.length)} ${styles.shortcutGrid}`}>
           {items.map((item) => (
               <li key={item.id} className="min-w-0">
                 <Link
@@ -960,13 +970,13 @@ function PinnedTools({
                   prefetch={false}
                   {...externalLinkProps(item)}
                   {...intentProps(item)}
-                  className="tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-start gap-1.5 rounded-[var(--app-radius-md)] px-0.5 py-1.5 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                  className={`tactile-interactive flex min-h-[72px] min-w-0 flex-col items-center justify-start gap-1.5 rounded-[var(--app-radius-md)] px-0.5 py-1.5 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)] ${styles.shortcutLink}`}
                 >
                   {/* The glyph in its own color, directly on Cream. The old
                       bordered-and-filled tile was a box inside a box: the
                       grid cell already bounds the target. */}
                   <span
-                    className="grid h-9 w-9 place-items-center"
+                    className={`grid h-9 w-9 shrink-0 place-items-center ${styles.shortcutIcon}`}
                     style={{ color: item.color }}
                   >
                     <item.icon
@@ -1006,10 +1016,7 @@ function PinnedTools({
             background: "var(--app-bg-elevated-solid)",
           }}
         >
-          <span className="block text-[13px] font-semibold">Choose your shortcuts</span>
-          <span className="mt-1 block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Open all tools and pin the ones you use most.
-          </span>
+          <span className="block text-[14px] font-semibold">Choose your shortcuts</span>
         </button>
       )}
 
@@ -1350,13 +1357,11 @@ function CompassIntentBoard({
   };
 
   return (
-    <section aria-labelledby="compass-browse-heading" className="space-y-3">
-      <h2 id="compass-browse-heading" className="text-[16px] font-semibold tracking-tight">
-        Choose a direction
+    <section aria-labelledby="compass-browse-heading">
+      <h2 id="compass-browse-heading" className="sr-only">
+        Browse by task
       </h2>
-      {/* Ruled rows on the page ground: a hairline between directions, no
-          boxes. Each row is a 44px-plus disclosure with one muted line. */}
-      <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+      <ul>
         {intents.map((intent) => {
           const actions = intent.featuredIds.flatMap((id) => {
             const item = itemById.get(id);
@@ -1379,16 +1384,16 @@ function CompassIntentBoard({
                     chooseChapter(open ? null : intent.id);
                     track("compass_intent_toggle", { intent: intent.id, open: !open });
                   }}
-                  className="flex min-h-16 w-full items-center gap-3 py-3 text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
+                  className="flex min-h-14 w-full items-center gap-3 py-2 text-left outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-brand)] motion-reduce:transition-none"
                 >
                   <intent.icon className="h-5 w-5 shrink-0" strokeWidth={2} style={{ color: intentColor[intent.id] }} aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[17px] font-semibold leading-tight">{intent.label}</span>
-                    {line ? <span className="mt-1 block text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</span> : null}
                   </span>
                   <ChevronDown className={`h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`} strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
                 </button>
                 <div id={contentId} hidden={!open}>
+                  {line ? <p className="mb-1 pl-8 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{line}</p> : null}
                   <ul className="pb-1 pl-8">
                     {actions.map((item) => (
                       <li key={item.id}>
@@ -1481,6 +1486,12 @@ function DeckToolBrowser({
   const total = groups.reduce((count, group) => count + group.items.length, 0);
   const showGroupHeadings = groups.length > 1;
   const browserRef = useRef<HTMLDivElement>(null);
+  const jumpToCategory = (id: string) => {
+    const heading = browserRef.current?.querySelector<HTMLElement>(`#compass-tools-${id} h3`);
+    if (!heading) return;
+    heading.focus({ preventScroll: true });
+    heading.scrollIntoView({ block: "start", behavior: "instant" });
+  };
   // Enter runs a filter that has narrowed to one tool by clicking its real
   // link, so recents, the native-request return and external-tab attributes
   // behave exactly as a tap would. With several matches, and always in the
@@ -1503,58 +1514,7 @@ function DeckToolBrowser({
   };
 
   return (
-    <div ref={browserRef} className="space-y-4">
-      {showCategoryNav && !filter ? (
-        <nav
-          aria-label="Tool categories"
-          className="sticky top-0 z-10 -mx-1 border-b bg-[var(--app-bg-elevated-solid)] px-1 pb-2 pt-0.5"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <div className="flex snap-x gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {groups.map((group) => {
-              const Icon = GROUP_META[group.id].icon;
-              return (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => {
-                    document
-                      .getElementById(`compass-tools-${group.id}`)
-                      ?.scrollIntoView({
-                        behavior: window.matchMedia(
-                          "(prefers-reduced-motion: reduce)",
-                        ).matches
-                          ? "auto"
-                          : "smooth",
-                        block: "start",
-                      });
-                  }}
-                  // tap-44: the chip PAINTS 40px tall (min-h-10, deliberate
-                  // density for a nine-chip rail) but must HIT 44, per the
-                  // repo's own tap-target rule. The invisible extender adds
-                  // the missing 4px of touch without changing the paint.
-                  className="tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-2.5 text-[12px] font-semibold text-[var(--app-ink)] outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-                >
-                  <Icon
-                    className="h-3.5 w-3.5"
-                    style={{ color: GROUP_META[group.id].color }}
-                    strokeWidth={2.1}
-                    aria-hidden
-                  />
-                  {group.label}
-                  <span
-                    className="font-mono text-[10px] tabular-nums"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {group.items.length}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
-      ) : null}
-
+    <div ref={browserRef} className={`space-y-4 ${styles.index}`}>
       {total > 7 ? (
         <label className="block">
           <span className="sr-only">Search tools in this section</span>
@@ -1577,7 +1537,7 @@ function DeckToolBrowser({
               onKeyDown={onFilterKeyDown}
               enterKeyHint={showPinControls ? undefined : "go"}
               placeholder="Filter these tools"
-              className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-10 text-[15px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              className="min-h-12 w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] py-2.5 pl-10 pr-10 text-[16px] font-medium outline-none placeholder:font-normal placeholder:text-[var(--app-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
               style={{
                 borderColor: "var(--app-border)",
                 color: "var(--app-ink)",
@@ -1601,45 +1561,87 @@ function DeckToolBrowser({
         </label>
       ) : null}
 
-      {visibleGroups.length > 0 ? (
-        visibleGroups.map((group) => (
-          <section
-            key={group.id}
-            id={`compass-tools-${group.id}`}
-            className="scroll-mt-14 space-y-2.5"
+      <div className={`${styles.indexColumns} ${showCategoryNav && !filter ? styles.indexWithCategories : ""}`}>
+        {showCategoryNav && !filter ? (
+          <nav
+            aria-label="Tool categories"
+            className={`sticky top-0 z-10 -mx-1 border-b bg-[var(--app-bg-elevated-solid)] px-1 pb-2 pt-0.5 ${styles.categoryNav}`}
+            style={{ borderColor: "var(--app-border)" }}
           >
-            {showGroupHeadings ? (
-              <div>
-                <h3 className="text-[14px] font-semibold">{group.label}</h3>
-                <p
-                  className="mt-0.5 text-[12px] leading-snug"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {group.description}
-                </p>
-              </div>
-            ) : null}
-            <ToolLedger
-              items={group.items}
-              pinnedIds={pinnedIds}
-              onTogglePin={onTogglePin}
-              intentProps={filterIntentProps}
-              showPinControls={showPinControls}
-            />
-          </section>
-        ))
-      ) : (
-        <p
-          role="status"
-          className="rounded-[var(--app-radius-md)] border px-4 py-5 text-[13px] font-medium"
-          style={{
-            borderColor: "var(--app-border)",
-            color: "var(--app-ink-3)",
-          }}
-        >
-          No tools in this section match “{filter.trim()}.”
-        </p>
-      )}
+            <label className={styles.categoryPicker}>
+              <span className="sr-only">Jump to a tool category</span>
+              <select
+                value=""
+                onChange={(event) => jumpToCategory(event.target.value)}
+                className="min-h-11 w-full rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-3 text-base"
+              >
+                <option value="" disabled>Jump to a category</option>
+                {groups.map((group) => <option key={group.id} value={group.id}>{group.label} ({group.items.length})</option>)}
+              </select>
+            </label>
+            <div className={styles.categoryStrip}>
+              {groups.map((group) => {
+                const Icon = GROUP_META[group.id].icon;
+                return (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => jumpToCategory(group.id)}
+                    className="tap-44 inline-flex min-h-10 shrink-0 snap-start items-center gap-1.5 rounded-[var(--app-radius-md)] border border-[var(--app-control-border)] bg-[var(--app-bg)] px-2.5 text-[12px] font-semibold text-[var(--app-ink)] outline-none transition-colors hover:bg-[var(--app-bg-sunken)] focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+                  >
+                    <Icon
+                      className="h-3.5 w-3.5"
+                      style={{ color: GROUP_META[group.id].color }}
+                      strokeWidth={2.1}
+                      aria-hidden
+                    />
+                    {group.label}
+                    <span
+                      className="font-mono text-[10px] tabular-nums"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {group.items.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        ) : null}
+        <div className="min-w-0 space-y-4">
+          {visibleGroups.length > 0 ? (
+            visibleGroups.map((group) => (
+              <section
+                key={group.id}
+                id={`compass-tools-${group.id}`}
+                className="scroll-mt-14 space-y-2.5"
+              >
+                {showGroupHeadings ? (
+                  <h3 tabIndex={-1} className="scroll-mt-16 text-[15px] font-semibold focus-visible:outline-2 focus-visible:outline-[var(--app-ink)]">{group.label}</h3>
+                ) : null}
+                <ToolLedger
+                  items={group.items}
+                  pinnedIds={pinnedIds}
+                  onTogglePin={onTogglePin}
+                  intentProps={filterIntentProps}
+                  showPinControls={showPinControls}
+                />
+              </section>
+            ))
+          ) : (
+            <p
+              role="status"
+              className="rounded-[var(--app-radius-md)] border px-4 py-5 text-[13px] font-medium"
+              style={{
+                borderColor: "var(--app-border)",
+                color: "var(--app-ink-3)",
+              }}
+            >
+              No tools in this section match “{filter.trim()}.”
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

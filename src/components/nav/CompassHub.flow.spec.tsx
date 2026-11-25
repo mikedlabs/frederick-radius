@@ -60,6 +60,24 @@ async function openFilter(launcher: string, scope: () => ParentNode = () => dial
 }
 
 describe("Tools request-to-action flow", () => {
+  it("moves focus from either category control to its destination heading", async () => {
+    await render(); await openFilter("Browse the full tool index");
+    const panel = dialog()!;
+    const heading = panel.querySelector<HTMLElement>("#compass-tools-decide h3")!;
+    heading.scrollIntoView = vi.fn();
+    const select = panel.querySelector<HTMLSelectElement>("select")!;
+    expect(select.options).toHaveLength(10);
+    await act(async () => {
+      select.value = "decide";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(document.activeElement).toBe(heading);
+    const jump = panel.querySelector<HTMLButtonElement>('[aria-label="Tool categories"] button')!;
+    jump.focus();
+    await click(jump);
+    expect(document.activeElement).toBe(heading);
+    expect(heading.scrollIntoView).toHaveBeenCalledTimes(2);
+  });
   it("runs the single tool a filter leaves when Enter is pressed", async () => {
     await render(); const input = await openFilter("Browse the full tool index");
     expect(input.getAttribute("enterkeyhint")).toBe("go");

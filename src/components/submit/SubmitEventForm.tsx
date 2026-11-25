@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import SubmissionReceiptHeading from "@/components/submit/SubmissionReceiptHeading";
 import { ArrowRight, Check } from "lucide-react";
 import { submitEventAction, type SubmitEventInput } from "./actions";
 import BotTrapFields from "./BotTrapFields";
+import SubmissionByEmail from "./SubmissionByEmail";
+import { useMounted } from "@/hooks/useSaved";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { TOP_CATEGORIES } from "@/data/categories";
 
@@ -24,6 +27,7 @@ const EVENT_FIELD_MAX_LENGTHS: Record<string, number> = {
 };
 
 export default function SubmitEventForm() {
+  const ready = useMounted();
   const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +37,12 @@ export default function SubmitEventForm() {
   // Set post-mount on the uncontrolled select so there is no hydration
   // mismatch and no behavior change when ?m= is absent.
   useEffect(() => {
+    if (!ready) return;
     const slug = new URLSearchParams(window.location.search).get("m");
     if (!slug || !MUNICIPALITIES.some((mm) => mm.slug === slug)) return;
     const el = formRef.current?.elements.namedItem("municipality");
     if (el instanceof HTMLSelectElement) el.value = slug;
-  }, []);
+  }, [ready]);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -83,10 +88,19 @@ export default function SubmitEventForm() {
         setSubmitted(true);
         setError(null);
       } catch {
-        setError("We couldn’t submit this event. Try again in a minute.");
+        setError("We couldn’t confirm delivery. Your details are still here so you can try again.");
       }
     });
   };
+
+  if (!ready) {
+    return (
+      <div className="mt-6 space-y-2">
+        <p className="text-sm">The online form needs JavaScript.</p>
+        <SubmissionByEmail kind="event" />
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -95,7 +109,9 @@ export default function SubmitEventForm() {
         <div className="mx-auto grid h-12 w-12 place-items-center rounded-full" style={{ background: "var(--app-positive)" }}>
           <Check className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden />
         </div>
-        <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>Thanks, submitted</h2>
+        <SubmissionReceiptHeading className="font-serif text-xl font-semibold">
+          Thanks, submitted
+        </SubmissionReceiptHeading>
         <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>We review submissions and reply within three business days.</p>
         <Link href="/" className="inline-flex min-h-11 items-center text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5" strokeWidth={2.25} /></Link>
       </div>
@@ -103,7 +119,7 @@ export default function SubmitEventForm() {
   }
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+    <form ref={formRef} method="post" onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
       <BotTrapFields />
       <Field name="title" label="Event title" required placeholder="Punch Brothers at the Weinberg" />
       <Field name="organizer" label="Organizer" placeholder="Weinberg Center for the Arts" />
@@ -149,9 +165,10 @@ export default function SubmitEventForm() {
         <Field name="submitter_email" label="Your email" required type="email" />
       </div>
       {error && (
-        <p role="alert" className="rounded-[var(--app-radius-md)] px-3 py-2 text-sm" style={{ background: "var(--app-danger-tint-14)", color: "var(--app-danger)" }}>
-          {error}
-        </p>
+        <div role="alert" className="space-y-1 rounded-[var(--app-radius-md)] px-3 py-2 text-sm" style={{ background: "var(--app-danger-tint-14)", color: "var(--app-danger)" }}>
+          <p>{error}</p>
+          <SubmissionByEmail kind="event" />
+        </div>
       )}
       <button
         type="submit"

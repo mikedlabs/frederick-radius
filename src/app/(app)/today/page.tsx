@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { parseScope, SCOPE_COOKIE } from "@/lib/scope";
 import { Suspense } from "react";
 import TodayCard from "@/components/today/TodayCard";
 import { WeatherPending } from "@/components/today/TodayWeatherView";
@@ -45,8 +47,8 @@ import {
 } from "@/lib/today-events";
 import { eventCardVisual, parseRecoveryEventVisual } from "@/components/event/eventVisuals";
 import TodayMasthead from "@/components/today/TodayMasthead";
-import TodayGeographicDoorway, { TodayGeographicDoorwayPending } from "@/components/today/TodayGeographicDoorway";
-import { downtownGuide, weekendGuideCover, weekendGuideDateLabel } from "@/lib/today/local-outing-guides";
+import TodayGeographicDoorway from "@/components/today/TodayGeographicDoorway";
+import { downtownFeatureForToday, weekendGuideDateLabel } from "@/lib/today/local-outing-guides";
 import styles from "@/components/today/TodayLayout.module.css";
 
 /**
@@ -95,8 +97,7 @@ import styles from "@/components/today/TodayLayout.module.css";
 // generateMetadata (not a static object) so the share card is the DAILY
 // almanac card: the Eastern day is baked into the image URL, which makes
 // each day a distinct URL — social caches can never serve yesterday's
-// "today". Regenerates on the page's own ISR cadence (300s), so the URL
-// rolls over within minutes of midnight Eastern.
+// "today". The date is computed in Eastern time.
 export async function generateMetadata(): Promise<Metadata> {
   const day = easternDayKey(new Date());
   const description =
@@ -124,17 +125,17 @@ export async function generateMetadata(): Promise<Metadata> {
 // Event lead selection lives in src/lib/today/tonight so Today surfaces one
 // agreed headliner and removes duplicate feed occurrences from the rows below.
 
-// /today is time-sensitive, but force-dynamic made every visit pay the
-// external-feed fanout (a ~7-10s cold load — the sims caught it). Instead:
-// ISR every 5 minutes, so the page serves cached + fast while the event
-// groupings stay fresh-enough, and the *visible* clock is handled live,
-// client-side, by LiveClock inside TodayCard. (The original bug was pure-static
-// with NO revalidate — a frozen build-time date; a short revalidate plus
-// the live client clock fixes that without the per-request cost.)
+// Bounded cached data can be reused; the HTML respects the request area.
 export const revalidate = 300;
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = await searchParams;
+  const rawArea = Array.isArray(query.in) ? query.in[0] : query.in;
+  const initialScope = parseScope(rawArea === undefined ? (await cookies()).get(SCOPE_COOKIE)?.value : rawArea) ?? "county";
   const now = new Date();
+  const downtown = downtownFeatureForToday(now);
   const frame = todayFrame(easternStartHour(now.toISOString()));
   const civicMoment = activeMoment(now);
   const civicMomentLeadsToday =
@@ -250,7 +251,7 @@ export default async function HomePage() {
           was invisible. The h1 + one-line frame now change with the Eastern
           daypart (todayFrame, pinned to the same 17:00 boundary), so the page
           NAMES the moment it is leading with. Server-computed on the Eastern
-          clock; the page ISRs every 300s so a boundary rolls within minutes.
+          clock for this request.
           This is the real document h1. Sits below an active civic alert (alerts
           still lead) and above the weather. */}
       <TodayMasthead
@@ -267,11 +268,8 @@ export default async function HomePage() {
       <div data-today-briefing className={styles.briefing}>
       {/* Reviewed local photographs lead to their actual places. Task links
           retain the selected area; imagery never promises current conditions.
-          Until the URL lens is known, its fallback is deliberately neutral. */}
-      <Suspense fallback={<TodayGeographicDoorwayPending />}>
-        <TodayGeographicDoorway guidePhotos={{ weekend: weekendGuideCover(now).photo.src, weekendLabel: weekendGuideDateLabel(now), downtown: downtownGuide.photo.src }} />
-      </Suspense>
-
+          The URL or mirrored scope cookie identifies their initial area without a provider request. */}
+      <TodayGeographicDoorway guidePhotos={{ ...downtown, weekendLabel: weekendGuideDateLabel(now) }} initialScope={initialScope} />
       <div data-today-current-content className={styles.currentContent}>
         <div aria-label="Places for your area" className={styles.places}>
           {/* The selected-area recommendation and personal saves are one
@@ -292,7 +290,7 @@ export default async function HomePage() {
       </Suspense>
 
       <section aria-labelledby="today-explore-heading" className={styles.quickNeeds}>
-        <h2 id="today-explore-heading" className={styles.utilityHeading}>More ways to explore</h2>
+        <h2 id="today-explore-heading" className={styles.utilityHeading}>Practical information</h2>
         {/* Keep all four utility doors together once, after the current local
             answers, with the existing category disclosure below them. */}
         <TodayQuickNeeds><CravingStrip /></TodayQuickNeeds>

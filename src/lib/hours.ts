@@ -1,4 +1,5 @@
 import { easternWallToUtcISO } from "@/lib/tz";
+import { isThanksgivingDate } from "@/lib/holidays";
 import { isHoursFresh } from "@/lib/hours-freshness";
 import type { DayOfWeek, Hours, HoursWindow } from "@/data/places";
 
@@ -133,27 +134,45 @@ export function isScheduleEvidenceCurrent(hours: Hours, at: Date): boolean {
     date >= evidence.coverage_from && date <= evidence.coverage_through;
 }
 
+/** A normal Thursday schedule alone cannot confirm a Thanksgiving visit. */
+export function needsThanksgivingConfirmation(hours: Hours, date: string): boolean {
+  return isThanksgivingDate(date) && !hours._official?.closures_url && hours._official?.schedule_kind !== "dated_week" &&
+    !hours._official?.exceptions.some((item) => item.date === date);
+}
+
 type MinuteWindow = { open: number; close: number; allDay: boolean };
 function dateCutoff(hours: Hours, date: string): number {
   const exception = hours._official?.exceptions.find((item) => item.date === date);
   return exception?.closed ? 0 : exception?.closes_at ? parseHHMM(exception.closes_at) : 1440;
 }
 function startingWindows(hours: Hours, date: string): MinuteWindow[] {
+  if (needsThanksgivingConfirmation(hours, date)) return [];
+  const exception = hours._official?.exceptions.find((item) => item.date === date);
+  if (exception?.opens_at && exception.closes_at) {
+    return [{ open: parseHHMM(exception.opens_at), close: parseHHMM(exception.closes_at), allDay: false }];
+  }
   const cutoff = dateCutoff(hours, date);
   if (!cutoff) return [];
   return (hours[dayForDate(date)] ?? []).flatMap((window) => {
     const open = parseHHMM(window.open);
     let close = parseHHMM(window.close);
     if (close <= open) close += 1440;
-    // Today's early closure stops even an overnight window. Tomorrow's full
-    // closure takes precedence at midnight, rather than inheriting a spill.
-    close = Math.min(close, cutoff < 1440 ? cutoff : 1440 + dateCutoff(hours, shiftDate(date, 1)));
+    // A complete replacement or full closure tomorrow disallows yesterday’s
+    // spill into its published window. A close-only exception clips the tail.
+    if (cutoff < 1440) {
+      close = Math.min(close, cutoff);
+    } else if (close > 1440) {
+      const tomorrow = shiftDate(date, 1);
+      const replacesTomorrow = hours._official?.exceptions.some((item) => item.date === tomorrow && item.opens_at);
+      close = Math.min(close, 1440 + (replacesTomorrow ? 0 : dateCutoff(hours, tomorrow)));
+    }
     return close > open ? [{ open, close, allDay: isAllDayWindow(window) && close - open === 1440 }] : [];
   });
 }
 function windowsForDate(hours: Hours, date: string): MinuteWindow[] {
   const cutoff = dateCutoff(hours, date);
   if (!cutoff) return [];
+  if (hours._official?.exceptions.some((item) => item.date === date && item.opens_at)) return startingWindows(hours, date);
   const spill = startingWindows(hours, shiftDate(date, -1))
     .filter((window) => window.close > 1440)
     .map((window) => ({ open: 0, close: Math.min(window.close - 1440, cutoff), allDay: false }));
@@ -167,7 +186,11 @@ function hhmm(minutes: number): string {
 /** Today's actual windows, separate from the unchanged ordinary weekly table. */
 export function hoursForDate(hours: Hours, at: Date = new Date()): HoursWindow[] | undefined {
   if (!isScheduleEvidenceCurrent(hours, at)) return undefined;
-  return windowsForDate(hours, nowInFrederick(at).date).map((window) => ({ open: hhmm(window.open), close: hhmm(window.close) }));
+  const date = nowInFrederick(at).date;
+  if (needsThanksgivingConfirmation(hours, date)) return undefined;
+  const windows = windowsForDate(hours, date);
+  if (windows.some((window) => window.close > 1440) && needsThanksgivingConfirmation(hours, shiftDate(date, 1))) return undefined;
+  return windows.map((window) => ({ open: hhmm(window.open), close: hhmm(window.close) }));
 }
 
 export function getOpenStatus(
@@ -177,12 +200,17 @@ export function getOpenStatus(
 ): OpenStatus {
   if (!hours) return { state: "unknown" };
   if (isDisplayOnlyHours(hours)) return { state: "unknown" };
-  if (!hours._official) return getWeeklyOpenStatus(hours, options, now);
   if (!options.verified) return { state: "unverified" };
   if (!Number.isFinite(now.getTime()) || !isScheduleEvidenceCurrent(hours, now)) return { state: "unknown" };
   const { date, minutes } = nowInFrederick(now);
+  if (needsThanksgivingConfirmation(hours, date)) return { state: "unknown" };
+  // November's ordinary schedules need the same date-aware next-opening and
+  // overnight logic as first-party schedules around Thanksgiving.
+  if (!hours._official && date.slice(5, 7) !== "11") return getWeeklyOpenStatus(hours, options, now);
   for (const window of windowsForDate(hours, date)) {
     if (minutes < window.open || minutes >= window.close) continue;
+    // Weekly overnight hours cannot establish when the doors close on the holiday.
+    if (window.close > 1440 && needsThanksgivingConfirmation(hours, shiftDate(date, 1))) return { state: "unknown" };
     const closesAt = hhmm(window.close);
     if (window.allDay) return { state: "open", closesAt, closingSoon: false, allDay: true };
     if (window.close - minutes <= 60) return { state: "closing-soon", closesAt };
@@ -190,6 +218,7 @@ export function getOpenStatus(
   }
   for (let i = 0; i < 7; i++) {
     const candidateDate = shiftDate(date, i);
+    if (needsThanksgivingConfirmation(hours, candidateDate)) break;
     for (const window of startingWindows(hours, candidateDate)) {
       if (i === 0 && window.open <= minutes) continue;
       const [year, month, day] = candidateDate.split("-").map(Number);

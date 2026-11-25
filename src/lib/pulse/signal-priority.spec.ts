@@ -295,14 +295,14 @@ describe("Pulse operational briefing", () => {
     });
   });
 
-  it("names a single delayed airport without calling it an emergency", () => {
+  it("names the airport covered by a notice", () => {
     expect(pulseOperationalBriefing({
       marcAlerts: 0,
       airportIssues: ["BWI Marshall"],
       campDavidRestricted: false,
     })).toMatchObject({
       active: true,
-      line: "BWI Marshall is reporting a travel delay.",
+      line: "The FAA lists an airport notice for BWI Marshall.",
     });
   });
 

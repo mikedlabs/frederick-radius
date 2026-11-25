@@ -26,6 +26,7 @@ import { PlaceMedallion } from "@/components/place/PlaceMedallion";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { isCityGarage } from "@/data/parking-garages";
 import { googleMapsDirections } from "@/lib/integrations/deeplinks";
 import { useFollowMutationState, useToggleFollow } from "@/hooks/useFollows";
 import { haptic } from "@/lib/haptics";
@@ -283,7 +284,7 @@ function Card({
             </svg>
           </Link>
           <a
-            href={googleMapsDirections(place.geom.lat, place.geom.lng)}
+            href={googleMapsDirections(place.geom.lat, place.geom.lng, isCityGarage(place.slug) ? "driving" : undefined)}
             target="_blank"
             rel="noopener noreferrer"
             className="sw-act-quiet"

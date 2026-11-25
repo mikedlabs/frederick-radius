@@ -26,6 +26,17 @@ import PlanBuilder from "./PlanBuilder";
 const spec: PlanSpec = { v: 1, i: { audience: "friends", vibe: "easy", duration_hours: 4, start_at: "2026-10-06T23:00:00Z", event_anchor_slug: "runtime-concert" }, s: [{ e: "runtime-concert" }] };
 const unavailable = (): Plan => ({ title: "An evening with friends", summary: "Your choices are saved.", stops: [], share: encodeSpec(spec), notices: [{ spec_index: 0, code: "unavailable", message: "Radius could not confirm this event right now. Its place in your plan is saved. Try again shortly." }] });
 const recovered = (): Plan => ({ title: "An outing around Evening concert", summary: "A full published event visit.", share: encodeSpec(spec), stops: [{ order: 1, spec_index: 0, at: spec.i.start_at!, duration_min: 180, why: "The current published event time.", open: "open", event: { slug: "runtime-concert", title: "Evening concert", starts_at: spec.i.start_at!, ends_at: "2026-10-07T02:00:00Z", geom: { lng: -77.4126, lat: 39.4142 }, category: "music", venue_name: "Weinberg Center", source_url: "https://example.org/concert" } as NonNullable<Plan["stops"][number]["event"]> }] });
+const scrollIntoView = vi.fn();
+beforeEach(() => {
+  const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
+  scrollIntoView.mockClear();
+  return () => {
+    if (original) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", original);
+    else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+  };
+});
+
 describe("event outing recovery and edit presentation", () => {
   let root: Root; let host: HTMLDivElement;
   beforeEach(() => {
@@ -41,6 +52,8 @@ describe("event outing recovery and edit presentation", () => {
   it("preserves a missing event for share and removes its actual saved reference without directions", async () => {
     const plan = unavailable(); render(plan);
     expect(host.textContent).toContain("Its place in your plan is saved");
+    expect(host.querySelector('a[href="/events?in=county"]')?.textContent).toBe("Browse public events");
+    expect(host.querySelector('a[href^="/events/"]')).toBeNull();
     expect(host.textContent).not.toContain("The event keeps its published start and full duration.");
     expect(host.querySelector('a[href*="google.com/maps"]')).toBeNull();
     await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Share this plan"]')!.click());
@@ -122,7 +135,9 @@ describe("event outing recovery and edit presentation", () => {
     await act(async () => button("Build my plan").click());
     expect(mocks.generate).toHaveBeenCalledTimes(1);
     expect(mocks.generate.mock.calls[0][0].event_anchor_slug).toBeUndefined();
-    expect(host.textContent).toContain("New outing");
+    expect(host.querySelector("h1")?.textContent).toBe("Nothing reliable fits yet.");
+    expect(document.activeElement).toBe(host.querySelector("h1"));
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "instant" });
     expect(host.textContent).not.toContain("Evening concert");
   });
   it("rebuilds after removing the last pinned stop instead of retaining an empty pin", async () => {
@@ -373,7 +388,7 @@ describe("explicit confirmed-hours planning preference", () => {
     await act(async () => button("Build my plan").click());
     expect(mocks.generate).toHaveBeenLastCalledWith(expect.objectContaining({ require_verified_hours: true }));
     expect(host.textContent).toContain("Radius could not confirm venue hours for this outing.");
-    expect(host.textContent).toContain("Choose Adjust, open Fine-tune the outing");
+    expect(button("Include stops with unconfirmed hours")).toBeDefined();
     expect(host.textContent).not.toContain("longer drive");
     expect(host.querySelector('a[href*="google.com/maps"]')).toBeNull();
     await act(async () => button("Adjust").click());
@@ -383,6 +398,20 @@ describe("explicit confirmed-hours planning preference", () => {
     expect(host.textContent).toContain(draftIntro);
     await act(async () => button("Update this plan").click());
     expect(mocks.generate).toHaveBeenLastCalledWith(expect.objectContaining({ require_verified_hours: false }));
+    expect(host.textContent).toContain(draftResult);
+  });
+
+  it("leads with zero-stop recovery and changes only the confirmed-hours setting when building a draft", async () => {
+    const input = ordinaryInputs({ require_verified_hours: true, start_at: "2026-11-25T17:00:00.000Z" });
+    const emptyPlan = ordinaryPlan(input, true);
+    render(input, emptyPlan);
+    expect(host.querySelector("h1")?.textContent).toBe("Nothing reliable fits yet.");
+    expect(host.querySelector('[aria-label="Share this plan"]')).toBeNull();
+    expect(host.querySelector('[aria-label="Save outing"]')).toBeNull();
+    await act(async () => button("Include stops with unconfirmed hours").click());
+    const rebuilt = mocks.generate.mock.calls[0][0];
+    expect(rebuilt.require_verified_hours).toBe(false);
+    expect(rebuilt).toMatchObject({ municipality: input.municipality, audience: input.audience, vibe: input.vibe, duration_hours: input.duration_hours, start_at: input.start_at });
     expect(host.textContent).toContain(draftResult);
   });
 

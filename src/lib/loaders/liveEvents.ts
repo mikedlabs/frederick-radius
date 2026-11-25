@@ -1,3 +1,4 @@
+import { applyVenueTimeCorrection } from "@/data/thanksgiving-events";
 /**
  * Live-feed events adapted to the shared card/detail shape, plus a
  * by-slug resolver.
@@ -200,7 +201,7 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     attendance_mode === "online" ? "Online" : cleanFeedText(e.venue_name ?? "");
   const address =
     attendance_mode === "online" ? "" : formatAddress(cleanFeedText(e.address ?? ""));
-  return {
+  return applyVenueTimeCorrection({
     // Clean, shareable slug (Phase 2). The legacy liveEventSlug is kept
     // only as a fallback resolver for old shared links.
     slug: liveCleanSlug(e),
@@ -225,6 +226,8 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     attendance_mode,
     online_url,
     hero_image: e.hero_image,
+    ...(e.published_time ? { published_time: e.published_time } : {}),
+    ...(e.hero_image_record ? { hero_image_record: e.hero_image_record } : {}),
     organizer: e.organizer,
     status: e.status,
     publisher_updated_at: e.publisher_updated_at,
@@ -260,7 +263,7 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
       attendance_mode === "online"
         ? "unknown"
         : eventGeoConfidence({ placement: e.placement, geom: e.geom }),
-  };
+  });
 }
 
 /**

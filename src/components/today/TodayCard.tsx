@@ -129,7 +129,11 @@ export default async function TodayCard({ density = "standard" }: { density?: To
   const condition = cur?.shortForecast ?? "";
   const { highF, lowF, retainedHighIssuedAt } = await frederickForecastRange(forecast, now);
   const st = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
-  const dayFacts = { highF, lowF, retainedHighIssuedAt, sunriseTime: fmtTime(st.sunrise), sunsetTime: fmtTime(st.sunset) };
+  const dayFacts = {
+    highF, lowF, retainedHighIssuedAt,
+    sunriseTime: fmtTime(st.sunrise), sunsetTime: fmtTime(st.sunset),
+    daylightAsOf: st.sunrise && st.sunset ? now.getTime() : undefined,
+  };
   const freshAir = (airObservations ?? []).filter((obs) => isFreshAqiObservation(obs, now));
   const worstAir = pickWorstAqi(freshAir);
   const airQualityAvailable = airObservations !== null && freshAir.length > 0;
@@ -205,7 +209,7 @@ export default async function TodayCard({ density = "standard" }: { density?: To
       issuedAt={forecast?.asOf ?? null}
       safetyNote={weatherRead.safetyNote}
       safetyNoteRoutine={weatherRead.safetyNoteRoutine}
-      daylight={cur && (highF != null || sun) ? <DaylightLeftInline /> : undefined}
+      daylight={density === "standard" && cur && (highF != null || sun) ? <DaylightLeftInline /> : undefined}
     >
       <OfflineTodayCapture
         snapshot={{

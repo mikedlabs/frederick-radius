@@ -1,0 +1,40 @@
+.map { margin: 0; min-width: 0; }
+.frame { position: relative; container-type: inline-size; aspect-ratio: 3 / 2; isolation: isolate; background: var(--app-bg-sunken); border-radius: var(--app-radius-sm); }
+.background { position: absolute; inset: 0; height: 100%; width: 100%; overflow: hidden; border-radius: inherit; }
+.water, .street, .streetEdge { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.water { stroke: color-mix(in srgb, var(--app-cool-text) 80%, var(--app-bg-sunken)); stroke-width: 12; }
+.streetEdge { stroke: var(--app-control-border); stroke-width: 9; }
+.street { stroke: var(--app-bg); stroke-width: 6; }
+.footprint { fill: var(--app-border); stroke: var(--app-control-border); stroke-width: 1; }
+.leader { stroke: var(--app-link); stroke-width: 1.4; }
+.dot { fill: var(--app-link); }
+.streetLabel, .creekLabel { font-family: inherit; font-size: 10px; fill: var(--app-ink-2); paint-order: stroke; stroke: var(--app-bg-sunken); stroke-width: 2px; }
+.creekLabel { fill: var(--app-cool-text); font-weight: 650; }
+.north { position: absolute; top: 5px; right: 7px; color: var(--app-ink-2); font-size: 0.75rem; line-height: 1; font-weight: 650; }
+.pin { position: absolute; z-index: 1; display: inline-flex; align-items: center; min-width: 44px; height: 44px; transform: translate(-22px, -50%); color: var(--app-on-brand); border-radius: var(--app-radius-sm); }
+.pin[data-side="left"] { flex-direction: row-reverse; transform: translate(calc(22px - 100%), -50%); }
+.number { flex: none; margin-inline: 8px; display: grid; place-items: center; box-sizing: content-box; width: 24px; height: 24px; border: 2px solid var(--app-bg); border-radius: 50%; background: var(--app-brand-press); font-size: clamp(14px, 0.875rem, 22px); font-weight: 750; line-height: 1; }
+.name { display: none; }
+.pin:focus-visible { outline: 2px solid var(--app-focus); outline-offset: -3px; }
+.pin:hover .number, .pin:focus-visible .number { background: var(--app-ink); color: var(--app-bg); }
+.caption { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 0.4rem; color: var(--app-ink-2); font-size: 0.75rem; line-height: 1.35; }
+.caption a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; color: var(--app-ink-2); text-decoration: underline; text-underline-offset: 0.15em; }
+.caption a:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 2px; }
+@container (min-width: 17rem) {
+  .name { display: block; white-space: nowrap; color: var(--app-ink); background: var(--app-bg-sunken); line-height: 1.05; padding: 2px 3px; border-radius: 2px; font-size: 0.75rem; font-weight: 650; }
+}
+
+@media (prefers-contrast: more) {
+  .water { stroke: var(--app-cool-text); }
+  .streetEdge { stroke: var(--app-ink-2); }
+}
+
+@media (forced-colors: active) {
+  .background { forced-color-adjust: none; }
+  .water, .streetEdge, .footprint { stroke: CanvasText; }
+  .street { stroke: Canvas; }
+  .footprint { fill: Canvas; }
+  .streetLabel, .creekLabel { fill: CanvasText; stroke: Canvas; }
+  .leader { stroke: LinkText; }
+  .dot { fill: LinkText; }
+}

@@ -8,6 +8,7 @@ describe("EventSourceLink", () => {
     const html = renderToStaticMarkup(
       createElement(EventSourceLink, {
         href: "https://publisher.example/events/snallyfest",
+        label: "Event listing on publisher.example",
       }),
     );
 
@@ -17,7 +18,7 @@ describe("EventSourceLink", () => {
     );
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');
-    expect(html).toContain("Official event page");
+    expect(html).toContain("Event listing on publisher.example");
     expect(html).toContain("tap-44-y");
   });
 });

@@ -21,6 +21,9 @@ import {
   type GtfsFeedMessage,
 } from "@/lib/integrations/gtfsRealtimeBindings";
 import { decorateVehiclesWithNextStop } from "@/lib/integrations/transitNextStop";
+import TRANSIT from "@/data/transit.json";
+import TRANSIT_TRIPS from "@/data/transit-trips.json";
+import { countyRidePermitted, countyServiceCancelled } from "@/lib/transit-service-calendar";
 import { createAbortDeadline } from "@/lib/promise-deadline";
 
 const VEHICLE_POSITIONS =
@@ -211,6 +214,20 @@ function feedTimestamp(value: number | Long | null | undefined): number | undefi
   return timestamp != null && timestamp > 0 ? Math.round(timestamp) : undefined;
 }
 
+const shuttleIds = new Set(
+  TRANSIT.routes.filter((route) => /shuttle/i.test(route.name)).map((route) => route.id),
+);
+const staticTrips: Record<string, { routeId: string }> = TRANSIT_TRIPS;
+
+function permittedRide(
+  routeId: string | null | undefined,
+  tripId: string | null | undefined,
+  atMs: number,
+): boolean {
+  const route = routeId || (tripId && staticTrips[tripId]?.routeId);
+  return countyRidePermitted(atMs, Boolean(route && shuttleIds.has(route)));
+}
+
 type DecodedFeed = TransitFeedMeta & {
   feed?: GtfsFeedMessage;
 };
@@ -245,13 +262,15 @@ async function decodeFeed(
 }
 
 function vehiclesFromFeed(
-  feed: GtfsFeedMessage,
+  feed: GtfsFeedMessage, nowMs: number,
 ): LiveVehicle[] {
   const out: LiveVehicle[] = [];
   for (const e of feed.entity) {
     const v = e.vehicle;
     const pos = v?.position;
     if (!v || !pos || pos.latitude == null || pos.longitude == null) continue;
+    if (countyServiceCancelled(nowMs, v.trip?.startDate) ||
+        !permittedRide(v.trip?.routeId, v.trip?.tripId, nowMs)) continue;
     out.push({
       vehicleId: v.vehicle?.id ?? undefined,
       routeId: v.trip?.routeId ?? undefined,
@@ -274,7 +293,7 @@ function vehiclesFromFeed(
 export async function getLiveVehiclesResult(): Promise<TransitFeedResult<LiveVehicle[]>> {
   const decoded = await decodeFeed(VEHICLE_POSITIONS);
   return {
-    data: decoded.feed ? vehiclesFromFeed(decoded.feed) : [],
+    data: decoded.feed ? vehiclesFromFeed(decoded.feed, decoded.receivedAt) : [],
     status: decoded.status,
     available: decoded.available,
     feedTimestamp: decoded.feedTimestamp,
@@ -294,16 +313,19 @@ export async function getLiveVehicles(): Promise<LiveVehicle[]> {
  * joined to its own next stop + ETA. Returns [] on any failure.
  */
 function tripUpdatesFromFeed(
-  feed: GtfsFeedMessage,
+  feed: GtfsFeedMessage, nowMs: number,
 ): TripUpdate[] {
   const out: TripUpdate[] = [];
   for (const e of feed.entity) {
     const tu = e.tripUpdate;
     if (!tu) continue;
+    if (countyServiceCancelled(nowMs, tu.trip?.startDate)) continue;
     const stops: TripStop[] = [];
     for (const stu of tu.stopTimeUpdate ?? []) {
       const arr = stu.arrival?.time;
       const dep = stu.departure?.time;
+      const eta = toNumber(arr) ?? toNumber(dep);
+      if (!permittedRide(tu.trip?.routeId, tu.trip?.tripId, eta == null ? nowMs : eta * 1000)) continue;
       stops.push({
         stopId: stu.stopId != null ? String(stu.stopId) : undefined,
         stopSequence: stu.stopSequence != null ? Number(stu.stopSequence) : undefined,
@@ -314,6 +336,7 @@ function tripUpdatesFromFeed(
         ),
       });
     }
+    if (!stops.length && (tu.stopTimeUpdate?.length || !permittedRide(tu.trip?.routeId, tu.trip?.tripId, nowMs))) continue;
     out.push({
       tripId: tu.trip?.tripId ?? undefined,
       routeId: tu.trip?.routeId ?? undefined,
@@ -336,7 +359,7 @@ function tripUpdatesFromFeed(
 export async function getTripUpdatesResult(): Promise<TransitFeedResult<TripUpdate[]>> {
   const decoded = await decodeFeed(TRIP_UPDATES);
   return {
-    data: decoded.feed ? tripUpdatesFromFeed(decoded.feed) : [],
+    data: decoded.feed ? tripUpdatesFromFeed(decoded.feed, decoded.receivedAt) : [],
     status: decoded.status,
     available: decoded.available,
     feedTimestamp: decoded.feedTimestamp,
@@ -426,12 +449,13 @@ export type StopPrediction = {
 };
 
 function stopPredictionsFromFeed(
-  feed: GtfsFeedMessage,
+  feed: GtfsFeedMessage, nowMs: number,
 ): StopPrediction[] {
   const out: StopPrediction[] = [];
   for (const e of feed.entity) {
     const tu = e.tripUpdate;
     if (!tu) continue;
+    if (countyServiceCancelled(nowMs, tu.trip?.startDate)) continue;
     const tripRelationship = tripScheduleRelationship(
       tu.trip?.scheduleRelationship,
     );
@@ -454,6 +478,8 @@ function stopPredictionsFromFeed(
       // GTFS-realtime SKIPPED means this vehicle will not call at the stop.
       // Omitting it is safer than showing a countdown for a bus that passes by.
       if (stopRelationship === "SKIPPED") continue;
+      const eta = toNumber(arr) ?? toNumber(dep);
+      if (!permittedRide(tu.trip?.routeId, tu.trip?.tripId, eta == null ? nowMs : eta * 1000)) continue;
       out.push({
         stopId: String(stu.stopId),
         routeId: tu.trip?.routeId ?? undefined,
@@ -465,7 +491,7 @@ function stopPredictionsFromFeed(
             : undefined,
         stopSequence:
           stu.stopSequence != null ? Number(stu.stopSequence) : undefined,
-        arrivalEpoch: toNumber(arr) ?? toNumber(dep),
+        arrivalEpoch: eta,
         timestamp: toNumber(tu.timestamp),
         tripScheduleRelationship: tripRelationship,
         scheduleRelationship: stopRelationship,
@@ -483,7 +509,7 @@ export async function getStopPredictionsResult(
 > {
   const decoded = await decodeFeed(TRIP_UPDATES, signal);
   return {
-    data: decoded.feed ? stopPredictionsFromFeed(decoded.feed) : [],
+    data: decoded.feed ? stopPredictionsFromFeed(decoded.feed, decoded.receivedAt) : [],
     status: decoded.status,
     available: decoded.available,
     feedTimestamp: decoded.feedTimestamp,

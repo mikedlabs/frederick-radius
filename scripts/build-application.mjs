@@ -10,7 +10,7 @@ import {
   validateDataRelease,
 } from "./lib/data-release.mjs";
 import { hostedBuildCredentialErrors } from "./lib/hosted-build-credentials.mjs";
-import { validateBuiltCssContract } from "./lib/built-css-contract.mjs";
+import { verifyProductionToday } from "./lib/built-css-contract.mjs";
 
 const root = repositoryRootFromModule();
 const credentialErrors = hostedBuildCredentialErrors();
@@ -38,29 +38,24 @@ const nodeOptions = [
   process.env.NODE_OPTIONS,
   `--import=${networkGuard}`,
 ].filter(Boolean).join(" ");
-const child = spawnSync(
-  process.execPath,
-  [nextBin, "build", ...process.argv.slice(2)],
-  {
-    cwd: root,
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      RADIUS_DATA_MODE: "promoted",
-      RADIUS_DATA_VERSION: result.dataVersion,
-      NEXT_PUBLIC_RADIUS_DATA_VERSION: result.dataVersion,
-      NODE_OPTIONS: nodeOptions,
-    },
-  },
-);
+const buildEnv = {
+  ...process.env,
+  RADIUS_DATA_MODE: "promoted",
+  RADIUS_DATA_VERSION: result.dataVersion,
+  NEXT_PUBLIC_RADIUS_DATA_VERSION: result.dataVersion,
+  NODE_OPTIONS: nodeOptions,
+};
+const child = spawnSync(process.execPath, [nextBin, "build", ...process.argv.slice(2)], {
+  cwd: root, stdio: "inherit", env: buildEnv,
+});
 
 if (child.error) throw child.error;
 if (child.status !== 0) process.exit(child.status ?? 1);
 
-const builtCss = validateBuiltCssContract(root);
+const builtCss = await verifyProductionToday(root, buildEnv);
 if (builtCss.errors.length > 0) {
   console.error("build-application: built Today CSS contract failed");
   for (const error of builtCss.errors) console.error(`  - ${error}`);
   process.exit(1);
 }
-console.log(`build-application: verified Today chapter CSS in ${builtCss.stylesheets.length} linked stylesheets (${builtCss.layout}; ${builtCss.owner.sourceRoute})`);
+console.log(`build-application: verified Today chapter CSS in ${builtCss.stylesheets.length} linked stylesheets across ${builtCss.documents.length} request areas (${builtCss.owner.sourceRoute})`);

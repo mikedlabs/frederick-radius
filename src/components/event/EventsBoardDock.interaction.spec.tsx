@@ -13,12 +13,12 @@ const noop = () => undefined;
 const props: EventsBoardDockProps = {
   nowISO: "2026-10-09T16:00:00Z", dayCounts: {}, filteredCount: 2, resultTownCount: 1, countComplete: true,
   categories: [{ slug: "arts", name: "Arts & culture" }], towns: [{ slug: "thurmont", name: "Thurmont" }],
-  intent: null, setIntent: noop, sub: null, setSub: noop, cat: null, setCat: noop,
-  lens: "weekend", setLens: noop, tod: null, setTod: noop, day: null, setDay: noop, town: "thurmont", setTown: noop,
-  q: "a very long local music search phrase with additional words", setQ: noop,
-  freeOnly: false, setFreeOnly: noop, happyOnly: false, setHappyOnly: noop, kidsOnly: false, setKidsOnly: noop,
-  lgbtqOnly: false, setLgbtqOnly: noop, communicationAccessOnly: false, setCommunicationAccessOnly: noop,
-  recurringOnly: false, setRecurringOnly: noop, anyFilter: true, clear: noop,
+  filters: {
+    intent: null, sub: null, cat: null, lens: "weekend", tod: null, day: null, town: "thurmont",
+    q: "a very long local music search phrase with additional words", freeOnly: false, happyOnly: false,
+    kidsOnly: false, lgbtqOnly: false, communicationAccessOnly: false, recurringOnly: false,
+  },
+  applyFilters: noop, previewCount: () => 2, onOpenFilters: noop, anyFilter: true, clear: noop,
   view: "list", setView: noop, sort: "recommended", setSort: noop,
 };
 
@@ -59,10 +59,10 @@ async function open() {
 }
 
 describe("Event filter ownership", () => {
-  it("native Back closes Filters first, retains edited URL/context and restores the trigger", async () => {
+  it("native Back closes Filters first, retains externally applied URL/context and restores the trigger", async () => {
     await open();
     const edited = `${initialUrl}&free=true`;
-    await act(async () => { root.render(fixture({ freeOnly: true })); replaceHistoryLayerUrl(edited); });
+    await act(async () => { root.render(fixture({ filters: { ...props.filters, freeOnly: true } })); replaceHistoryLayerUrl(edited); });
     await act(async () => {
       const popped = new Promise(resolve => window.addEventListener("popstate", resolve, { once: true }));
       window.history.back(); await popped;
@@ -71,17 +71,17 @@ describe("Event filter ownership", () => {
     expect(document.activeElement).toBe(filters());
     expect(window.location.pathname + window.location.search).toBe(edited);
     expect(window.history.state).toMatchObject({ __NA: true, tree: ["", "events"] });
-    expect(filters().getAttribute("aria-label") ?? filters().textContent).toContain(props.q);
+    expect(filters().getAttribute("aria-label") ?? filters().textContent).toContain(props.filters.q);
     expect(container.querySelector("[data-event-filter-time]")?.textContent).toBe("This weekend");
     expect(container.querySelector("[data-event-filter-scope]")?.textContent).toBe("Thurmont");
   });
 
-  it.each(["Done", "Escape", "scrim", "toggle"])("%s consumes exactly the same layer and restores filter focus", async (method) => {
+  it.each(["Cancel", "Escape", "scrim", "toggle"])("%s consumes exactly the same layer and restores filter focus", async (method) => {
     await open();
     const back = vi.spyOn(window.history, "back");
     await act(async () => {
       const popped = new Promise(resolve => window.addEventListener("popstate", resolve, { once: true }));
-      if (method === "Done") done().click();
+      if (method === "Cancel") done().click();
       else if (method === "Escape") done().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       else if (method === "scrim") container.querySelector<HTMLDivElement>(".eb-scrim")!.click();
       else filters().click(); // Programmatic same-trigger toggle also owns one dismissal.
@@ -124,7 +124,7 @@ describe("Event filter ownership", () => {
     expect(document.activeElement).toBe(done());
   });
 
-  it("restores background ownership, scroll policy and the real opener on Done and unmount", async () => {
+  it("restores background ownership, scroll policy and the real opener on Cancel and unmount", async () => {
     document.documentElement.style.overflowY = "clip";
     await open();
     await act(async () => done().click());
@@ -152,7 +152,7 @@ describe("Event filter ownership", () => {
     expect(container.querySelector("[data-event-filter-time]")?.textContent).toBe("This weekend");
     expect(container.querySelector("[data-event-filter-scope]")?.textContent).toBe("Thurmont");
     const label = filters().getAttribute("aria-label") ?? filters().textContent;
-    expect(label).toContain(props.q);
+    expect(label).toContain(props.filters.q);
     expect(label).toContain("This weekend");
     expect(label).toContain("Thurmont");
   });

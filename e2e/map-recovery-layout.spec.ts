@@ -333,13 +333,25 @@ test.describe(`Native shortlist directions (${typography} typography)`, () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     await expect(page.locator("[data-map-place-slug]")).toHaveCount(0);
     expect(metadataRequests).toEqual([]);
+    if (typography === "Arial") {
+      // Enlarged text can make the status taller than the entire results lane.
+      await page.addStyleTag({ content: ":root { font-size: 200% !important; }" });
+      await directions.focus();
+      await directions.scrollIntoViewIfNeeded();
+      await assert44HitTarget(directions);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    }
     const origin = page.url();
     const popupPromise = page.waitForEvent("popup");
     if (testInfo.project.use.hasTouch) await directions.tap();
-    else await directions.click();
+    else if (typography === "platform") {
+      await details.focus();
+      await page.keyboard.press("Tab");
+      await expect(directions).toBeFocused();
+      await directions.press("Enter");
+    } else await directions.click();
     const popup = await popupPromise;
-    await popup.waitForLoadState("domcontentloaded");
-    expect(popup.url()).toBe(href);
+    await expect(popup).toHaveURL(href);
     await expect(popup.getByRole("main")).toHaveText("External handoff observed. No external map is loaded.");
     await popup.close();
     await expect(page).toHaveURL(origin);
@@ -355,3 +367,78 @@ test.describe(`Native shortlist directions (${typography} typography)`, () => {
   });
 });
 }
+
+// An unavailable optional map source must never float over a recovery heading
+// or the town control when a tablet rotates or the desktop rail appears.
+test.describe("focused amenity recovery across orientation changes", () => {
+  test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true });
+
+  test("keeps the restroom selection and directions clear of the source status", async ({ page }) => {
+    await installRecoveryBoundary(page);
+    await page.route("**/api/map/osm", route => route.fulfill({ status: 503, json: {} }));
+    await page.goto("/map?amenity=restroom");
+    const list = page.locator("[data-map-amenity-list]");
+    const town = list.getByRole("combobox", { name: "Town" });
+    await town.selectOption({ label: "Myersville" });
+    const atlas = list.locator("[data-county-locator]");
+    await expect(atlas.locator("figcaption").getByText("Town center: Myersville", { exact: true })).toBeVisible();
+    await expect(atlas.locator('[data-locator-selection="Town center"]')).toHaveCount(1);
+    for (const viewport of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
+      await page.setViewportSize(viewport);
+      await expect(town).toHaveValue("Myersville");
+      const status = list.locator("[data-map-recovery-source-status]");
+      await expect(status).toBeVisible();
+      const heading = list.getByRole("heading", { name: "Restrooms" });
+      await expect.poll(async () => {
+        const [message, title] = await Promise.all([status.boundingBox(), heading.boundingBox()]);
+        return Boolean(message && title && title.y + title.height <= message.y);
+      }).toBe(true);
+      await assert44HitTarget(town);
+      await assert44HitTarget(list.getByRole("link", { name: /walking directions/i }).first());
+      await assert44HitTarget(page.getByRole("link", { name: "All amenities", exact: true }));
+    }
+  });
+
+  test("retains the selected place and its full-page and share targets after rotation", async ({ page }) => {
+    await installRecoveryBoundary(page);
+    await page.goto(mapUrl);
+    const result = page.locator('[data-map-list-place="beans-in-the-belfry-brunswick"]');
+    await result.click();
+    const details = page.locator(".map-peek").getByRole("button", { name: "Details", exact: true });
+    await details.click();
+    const sheet = page.getByRole("dialog", { name: "Beans in the Belfry", exact: true });
+    for (const viewport of [{ width: 820, height: 1180 }, { width: 1180, height: 820 }]) {
+      await page.setViewportSize(viewport);
+      await expect(sheet.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
+      const full = sheet.getByRole("link", { name: "Place details in Radius", exact: true });
+      await full.scrollIntoViewIfNeeded();
+      await assert44HitTarget(full);
+      await assert44HitTarget(sheet.getByRole("button", { name: "Share Beans in the Belfry", exact: true }));
+      await assert44HitTarget(sheet.getByRole("button", { name: "Close place details", exact: true }));
+    }
+  });
+
+  test("opens a reduced-motion place sheet on screen from its first landscape frame", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1180, height: 820 });
+    await installRecoveryBoundary(page);
+    await page.goto(mapUrl);
+    await page.locator('[data-map-list-place="beans-in-the-belfry-brunswick"]').click();
+    const details = page.locator(".map-peek").getByRole("button", { name: "Details", exact: true });
+    const firstFrame = page.evaluate(() => new Promise<boolean>(resolve => {
+      const observer = new MutationObserver(() => {
+        const close = document.querySelector<HTMLElement>('[role="dialog"] button[aria-label="Close place details"]');
+        if (!close) return;
+        observer.disconnect();
+        requestAnimationFrame(() => {
+          const rect = close.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+          resolve(rect.top >= 0 && rect.bottom <= innerHeight && close.contains(hit));
+        });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }));
+    await details.click();
+    expect(await firstFrame).toBe(true);
+  });
+});

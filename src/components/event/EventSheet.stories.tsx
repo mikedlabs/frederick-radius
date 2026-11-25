@@ -85,7 +85,7 @@ export const FreeWithoutPhotography: Story = {
       expect(panel).not.toBeNull();
       const sheet = within(panel!);
       expect(sheet.getByText("Free")).toBeVisible();
-      expect(sheet.getByRole("link", { name: /See full page/ })).toBeVisible();
+      expect(sheet.getByRole("link", { name: /Event details in Radius/ })).toBeVisible();
       expect(sheet.getByRole("button", { name: "Close" })).toBeVisible();
     });
   },
@@ -100,3 +100,30 @@ export const OwnedVenuePhotography: Story = {
   },
 };
 export const LoadingDetails: Story = { args: { event: null, pending: true, onOpenFullPage: fn() } };
+
+export const VerifiedTicketedOuting: Story = {
+  args: {
+    event: {
+      ...event,
+      starts_at: new Date(Date.now() + 24 * 3_600_000).toISOString(),
+      ends_at: new Date(Date.now() + 26 * 3_600_000).toISOString(),
+      last_verified_at: new Date().toISOString(),
+      venue_place_slug: "community-hall",
+      geo_confidence: "venue_match",
+      sheet_venue: { name: "Community hall", operational: "operational" },
+      ticket_url: "https://tickets.example/workshop",
+    },
+  },
+  play: async () => {
+    const dialog = await within(document.body).findByRole("dialog", { name: event.title });
+    const sheet = within(dialog);
+    const tickets = sheet.getByRole("link", { name: "Tickets" });
+    const plan = sheet.getByRole("link", { name: "Plan around this event" });
+    await expect(tickets).toHaveAttribute("href", "https://tickets.example/workshop");
+    await expect(tickets.compareDocumentPosition(plan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const href = new URL((plan as HTMLAnchorElement).href);
+    await expect(href.searchParams.get("event")).toBe(event.slug);
+    await expect(href.searchParams.get("returnTo")).toBe(`/events/${event.slug}`);
+    await expect(sheet.getByRole("link", { name: "Event details in Radius" })).not.toHaveAttribute("target", "_blank");
+  },
+};

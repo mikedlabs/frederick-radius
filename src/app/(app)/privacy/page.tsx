@@ -191,7 +191,8 @@ export default function PrivacyPage() {
           <p>
             Features that need server-side distance, walking-time, or
             reachability calculations send coordinates rounded to roughly 100
-            meters. Those rounded coordinates are also used for request caches
+            meters. Find and Ask leave out device coordinates when you choose a
+            town or the whole county. Those rounded coordinates are also used for request caches
             and are rounded again before route or reachability requests are sent
             to Mapbox. A map provider may additionally process IP address and
             map viewport, tile, or interaction data needed to serve the map.

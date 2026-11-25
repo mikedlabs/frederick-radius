@@ -4,6 +4,8 @@ import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import {
   getOfficialCivicAlertsResult,
+  OFFICIAL_CIVIC_ALERT_FEEDS,
+  readOfficialCivicAlertFeed,
   type OfficialCivicAlertsResult,
 } from "@/lib/integrations/official-alert-feeds";
 import {
@@ -28,12 +30,16 @@ export type OfficialSignalsSnapshot = {
   };
 };
 
-async function loadOfficialCivicAlerts(): Promise<OfficialCivicAlertsResult> {
-  return getOfficialCivicAlertsResult({
-    deadlineMs: 2_800,
-    revalidateSeconds: 300,
-  });
-}
+// The four alert categories can fail independently. Cache successful
+// checks separately so an outage cannot replace healthy evidence with emptiness.
+const civicReaders = new Map(OFFICIAL_CIVIC_ALERT_FEEDS.map((feed) => [
+  feed.id,
+  unstable_cache(
+    () => readOfficialCivicAlertFeed(feed, { deadlineMs: 4_500 }),
+    ["official-civic-category-v2", feed.id, feed.url],
+    { revalidate: 300, tags: ["official-civic-alerts"] },
+  ),
+]));
 
 async function loadStormReports(): Promise<NwsLocalStormReportsResult> {
   return getNwsLocalStormReportsResult({
@@ -50,12 +56,6 @@ async function loadLightning(): Promise<NowCoastLightningResult> {
   });
 }
 
-const getCachedOfficialCivicAlerts = unstable_cache(
-  loadOfficialCivicAlerts,
-  ["official-civic-alerts-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
-  { revalidate: 300, tags: ["official-civic-alerts"] },
-);
-
 const getCachedStormReports = unstable_cache(
   loadStormReports,
   ["official-storm-reports-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
@@ -68,7 +68,9 @@ const getCachedLightning = unstable_cache(
   { revalidate: 900, tags: ["official-lightning"] },
 );
 
-const getOfficialCivicAlertsForRequest = cache(getCachedOfficialCivicAlerts);
+const getOfficialCivicAlertsForRequest = cache(
+  () => getOfficialCivicAlertsResult({}, (feed) => civicReaders.get(feed.id)!()),
+);
 const getStormReportsForRequest = cache(getCachedStormReports);
 const getLightningForRequest = cache(getCachedLightning);
 

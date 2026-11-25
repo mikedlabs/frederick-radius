@@ -24,6 +24,49 @@ describe("MapLoadFailure", () => {
     expect(html).not.toContain("switch back");
   });
 
+  it("keeps a restroom task actionable without a map or a device fix", () => {
+    const html = renderToStaticMarkup(createElement(MapLoadFailure, {
+      height: "100%", places: [], events: [], groups: ["restroom"], town: "myersville",
+      amenities: [
+        { id: "restroom-1", kind: "restroom", name: "Park restroom", municipality: "myersville", lat: 39.5, lng: -77.56 },
+        { id: "restroom-2", kind: "restroom", name: "City restroom", municipality: "frederick", lat: 39.42, lng: -77.41 },
+        { id: "water-1", kind: "water", name: "Water fountain", municipality: "myersville", lat: 39.51, lng: -77.55 },
+      ],
+    }));
+    expect(html).toContain("data-map-amenity-list");
+    expect(html).toContain(">Restrooms</h2>");
+    expect(html.indexOf(">Restrooms</h2>")).toBeLessThan(html.indexOf("Map view unavailable."));
+    expect(html.indexOf("Park restroom")).toBeLessThan(html.indexOf("Reload map"));
+    expect(html).toContain("Park restroom");
+    expect(html).toContain("All towns");
+    expect(html).toContain("destination=39.5%2C-77.56");
+    expect(html).not.toContain("City restroom");
+    expect(html).not.toContain("Water fountain");
+    expect(html).not.toContain("places and events here");
+  });
+
+  it("distinguishes same-named facilities in the same town when no street address is published", () => {
+    const html = renderToStaticMarkup(createElement(MapLoadFailure, {
+      height: "100%", places: [], events: [], groups: ["restroom"], amenities: [
+        { id: "north", kind: "restroom", name: "Public restroom", detail: "Free", municipality: "myersville", lat: 39.5, lng: -77.56 },
+        { id: "south", kind: "restroom", name: "Public restroom", detail: "Free", municipality: "myersville", lat: 39.49, lng: -77.56 },
+      ],
+    }));
+    expect(html).toContain('aria-label="Walking directions to Public restroom, Myersville · Free · 39.50000, -77.56000"');
+    expect(html).toContain('aria-label="Walking directions to Public restroom, Myersville · Free · 39.49000, -77.56000"');
+  });
+
+  it("retains an empty amenity filter without offering unrelated directory entries", () => {
+    const html = renderToStaticMarkup(createElement(MapLoadFailure, {
+      height: "100%", places: [], events: [], groups: ["restroom"], town: "brunswick", amenities: [
+        { id: "water-1", kind: "water", name: "Water fountain", municipality: "brunswick", lat: 39.31, lng: -77.63 },
+      ],
+    }));
+    expect(html).toContain("No locations are mapped for this selection.");
+    expect(html).toContain("Brunswick");
+    expect(html).not.toContain("places and events here");
+  });
+
   it("covers rejected and never-settling deferred map modules", () => {
     const clientSource = readFileSync(
       "src/components/map/AppMapClient.tsx",

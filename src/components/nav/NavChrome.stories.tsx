@@ -13,7 +13,7 @@ const meta = {
     layout: "fullscreen",
     docs: {
       description: {
-        component: "The shared navigation keeps four pages and the existing search doorway. The chrome is flat: unboxed ink tools in the header and a tab bar attached to the screen edge. A 2px coral rule, a 700 label and a heavier icon stroke mark the selected page; a pending tap shows the same rule in ink at reduced opacity.",
+        component: "The four primary destinations stay available as the masthead adapts. On phones the area and county status sit below the wordmark, Find and More. Larger screens bring these controls onto one row.",
       },
     },
   },
@@ -41,7 +41,16 @@ export const TodayAt320: Story = {
     const router = getRouter();
     router.prefetch.mockClear();
     try {
-      const more = canvasElement.querySelector<HTMLElement>("[data-today-tools-trigger]")!;
+      const header = within(canvasElement).getByRole("banner");
+      const actions = header.querySelector<HTMLElement>("[data-header-actions]")!;
+      const context = header.querySelector<HTMLElement>("[data-header-context]")!;
+      const find = within(actions).getByRole("link", { name: "Find a place, service, event, or answer" });
+      await expect(find).toHaveAttribute("href", "/search");
+      await expect(within(find).getByText("Find", { exact: true })).toBeVisible();
+      await expect(context.querySelector("[data-today-area-trigger]")).toBeVisible();
+      await expect(within(context).getByRole("link", { name: /^County status:/ })).toBeVisible();
+      const more = actions.querySelector<HTMLElement>("[data-today-tools-trigger]")!;
+      await expect(within(more).getByText("More", { exact: true })).toBeVisible();
       await userEvent.click(more);
       await expect(more.closest("details")).toHaveAttribute("open");
       const tools = within(canvasElement).getByRole("link", { name: "Open tools" });

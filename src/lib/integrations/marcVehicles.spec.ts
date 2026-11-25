@@ -114,12 +114,17 @@ describe("MARC vehicle feed metadata", () => {
       }),
     );
 
+    const clock = vi.spyOn(Date, "now").mockReturnValue(feedTimestamp * 1000);
     const result = await getMarcVehiclesResult();
 
     expect(result.status).toBe("ok");
     expect(result.available).toBe(true);
     expect(result.feedTimestamp).toBe(feedTimestamp);
     expect(result.data.map((vehicle) => vehicle.tripId)).toEqual(["Train871"]);
+
+    clock.mockReturnValue(Date.parse("2026-11-27T09:00:00-05:00"));
+    const holiday = await getMarcVehiclesResult();
+    expect(holiday).toMatchObject({ data: [], status: "ok", available: true, feedTimestamp });
   });
 
   it("marks an upstream error unavailable", async () => {

@@ -1,81 +1,74 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
+import { rememberListItem, restoreListItem, type RemovedListItem } from "@/lib/removed-list-item";
 
 const KEY = "fr:itinerary:v1";
+export type ItineraryItem = { id: string; added_at: string };
+const listeners = new Set<() => void>();
+const empty: ItineraryItem[] = [];
+type DayPlanState = { items: ItineraryItem[]; status: "loading" | "unavailable" | "ready" };
+const server: DayPlanState = { items: empty, status: "loading" };
+let cachedRaw: string | null | undefined;
+let cached: DayPlanState = server;
 
-export type ItineraryItem = {
-  id: string;      // The event slug
-  added_at: string;
-};
-
-type Listener = () => void;
-const listeners = new Set<Listener>();
-
-let cachedRaw: string | null = null;
-let cachedSnapshot: ItineraryItem[] = [];
-
-function read(): ItineraryItem[] {
-  if (typeof window === "undefined") return cachedSnapshot;
-  let raw: string | null = null;
-  try {
-    raw = window.localStorage.getItem(KEY);
-  } catch {
-    return cachedSnapshot;
+function readItems(): ItineraryItem[] {
+  const raw = window.localStorage.getItem(KEY);
+  if (cachedRaw === raw && cached.status === "ready") return cached.items;
+  const items: unknown = raw === null ? [] : JSON.parse(raw);
+  if (!Array.isArray(items) || items.some(item => typeof item?.id !== "string" || !item.id)) {
+    throw new Error("This device's Day Plan could not be read.");
   }
-  if (raw === cachedRaw) return cachedSnapshot;
   cachedRaw = raw;
-  if (!raw) {
-    cachedSnapshot = [];
-    return cachedSnapshot;
+  cached = { items, status: "ready" };
+  return items;
+}
+function snapshot(): DayPlanState {
+  try { readItems(); } catch {
+    if (cached.status !== "unavailable") cached = { items: cached.items, status: "unavailable" };
   }
-  try {
-    const parsed = JSON.parse(raw);
-    cachedSnapshot = Array.isArray(parsed) ? parsed : [];
-  } catch {
-    cachedSnapshot = [];
-  }
-  return cachedSnapshot;
+  return cached;
 }
-
-const SERVER_SNAPSHOT: ItineraryItem[] = [];
-function readServer(): ItineraryItem[] {
-  return SERVER_SNAPSHOT;
+function publish() { listeners.forEach(listener => listener()); }
+function onStorage(event: StorageEvent) {
+  if (event.key === KEY || event.key === null) publish();
 }
-
-function write(items: ItineraryItem[]) {
-  if (typeof window === "undefined") return;
-  const next = JSON.stringify(items);
-  window.localStorage.setItem(KEY, next);
-  cachedRaw = next;
-  cachedSnapshot = items;
-  listeners.forEach((l) => l());
-}
-
-export function subscribeItinerary(listener: Listener) {
+function subscribe(listener: () => void) {
+  if (!listeners.size) window.addEventListener("storage", onStorage);
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
+    if (!listeners.size) window.removeEventListener("storage", onStorage);
   };
 }
-
-export function useItineraryList() {
-  return useSyncExternalStore(subscribeItinerary, read, readServer);
+export function useDayPlan() {
+  return useSyncExternalStore(subscribe, snapshot, () => server);
 }
-
-export function useIsInItinerary(id: string) {
-  const items = useItineraryList();
-  return items.some((item) => item.id === id);
+function write(items: ItineraryItem[]) {
+  const raw = JSON.stringify(items);
+  window.localStorage.setItem(KEY, raw);
+  cachedRaw = raw;
+  cached = { items, status: "ready" };
+  publish();
 }
-
-export function useToggleItinerary() {
-  return useCallback((id: string) => {
-    const items = read();
-    const exists = items.some((item) => item.id === id);
-    if (exists) {
-      write(items.filter((item) => item.id !== id));
-    } else {
-      write([...items, { id, added_at: new Date().toISOString() }]);
-    }
-  }, []);
+function withDayPlan<T>(change: () => T): Promise<T> {
+  return navigator.locks?.request ? navigator.locks.request(KEY, change) : Promise.resolve().then(change);
+}
+const itemId = (item: ItineraryItem) => item.id;
+export function removeDayPlanEvent(id: string) {
+  return withDayPlan(() => {
+    const items = readItems();
+    const index = items.findIndex(item => item.id === id);
+    if (index < 0) return;
+    const removed = rememberListItem(items, index, itemId);
+    write(items.filter(item => item.id !== id));
+    return removed;
+  });
+}
+export function restoreDayPlanEvent(removed: RemovedListItem<ItineraryItem>) {
+  return withDayPlan(() => {
+    const items = readItems();
+    const next = restoreListItem(items, removed, itemId);
+    if (next !== items) write(next);
+  });
 }

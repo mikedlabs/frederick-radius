@@ -1,3 +1,12 @@
+import { scopeToParam, type Scope } from "@/lib/scope";
+
+export function reachModeHref(scope: Scope | null, minutes?: number): string {
+  const params = new URLSearchParams({ mode: "radius" });
+  if (minutes !== undefined) params.set("minutes", String(minutes));
+  if (scope !== null) params.set("in", scopeToParam(scope));
+  return `/map?${params}`;
+}
+
 export type ReachBoundaryStatus = "loading" | "street" | "distance";
 
 export type ReachPolygons = number[][][];

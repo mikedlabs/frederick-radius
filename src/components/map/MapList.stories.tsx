@@ -43,14 +43,14 @@ export const RecoveryGuttersAt390: Story = {
   decorators: [(Story) => (
     <div className="map-error-fallback">
       <div className="map-error-fallback-head">
-        <h2 className="text-[16px] font-semibold">Map view unavailable</h2>
+        <h2 className="text-[16px] font-semibold">Frederick County map</h2>
       </div>
       <Story />
     </div>
   )],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const heading = canvas.getByRole("heading", { name: "Map view unavailable" });
+    const heading = canvas.getByRole("heading", { name: "Frederick County map" });
     const row = canvas.getByRole("button", { name: /Sample Frederick place/ });
     const count = canvas.getByText("1 place available");
     await expect(Math.abs(heading.getBoundingClientRect().left - row.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
@@ -221,5 +221,15 @@ export const MetaLineWrapsAsTextAt320: Story = {
     // No dead band: the row ends just below the taller of its text and its
     // fixed 56px frame.
     await expect(box.bottom - Math.max(main.bottom, frame.bottom)).toBeLessThanOrEqual(16);
+  },
+};
+
+export const CountyLocatorWithResults: Story = {
+  args: { failureMode: true, locatorArea: { town: "brunswick" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("img", { name: /Frederick County reference map/ })).toBeVisible();
+    await expect(canvas.getByText("Town center: Brunswick")).toBeVisible();
+    await expect(canvas.getByRole("button", { name: /Sample Frederick place/ })).toBeVisible();
   },
 };

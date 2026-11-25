@@ -235,7 +235,7 @@ describe("saved-outing real-store controls and return cards", () => {
     await act(async () => button("Remove outing: Our Brunswick date").click());
     expect(mocks.toast).toHaveBeenCalledWith("Removed from Saved · Our Brunswick date", { id: `save:outing:${token}`, duration: 6000, action: { label: "Undo", onClick: expect.any(Function) } });
     expect(host.querySelector("[data-saved-empty-state]")).not.toBeNull();
-    expect(host.textContent).toContain("Save an outing");
+    expect(host.textContent).toContain("Nothing saved yet");
     expect(JSON.parse(localStorage.getItem(SAVED_OUTINGS_KEY)!)).toEqual([]);
   });
 

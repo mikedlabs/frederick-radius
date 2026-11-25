@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   collectReachPolygons,
+  reachModeHref,
   isPointWithinReach,
 } from "./reach";
 
@@ -27,6 +28,11 @@ const square: GeoJSON.FeatureCollection = {
 };
 
 describe("radius reach boundary", () => {
+  it("carries the selected area and time into travel reach without device coordinates", () => {
+    expect(reachModeHref("town:thurmont", 15)).toBe("/map?mode=radius&minutes=15&in=thurmont");
+    expect(reachModeHref("nearme")).toBe("/map?mode=radius&in=nearme");
+    expect(reachModeHref(null)).toBe("/map?mode=radius");
+  });
   it("uses the Mapbox polygon instead of straight-line distance when loaded", () => {
     const polygons = collectReachPolygons(square);
 

@@ -175,7 +175,8 @@ export default function PulseIndicator() {
   const alertCount = `${count} ${count === 1 ? "alert" : "alerts"}`;
   const level = checking ? "Checking" : earlier || phase === "unavailable" ? "Unknown" : status?.level ?? "Unknown";
   const stateLabel = level === "Unknown" ? "Unable to verify" : level;
-  const mobileLabel = level === "Unknown" ? "Unverified" : level;
+  const reportLabel = level === "Clear" ? countyStatusLabel(level) : stateLabel;
+  const mobileLabel = level === "Unknown" ? "Unverified" : reportLabel;
   const statusLabel = earlier
     ? `County status: ${stateLabel}. ${checking ? "Checking again." : "Current check unavailable."} Earlier report had ${alertCount}; current alerts are unverified.`
     : checking
@@ -185,14 +186,13 @@ export default function PulseIndicator() {
         : active
           ? `County status: ${countyStatusLabel(status.level)}; ${alertCount} reported${status.ok === false ? "; some sources unavailable" : ""}`
           : `County status: ${countyStatusLabel(status.level)}; no active alerts`;
-  const mobileVisible = current || active || unknown || checking;
   const currentAlerts = active && !unverified;
 
   return (
     <AppTransitionLink
       data-pulse-indicator
       data-pulse-state={phase}
-      data-pulse-mobile-visible={mobileVisible || undefined}
+      data-pulse-mobile-visible
       href="/pulse"
       prefetch={false}
       aria-label={statusLabel}
@@ -206,9 +206,7 @@ export default function PulseIndicator() {
         current
           ? "bg-[var(--app-bg-sunken)] [--pulse-ground:var(--app-bg-sunken)]"
           : "bg-[var(--app-bg)] [--pulse-ground:var(--app-bg)]"
-      } relative h-11 min-w-11 shrink-0 items-center justify-center flex-col gap-0.5 rounded-[var(--app-radius-sm)] px-1.5 transition hover:bg-[var(--app-bg-sunken)] hover:[--pulse-ground:var(--app-bg-sunken)] sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-2.5 ${
-        mobileVisible ? "inline-flex" : "hidden"
-      }`}
+      } relative inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-[var(--app-radius-sm)] px-1.5 transition hover:bg-[var(--app-bg-sunken)] hover:[--pulse-ground:var(--app-bg-sunken)] sm:px-2.5`}
       style={{
         color: current
           ? "var(--app-link)"
@@ -236,14 +234,14 @@ export default function PulseIndicator() {
         {(!currentAlerts && (unknown || earlier)) && (
           <span
             className="absolute -right-1 -top-1 inline-flex h-2 w-2 rounded-full"
-            style={{ boxShadow: "0 0 0 2px var(--pulse-ground), inset 0 0 0 1.5px var(--app-ink-3)" }}
+            style={{ boxShadow: "0 0 0 2px var(--pulse-ground), inset 0 0 0 1.5px currentColor" }}
           />
         )}
       </span>
-      {stateLabel && <span data-pulse-mobile-state className="text-[9px] font-semibold leading-none sm:hidden">{mobileLabel}</span>}
-      <span className="hidden flex-col gap-0.5 sm:inline-flex">
-        <span className="text-[14px] font-semibold leading-none">County status</span>
-        {stateLabel && <span data-pulse-desktop-state className="text-[10px] leading-none">{status?.level === "Clear" && phase === "ready" ? countyStatusLabel(status.level) : stateLabel}</span>}
+      <span className="flex min-w-0 flex-col items-start gap-0.5 text-left">
+        <span className="text-[0.8125rem] font-semibold leading-tight">County status</span>
+        <span data-pulse-mobile-state className="text-[0.75rem] leading-tight sm:hidden">{mobileLabel}</span>
+        {stateLabel && <span data-pulse-desktop-state className="hidden text-[0.75rem] leading-tight sm:inline">{reportLabel}</span>}
       </span>
     </AppTransitionLink>
   );

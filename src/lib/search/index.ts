@@ -10,6 +10,7 @@
  * resolver keeps working.
  */
 
+import { eventPublisherArtwork } from "@/components/event/eventVisuals";
 import {
   qualifiedSearch,
   isExactPlaceNameQuery,
@@ -759,7 +760,7 @@ function hitToResult(h: SearchHit): SearchResult {
           ? { point: { lng: e.geom.lng, lat: e.geom.lat } } : {}),
       },
       trust: eventTrust(e),
-      thumbnail: browseSafePhotoUrl(e.hero_image),
+      thumbnail: browseSafePhotoUrl(eventPublisherArtwork(e)?.src),
     };
   }
   if (h.type === "category") {

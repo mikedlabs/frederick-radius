@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import GuideHeader from "@/components/layout/GuideHeader";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CalendarCheck } from "lucide-react";
+import { ArrowRight, CalendarCheck } from "lucide-react";
 import { rankPlaces } from "@/lib/loaders/places";
 import {
   isBrandedProvider,
@@ -50,45 +51,11 @@ export default async function ReservePage() {
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
   return (
-    <div className="relative mx-auto max-w-md space-y-6 py-6">
+    <div className="relative mx-auto w-full max-w-screen-md space-y-6 py-3">
 
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <Link
-          href="/today"
-          className="tap-44-y inline-flex items-center gap-1 hover:underline"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Today
-        </Link>
-      </nav>
-
-      <header>
-        <div
-          aria-hidden
-          className="h-px"
-          style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }}
-        />
-        <div className="flex items-center justify-between py-2.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>
-            Frederick County
-          </span>
-          <span className="font-mono text-[10.5px] tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
-            {rows.length} booking links
-          </span>
-        </div>
-        <h1 className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Book a table{" "}
-          <span className="font-serif italic font-normal" style={{ color: "var(--app-ink-3)" }}>
-            around Frederick
-          </span>
-        </h1>
-        <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          Each place below has a direct reservation page published on its
-          website or checked by Radius. Live availability stays with the
-          booking provider.
-        </p>
-      </header>
+      <GuideHeader title="Book a table" href="/today" parent="Today">
+        Choose a restaurant to check availability on its booking site.
+      </GuideHeader>
 
       <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
         {rows.map(({ p, reserve }) => {
@@ -117,8 +84,8 @@ export default async function ReservePage() {
                 href={reserve.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-white"
-                style={{ background: "var(--app-brand-press)" }}
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-[var(--app-radius-md)] border px-3 text-[13px] font-semibold"
+                style={{ color: "var(--app-link)", borderColor: "var(--app-control-border)" }}
                 aria-label={`Reserve at ${p.name}${isBrandedProvider(reserve.provider) ? ` on ${providerLabel(reserve.provider)}` : ""}`}
               >
                 <CalendarCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />

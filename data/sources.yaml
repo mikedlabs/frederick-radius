@@ -650,7 +650,7 @@ sources:
   - id: airnow
     name: AirNow Air Quality
     owner: US EPA AirNow
-    url: https://www.airnowapi.org/aq/observation/latLong/current
+    url: https://www.airnowapi.org/aq/observation/current/ziplatlong
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
@@ -658,14 +658,16 @@ sources:
     contact: https://www.airnow.gov
     status: active
     collection: runtime
-    last_validated: 2026-07-23
+    last_validated: 2026-11-24
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/airnow.ts
     notes: |
-      Active runtime integration used by Today and Pulse when
-      AIRNOW_API_KEY is configured. The adapter distinguishes a successful
-      empty observation from an unavailable response and rejects stale data.
+      Current observations use EPA's keyed 2026 ZIP/coordinate API. For the
+      Frederick city center, fresh Maryland Piedmont observations can also come
+      from https://files.airnowtech.org/airnow/today/reportingarea.dat. A dated
+      regional forecast is shown separately on Pulse when no current reading is
+      available. ZIP 21701 maps to Maryland Piedmont in AirNow's cityzipcodes.csv.
 
   - id: nps
     name: National Park Service
@@ -2951,26 +2953,27 @@ sources:
       civic instructions directly to production.
 
   - id: usgs_water
-    name: USGS — Monocacy River Water Data
+    name: USGS — Frederick County River Gauges
     owner: US Geological Survey
-    url: https://waterservices.usgs.gov/nwis/iv/
+    url: https://api.waterdata.usgs.gov/ogcapi/v1/collections/continuous
     endpoint_type: rest_json
     format: json
-    refresh_cadence: hourly
+    refresh_cadence: realtime
     license: US federal government open data, public domain
     contact: USGS Water Resources
     status: active
     collection: runtime
-    last_validated: 2026-05-26
+    last_validated: 2026-11-24
     last_success: null
     schema_file: null
     transform_file: src/lib/integrations/usgsWater.ts
     notes: |
-      Live runtime via getFrederickWaterSites() — consumed by /water
-      page. Real-time gauge data for the Monocacy and tributaries.
-      Pinned to Frederick County gauge site numbers in the
-      integration. No key required (US federal public-domain data).
-      Pairs with cof_floodplain (still pending) when that activates.
+      USGS Water Data API v1 supplies instantaneous gage height (feet) and
+      discharge (cubic feet per second) for Maryland county 021. Pulse, Rivers,
+      Today and the map use dated observations. Official stations provide names
+      and coordinates. Observations are provisional and cached for 15 minutes.
+      USGS allows anonymous requests with rate limits. API key policy:
+      https://api.waterdata.usgs.gov/docs/ogcapi/keys/
 
   - id: fredscanner
     name: Frederick Scanner Public Incidents

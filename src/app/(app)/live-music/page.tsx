@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import GuideHeader from "@/components/layout/GuideHeader";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { liveMusicTonight, liveMusicAhead } from "@/lib/events/live-music";
 import { cleanVenueName } from "@/lib/events/normalize";
@@ -139,49 +140,11 @@ export default async function LiveMusicPage() {
     // Lean-surface sheet boundary: a tap on any show opens the event
     // sheet on demand (skeleton + single-event fetch) instead of a page
     // navigation per maybe. Anchors stay real.
-    <EventSheetBoundary fetchMissing className="relative mx-auto max-w-md space-y-6 py-6">
+    <EventSheetBoundary fetchMissing className="relative mx-auto w-full max-w-screen-md space-y-6 py-3">
 
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <Link
-          href="/today"
-          className="tap-44-y inline-flex items-center gap-1 hover:underline"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Today
-        </Link>
-      </nav>
-
-      {/* Almanac masthead — typography carries it: dateline, serif title
-          dropping into an italic continuation, counts as quiet mono data
-          (never the headline). */}
-      <header>
-        <div
-          aria-hidden
-          className="h-px"
-          style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }}
-        />
-        <div className="flex items-center justify-between py-2.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>
-            Frederick County
-          </span>
-          <span className="font-mono text-[10.5px] tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
-            {dateline}
-          </span>
-        </div>
-        <h1 className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Live music{" "}
-          <span className="font-serif italic font-normal" style={{ color: "var(--app-ink-3)" }}>
-            around Frederick
-          </span>
-        </h1>
-        {!nothingAnywhere && (
-          <p className="mt-2 font-mono text-[11px] tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
-            {tonight.length > 0 ? `${tonight.length} tonight · ` : ""}
-            {ahead.length} {ahead.length === 1 ? "show" : "shows"} in the next four weeks
-          </p>
-        )}
-      </header>
+      <GuideHeader title="Live music" href="/events" parent="All events" detail={dateline}>
+        {!nothingAnywhere && `${tonight.length ? `${tonight.length} tonight · ` : ""}${ahead.length} ${ahead.length === 1 ? "show" : "shows"} in the next four weeks`}
+      </GuideHeader>
 
       {nothingAnywhere ? (
         <>
@@ -199,7 +162,7 @@ export default async function LiveMusicPage() {
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[13px] font-semibold">
               <Link href="/events" className="tap-44-y inline-flex items-center" style={{ color: "var(--app-link)" }}>
-                The full board <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+                All events <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
               </Link>
             </div>
           </div>
