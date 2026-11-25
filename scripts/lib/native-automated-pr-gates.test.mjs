@@ -271,6 +271,41 @@ test("missing native run leaves the entire pair held without dispatching the oth
   const { state, approvalOptions } = harness(); state.runs.pop();
   const result = await approveNativeAutomatedPrRuns(approvalOptions);
   assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []);
+  // The empty style.yml list is read four times in all, then refused as before.
+  assert.deepEqual(state.waits, [4000, 4000, 4000]);
+  assert.match(result.failure, /Missing, ambiguous or incomplete native runs for style\.yml/);
+});
+
+// On 2026-11-21 (official hours) and 2026-11-22 (commerce links) the first
+// list read came 4 to 8 seconds after GitHub created both gates and stopped
+// the batch with "Missing, ambiguous or incomplete native runs for ci.yml."
+// Neither gate was approved that day. The receipts did not record that read,
+// so an empty list is the inferred shape, not an observed one.
+test("an empty run list during discovery is read again and the pair is approved once GitHub lists the runs", async () => {
+  const { state, approvalOptions } = harness(); const unlisted = state.runs.splice(0);
+  const result = await approveNativeAutomatedPrRuns({ ...approvalOptions,
+    sleep: async (ms) => { state.waits.push(ms); state.runs.push(...unlisted.splice(0)); } });
+  assert.equal(result.state, "approved"); assert.equal(result.verified, true); assert.equal(result.manualApprovalRequired, false);
+  assert.deepEqual(state.approvals, [101, 202]); assert.deepEqual(state.waits, [4000]);
+  assert.deepEqual(result.associationReads.slice(0, 2).map((row) => [row.workflow, row.phase, row.read, row.runs.length]),
+    [["ci.yml", "discovery-empty", 1, 0], ["ci.yml", "discovery", 2, 1]]);
+});
+
+test("a run list that stays empty is refused after four reads with nothing approved", async () => {
+  const { state, approvalOptions } = harness(); state.runs.splice(0);
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.equal(result.verified, false); assert.equal(result.manualApprovalRequired, true);
+  assert.deepEqual(state.approvals, []); assert.deepEqual(state.waits, [4000, 4000, 4000]);
+  assert.deepEqual(result.associationReads.map((row) => [row.phase, row.read]), [["discovery-empty", 1], ["discovery-empty", 2], ["discovery-empty", 3]]);
+  assert.match(result.failure, /Missing, ambiguous or incomplete native runs for ci\.yml/);
+});
+
+test("an empty run list after an approval gets no second read", async () => {
+  const { state, approvalOptions } = harness();
+  state.onRead = (name) => { if (name === "listRuns" && state.approvals.length === 1) state.runs.splice(0); };
+  const result = await approveNativeAutomatedPrRuns(approvalOptions);
+  assert.equal(result.state, "held"); assert.deepEqual(state.approvals, [101]); assert.deepEqual(state.waits, []);
+  assert.match(result.failure, /Missing, ambiguous or incomplete native runs for ci\.yml/);
 });
 
 test("ambiguous duplicate native IDs and truncated discovery fail closed", async () => {
@@ -278,6 +313,8 @@ test("ambiguous duplicate native IDs and truncated discovery fail closed", async
     const { state, approvalOptions } = harness(); mutate(state);
     const result = await approveNativeAutomatedPrRuns(approvalOptions);
     assert.equal(result.state, "held"); assert.deepEqual(state.approvals, []);
+    // Only an empty list is read again. A list that has rows is judged at once.
+    assert.deepEqual(state.waits, []);
   }
 });
 

@@ -270,6 +270,17 @@ async function approveNativeAutomatedPrRuns(options) {
         const response = (await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: workflow.id,
           branch, head_sha: headSha, event: "pull_request", exclude_pull_requests: false, per_page: 100 })).data;
         const rows = response.workflow_runs;
+        // GitHub may not list a run for a few seconds after creating it. On
+        // 2026-11-21 and 2026-11-22 the first list read came 4 to 8 seconds
+        // after both gates were created and failed the check below, before any
+        // approval. An empty list during discovery is noted on the receipt and
+        // read again inside the existing four-read budget. A list that has
+        // rows must still be complete on that read.
+        if (discovery && read < 4 && Array.isArray(rows) && rows.length === 0) {
+          noteAssociations(workflow, "discovery-empty", rows, read);
+          await sleep(4000);
+          continue;
+        }
         requireThat(Array.isArray(rows) && safeId(response.total_count) && response.total_count === rows.length
           && rows.length < 100 && new Set(rows.map((row) => row.id)).size === rows.length,
         `Missing, ambiguous or incomplete native runs for ${workflow.file}. Manual owner approval is required.`);
