@@ -376,3 +376,21 @@ export const EnlargedTextOnlyRelative320: Story = {
     await assertControls(canvasElement);
   },
 };
+
+export const WeekendAcrossMonths: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { response: { partial: false, events: [] }, weekendFriday: "2026-10-30", eventsHref: "/events?in=brunswick" },
+  play: async ({ canvasElement }) => {
+    const calendar = within(canvasElement).getByRole("link", { name: /Browse weekend events from Friday, October 30, 2026/ });
+    await expect(calendar).toHaveAttribute("href", "/events?in=brunswick&when=weekend");
+    await expect(calendar).toBeVisible();
+    document.documentElement.style.fontSize = "200%";
+    const heading = canvasElement.querySelector('[data-today-event-shortlist] header')!;
+    const title = heading.querySelector('h2')!.getBoundingClientRect();
+    const board = heading.querySelector('a')!.getBoundingClientRect();
+    await expect(title.width).toBeGreaterThanOrEqual(heading.clientWidth * .8);
+    await expect(board.top).toBeGreaterThanOrEqual(title.bottom);
+    await expect(calendar.getBoundingClientRect().width).toBeLessThanOrEqual(canvasElement.clientWidth);
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+  },
+};

@@ -1,4 +1,4 @@
-import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 // eslint-disable-next-line no-restricted-imports -- SERVER component (no "use client"): loader imports render server-side and never enter the client bundle
@@ -12,8 +12,7 @@ import {
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
-import CategoryBriefing from "./CategoryBriefing";
-import ScopeBar from "@/components/nav/ScopeBar";
+import CategoryGeography from "./CategoryGeography";
 import CategorySection from "./CategorySection";
 import type { DecisionOriginSource } from "@/lib/scope";
 
@@ -67,7 +66,6 @@ export default function CategoryView({
   // browse below keeps `all` — they stay findable, just not recommended.
   // (No-op for coffee; the rule is universal for the category pattern.)
   const rec = all.filter(isRecommendable);
-  const total = all.length;
   const openCount = all.filter((p) => isOpenNow(p.open_status)).length;
 
   // "Worth your time" is the LEAD: a tight 3-up tile row (mixed density, one
@@ -87,7 +85,6 @@ export default function CategoryView({
     .filter((g) => !town || g.municipality !== town.slug)
     .slice(0, 8);
 
-  const municipalities = MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }));
 
   return (
     <div className="relative space-y-5 sm:space-y-6">
@@ -103,32 +100,14 @@ export default function CategoryView({
       </nav>
 
       <header className="border-b pb-5" style={{ borderColor: "var(--app-border)" }}>
-        <p className="eyebrow" style={{ color: `color-mix(in srgb, ${category.color} 72%, var(--app-ink))` }}>
-          Frederick County guide
-        </p>
         <h1 className="mt-1.5 font-serif text-[32px] font-semibold leading-[1.05] tracking-tight sm:text-[38px]" style={{ color: "var(--app-ink)" }}>
           {category.name}
         </h1>
         <p className="mt-2 max-w-[58ch] text-[14px] leading-relaxed sm:text-[15px]" style={{ color: "var(--app-ink-2)" }}>
           {category.blurb}
         </p>
+        <CategoryGeography places={all} current={rankingMuni} selectedTown={filterMuni} openNow={openCount} />
       </header>
-
-      {/* Where the page ranks from — always shown, always changeable, writes
-          the shared scope (same control as the legacy category page + /open-now;
-          2026-07-12 beta feedback). Replaces CategoryBriefing's old inline
-          set-town, which vanished once a town was set. */}
-      <ScopeBar
-        current={rankingMuni}
-        selectedTown={filterMuni}
-        municipalities={municipalities}
-      />
-
-      <CategoryBriefing
-        categoryName={category.name}
-        total={total}
-        openNowCount={openCount}
-      />
 
       {/* Compact row cards (the default) so "Worth your time" matches the
           other sections and every other listing surface — no oversized

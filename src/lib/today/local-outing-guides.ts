@@ -31,6 +31,7 @@ export type GuideStop = {
   anchor?: string;
   routeName?: string;
   timeLabel?: string;
+  timing?: Pick<EventWithMeta, "starts_at" | "ends_at" | "published_time" | "status" | "source" | "is_all_day">;
   when: string;
   suggestedMinutes?: number;
   where: string;
@@ -334,6 +335,8 @@ function stopForEvent(event: EventWithMeta): GuideStop {
   const venuePhoto = event.venue_place_slug ? getOwnedPlacePhoto(event.venue_place_slug) : null;
   return {
     title: event.title,
+    timing: { starts_at: event.starts_at, ends_at: event.ends_at, published_time: event.published_time,
+      status: event.status, source: event.source, is_all_day: event.is_all_day },
     when: `${formatEventDate(event.starts_at)} · ${eventDecisionTime(event)}`,
     where: eventDecisionLocation(event),
     description: event.description,
@@ -350,6 +353,7 @@ const thanksgivingFriday = Date.parse(easternWallToUtcISO(2026, 11, 27, 17, 0));
 const thanksgivingEdition: EditionPick[] = [
   {
     title: FROSTY_FRIDAY.title,
+    timing: { starts_at: FROSTY_FRIDAY.startsAt, ends_at: FROSTY_FRIDAY.endsAt, published_time: "range", source: "manual" },
     where: "Downtown Frederick",
     description: "Browse downtown shops and hear live holiday music. Check the organizer’s schedule to choose a time and meeting spot.",
     visitTip: "City garages and on-street parking are free on Frosty Friday.",
@@ -360,6 +364,7 @@ const thanksgivingEdition: EditionPick[] = [
   },
   {
     title: TENTH_WARD_CONCERT.title,
+    timing: { starts_at: TENTH_WARD_CONCERT.startsAt, ends_at: TENTH_WARD_CONCERT.endsAt, published_time: "range", source: "manual" },
     where: "Tenth Ward Distilling Company, 55 E Patrick St, Frederick",
     description: "Hear the Brahman Noodles play live at Tenth Ward on Friday evening.",
     action: { label: "See the performance details", href: TENTH_WARD_CONCERT.url },

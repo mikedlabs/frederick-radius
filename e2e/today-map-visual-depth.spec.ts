@@ -312,10 +312,13 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   await todayReady(page);
   const image = page.locator("[data-today-photo-lead] img");
   await decoded(image, walkingPhoto);
+  const hours = page.getByRole("group", { name: "Quick needs", exact: true })
+    .getByRole("link", { name: "Open now", exact: true });
   const textProbes = [
     { name: "Daypart heading", control: page.getByRole("heading", { level: 1 }) },
     { name: "Area picker", control: todayArea(page).locator("span:visible") },
-    { name: "Quick action words", control: page.getByRole("group", { name: "Quick needs", exact: true }).getByRole("link").first().locator("span") },
+    { name: "Quick action title", control: hours.getByText("Open now", { exact: true }) },
+    { name: "Quick action description", control: hours.getByText("Places by their listed hours", { exact: true }) },
   ];
   const text = async () => Promise.all(textProbes.map(async ({ name, control }) => ({
     name, px: await control.evaluate((node) => parseFloat(getComputedStyle(node).fontSize)),
@@ -347,14 +350,15 @@ test("Today retains the photo and 44px controls within one native scroll at 320p
   expect(normal, "Actual visible labels at the default 16px root").toEqual([
     { name: "Daypart heading", px: 22 },
     { name: "Area picker", px: 14 },
-    { name: "Quick action words", px: 14 },
+    { name: "Quick action title", px: 16 },
+    { name: "Quick action description", px: 13 },
   ]);
   await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
   await page.evaluate(() => document.fonts.ready);
   let enlarged = await text();
   try {
     // fonts.ready does not establish container-query/layout readiness. Require
-    // the actual computed root and all three actual label sizes before any
+    // the actual computed root and every visible label size before any
     // enlarged geometry is accepted; do not override those label sizes.
     await expect.poll(async () => {
       const root = await rootText();

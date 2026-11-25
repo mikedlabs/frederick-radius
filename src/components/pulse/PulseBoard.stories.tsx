@@ -2,6 +2,7 @@ import { expect, userEvent, within } from "storybook/test";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { RADIUS_STORY_NOW } from "../../../.storybook/preview";
 import PulseBoard, { type PulseHero, type PulseTile } from "./PulseBoard";
+import PulseRiverTrace from "./PulseRiverTrace";
 
 // Fixed, clearly labeled sample readings. These are workshop data, not feeds.
 const weather: PulseTile = {
@@ -40,6 +41,10 @@ const river: PulseTile = {
   reading: true,
   kind: "gauge",
   gauge: { value: 2.4, unit: "ft", decimals: 1 },
+  readingGraphic: <PulseRiverTrace name="Monocacy River at Jug Bridge" end="2026-10-09T16:00:00Z" readings={[
+    { at: "2026-10-09T10:00:00Z", value: 2.5 }, { at: "2026-10-09T10:30:00Z", value: 2.45 },
+    { at: "2026-10-09T15:30:00Z", value: 2.42 }, { at: "2026-10-09T16:00:00Z", value: 2.4 },
+  ]} />,
   body: (
     <p>
       This is a sample river gauge height. It does not establish whether swimming

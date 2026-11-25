@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import PlaceTownSummary, { countPlaceTowns } from "@/components/places/PlaceTownSummary";
+import DiscoveryPlacePhoto from "@/components/places/DiscoveryPlacePhoto";
+import { getOwnedPlacePhoto } from "@/lib/owned-place-photos";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  ChevronRight,
   Coffee,
   IceCream,
   Utensils,
@@ -584,59 +588,49 @@ export default function RightNow({
       ? CRAVINGS
       : CRAVINGS.filter((candidate) => PRIMARY_CRAVING_KEYS.has(candidate.key));
 
+    const catalogInArea = townKey ? places.filter(place => place.municipality === townKey) : places;
+    const areaName = townKey ? MUNICIPALITY_BY_SLUG[townKey]?.name : null;
+    const choices = visibleCravings.map(craving => {
+      const matches = catalogInArea.filter(place => matchesCraving(craving, place));
+      const preferred = craving.key === "outside" ? "baker-park-frederick"
+        : craving.key === "family" ? "sophie-madigans-playground-frederick" : null;
+      const example = preferred && scope !== "nearme" ? matches.find(place => place.slug === preferred && getOwnedPlacePhoto(place.slug)) : null;
+      return { craving, matches: matches.length, example };
+    });
+    const photographed = choices.filter(choice => choice.example);
+    const remaining = choices.filter(choice => !choice.example);
     return (
       <div className="space-y-5" data-nearby-interaction-ready={interactionReady ? "true" : "false"}>
         <header className="space-y-1.5" aria-describedby="nearby-intro">
-          <h1
-            className="font-sans text-[26px] font-semibold leading-tight tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
+          <h1 className="font-sans text-[26px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Find something nearby
           </h1>
-          <p id="nearby-intro" className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-            Choose what you need to find.
+          <p id="nearby-intro" className={styles.pickerArea}>
+            {areaName ? `Choose a category in ${areaName}.` : "Choose a category in Frederick County."}
           </p>
         </header>
-
-        <ul
-          className="grid grid-cols-2 overflow-hidden border-y"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          {visibleCravings.map((c) => {
-            const Icon = ICONS[c.icon] ?? Utensils;
-            return (
-              <li
-                key={c.key}
-                className="border-b odd:border-r"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <button
-                  type="button"
-                  onClick={() => pick(c.key)}
-                  className="tactile-interactive flex min-h-[60px] w-full items-center gap-2.5 px-2.5 py-2 text-left transition-colors hover:bg-[var(--app-bg-sunken)]"
-                >
-                  <span
-                    aria-hidden
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]"
-                    style={{
-                      background: `color-mix(in srgb, ${c.color} 14%, var(--app-bg-elevated-solid))`,
-                      boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${c.color} 20%, transparent)`,
-                    }}
-                  >
-                    <Icon className="h-[18px] w-[18px]" strokeWidth={1.9} style={{ color: c.color }} />
-                  </span>
-                  <span
-                    className="min-w-0 flex-1 truncate text-[13.5px] font-semibold tracking-tight"
-                    style={{ color: "var(--app-ink)" }}
-                  >
-                    {c.label}
-                  </span>
-                </button>
-              </li>
-            );
+        {photographed.length > 0 && <ul className={styles.featureChoices} aria-label="Categories with local examples">
+          {photographed.map(({ craving, example }) => example && <li key={craving.key}>
+            <button type="button" aria-label={craving.label} onClick={() => pick(craving.key)}>
+              <DiscoveryPlacePhoto slug={example.slug} sizes="(max-width: 540px) 47vw, 340px" />
+              <span className={styles.featureLabel}>{craving.label}<ChevronRight aria-hidden size={16} /></span>
+              <span className={styles.exampleLabel}>{example.name} · {MUNICIPALITY_BY_SLUG[example.municipality]?.name ?? example.city}</span>
+            </button>
+          </li>)}
+        </ul>}
+        <ul className={styles.categoryIndex} aria-label="Browse categories">
+          {remaining.map(({ craving, matches }) => {
+            const Icon = ICONS[craving.icon] ?? Utensils;
+            const countId = `category-count-${craving.key}`;
+            return <li key={craving.key}><button type="button" aria-label={craving.label} aria-describedby={countId} onClick={() => pick(craving.key)}>
+              <Icon size={18} strokeWidth={1.8} aria-hidden />
+              <span className={styles.categoryCopy}><strong>{craving.label}</strong>
+                <small id={countId}>{matches} {matches === 1 ? "listing" : "listings"}</small>
+              </span>
+              <ChevronRight size={15} aria-hidden />
+            </button></li>;
           })}
         </ul>
-
         {!showAllCravings && (
           <button
             type="button"
@@ -915,6 +909,9 @@ export default function RightNow({
         </p>
       )}
 
+      {results.length > 0 && !townName && !parksExplorer && <PlaceTownSummary
+        label="Towns in these results" tally={countPlaceTowns(results)}
+      />}
       {results.length === 0 && townName && matched.length === 0 && nearbyTownFallback.length > 0 ? (
         <section aria-labelledby="nearby-town-fallback-heading" className={styles.emptyState}>
           <h2 id="nearby-town-fallback-heading" className={styles.emptyTitle}>
@@ -955,7 +952,7 @@ export default function RightNow({
                   ? `No matches for ${activeNoun} are confirmed open right now.`
                   : meal
                     ? `No matches for ${activeNoun} ${meal.phrase} are confirmed open near you right now.`
-                    : `Radius found no options for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
+                    : `Radius found no options for ${activeNoun} ${hasFix ? "near you right now" : "in Frederick County with these filters"}.`}
           </p>
           {/* Clear the town lens, the closing-soon filter, or Open now. Never
               dead-end. */}
@@ -978,6 +975,11 @@ export default function RightNow({
                 </Button>
               </div>
             )
+          )}
+          {!townName && !closingSoonOnly && !(openOnly && matched.length > 0) && (
+            <div className={styles.emptyActions}>
+              <Button variant="secondary" onClick={() => updateQuery({ cravingKey: null }, "push")}>Choose another category</Button>
+            </div>
           )}
         </div>
       ) : (

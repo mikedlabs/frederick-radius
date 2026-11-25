@@ -60,6 +60,27 @@ async function openFilter(launcher: string, scope: () => ParentNode = () => dial
 }
 
 describe("Tools request-to-action flow", () => {
+  it("preserves a filter selected during the opening frame and records the complete query", async () => {
+    await render();
+    await click(button("Browse the full tool index"));
+    const field = dialog()!.querySelector<HTMLInputElement>('[role="searchbox"]')!;
+    field.focus();
+    await type(field, "c");
+    await act(async () => vi.advanceTimersByTimeAsync(32));
+    expect(document.activeElement).toBe(field);
+    await type(field, "coffee");
+    expect(window.history.state[NATIVE_REQUEST_ENTRY_KEY].draft).toEqual({ kind: "tools", query: "coffee" });
+    expect(dialog()!.querySelector('a[href="/search?q=coffee"]')).not.toBeNull();
+  });
+
+  it("puts initial focus on Close when the visitor has not selected a control", async () => {
+    await render();
+    const launcher = button("Browse the full tool index");
+    launcher.focus();
+    await click(launcher);
+    await act(async () => vi.advanceTimersByTimeAsync(32));
+    expect(document.activeElement).toBe(dialog()!.querySelector('button[aria-label="Close All tools"]'));
+  });
   it("moves focus from either category control to its destination heading", async () => {
     await render(); await openFilter("Browse the full tool index");
     const panel = dialog()!;
@@ -162,6 +183,9 @@ describe("Tools request-to-action flow", () => {
     const initial = document.createElement("div"); initial.innerHTML = renderToString(<CompassHub />);
     expect(initial.querySelector<HTMLAnchorElement>("[data-compass-find]")?.getAttribute("href")).toBe("/search");
     for (const control of initial.querySelectorAll<HTMLButtonElement>("button")) expect(control.disabled).toBe(true);
+    const photos = Array.from(initial.querySelectorAll<HTMLImageElement>("[data-tool-scene] img"));
+    expect(photos).toHaveLength(4);
+    for (const photo of photos) expect(photo.alt).toMatch(/Zoe|Carroll Creek|City Hall|Sophie & Madigan/);
     expect(initial.querySelectorAll('[aria-expanded="true"]')).toHaveLength(0);
   });
   it("restores only a valid chapter while retaining scope, query and history state", async () => {

@@ -28,7 +28,8 @@ describe("town detail photography", () => {
       expect(html).toContain(photo.capturedOn!.slice(0, 4));
       expect(html).toContain("data-town-photo-credit");
     } else {
-      expect(html).not.toContain("<figure");
+      expect(html).toContain('data-locator-selection="Town center"');
+      expect(html).toContain(`/map?in=${town.slug}`);
       expect(html).not.toContain("<img");
     }
   });

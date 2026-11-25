@@ -6,6 +6,20 @@ test.use({
   permissions: ["geolocation"],
 });
 
+test("the Map masthead stays legible alongside a retained older route stylesheet", async ({ page }) => {
+  await page.goto("/map", { waitUntil: "domcontentloaded" });
+  // An older cached /map document can still load its original stylesheet
+  // alongside the current masthead during a public deployment.
+  await page.addStyleTag({ content: 'header[data-map-header="true"] { background: var(--app-bg) !important; }' });
+  const banner = page.getByRole("banner");
+  for (const width of [390, 820, 1366]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(banner.locator("[data-header-wordmark]")).toBeVisible();
+    await expect(banner).toHaveCSS("background-color", "rgb(34, 34, 31)");
+    await expect(banner.locator("[data-header-wordmark]")).toHaveCSS("color", "rgb(255, 255, 255)");
+  }
+});
+
 test("desktop map dock keeps the complete content-choice label", async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -164,7 +178,7 @@ test("the same command model fits the narrowest supported phone", async ({ page 
   await expect(compactScope).toBeVisible();
   await expect(compactScope).toHaveText("County");
   await expect(scope.locator('[data-location-scope-label="full"]')).toBeHidden();
-  const headerGeometry = await page.locator('header[data-map-header="true"]').evaluate((header) => ({
+  const headerGeometry = await page.getByRole("banner").evaluate((header) => ({
     clientWidth: header.clientWidth,
     scrollWidth: header.scrollWidth,
   }));

@@ -286,11 +286,16 @@ describe("primary tab palette contrast", () => {
       }
     });
     it(`${mode} actual Today Find quiet controls and filled launcher retain contrast`, () => {
-      const icon = declaration(findStyles, ".shortcut svg", "color");
-      for (const selector of [".shortcut", ".shortcut:hover"]) {
-        const ground = declaration(findStyles, selector, "background");
-        expect(expressionContrast(values, declaration(findStyles, selector, "color"), ground), selector).toBeGreaterThanOrEqual(4.5);
-        expect(expressionContrast(values, icon, ground), `shortcut icon on ${selector}`).toBeGreaterThanOrEqual(4.5);
+      for (const selector of [".shortcut", ".toolCaption small"]) {
+        const ink = declaration(findStyles, selector, "color");
+        expect(expressionContrast(values, ink, "var(--app-bg)"), selector).toBeGreaterThanOrEqual(4.5);
+      }
+      // Hover underlines the name. Each drawing uses its own ink and tinted background.
+      const illustration = declaration(findStyles, ".wayfindingArt", "color");
+      const ground = declaration(findStyles, ".wayfindingArt", "background");
+      for (const selector of [".shortcut", ".shortcut:nth-child(1)", ".shortcut:nth-child(3)"]) {
+        const card = new Map(values).set("--wayfinding-ink", declaration(findStyles, selector, "--wayfinding-ink"));
+        expect(expressionContrast(card, illustration, ground), selector).toBeGreaterThanOrEqual(4.5);
       }
       const foreground = declaration(findStyles, ".launcher", "color");
       for (const selector of [".launcher", ".launcher:hover"]) {

@@ -331,6 +331,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           name={place.name}
           category={place.category}
           aspectRatio="16/10"
+          location={{ ...place.geom, town: town?.name ?? place.city }}
           size="hero"
           priority
           photoSrc={place.google_photo_url}

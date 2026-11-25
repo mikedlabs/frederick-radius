@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import CountyLocator from "@/components/map/CountyLocator";
 import { useState } from "react";
 import { ArrowRight, Map as MapIcon } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -81,21 +81,11 @@ export default function TrailsMap({
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="group grid min-h-[150px] w-full grid-cols-[110px_minmax(0,1fr)] overflow-hidden rounded-[var(--app-radius-lg)] border text-left transition sm:grid-cols-[190px_minmax(0,1fr)]"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-        >
-          <span className="relative min-h-[150px] overflow-hidden" aria-hidden>
-            <Image
-              src="/images/seasons/summer/083.jpg"
-              alt=""
-              fill
-              sizes="(max-width: 640px) 110px, 190px"
-              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
-            />
-          </span>
+        <div className="grid items-center gap-3 border-y border-[var(--app-border)] py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <CountyLocator point={places[0] ? { lat: places[0].geom.lat, lng: places[0].geom.lng,
+            label: places[0].name, kind: "Selected place" } : null} />
+          <button type="button" onClick={() => setOpen(true)}
+            className="group min-h-11 w-full text-left">
           <span className="flex min-w-0 items-center justify-between gap-3 p-4 sm:p-6">
             <span className="min-w-0">
               <span
@@ -123,7 +113,8 @@ export default function TrailsMap({
               aria-hidden
             />
           </span>
-        </button>
+          </button>
+        </div>
       )}
     </section>
   );

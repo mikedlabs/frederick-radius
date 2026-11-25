@@ -1,0 +1,14 @@
+.notice { border-block: 1px solid var(--app-border); padding: .65rem 0 .25rem; color: var(--app-ink); }
+.heading { margin: 0 0 .45rem; font-size: 1.12rem; font-weight: 700; }
+.schedule { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .85rem; line-height: 1.3; }
+.schedule th, .schedule td { padding: .5rem .3rem; text-align: left; overflow-wrap: anywhere; vertical-align: top; border-bottom: 1px solid var(--app-border); }
+.schedule thead th { background: var(--app-bg-sunken); font-size: .77rem; color: var(--app-ink-2); }
+.schedule tbody th { font-weight: 650; }
+.cancelled { color: var(--app-danger-text); font-weight: 650; }
+.detail summary, .sources a { min-height: 2.75rem; align-content: center; cursor: pointer; width: fit-content; }
+.detail summary { color: var(--app-ink-2); font-size: .85rem; font-weight: 550; }
+.detail p { max-width: 62ch; margin: .3rem 0 .7rem; color: var(--app-ink-2); font-size: .88rem; line-height: 1.4; }
+.sources { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
+.sources a { display: inline-flex; align-items: center; color: var(--app-brand); text-decoration: underline; text-underline-offset: .17rem; }
+
+.railLink { display: inline-block; align-content: center; min-height: 2.75rem; color: var(--app-brand); text-decoration: underline; text-underline-offset: .15rem; }

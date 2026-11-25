@@ -49,6 +49,11 @@ export const PLACE_RELEASE_ARTIFACTS = Object.freeze([
   "src/lib/integrations/wikimedia.ts",
   // Exact local-image records and reviewed source bytes are promoted together.
   "src/data/credited-local-place-photos.ts",
+  "public/images/towns/brunswick.webp",
+  "public/images/towns/emmitsburg.webp",
+  "public/images/towns/frederick.webp",
+  "public/images/towns/middletown.webp",
+  "public/images/towns/new-market.webp",
   "public/place-photos/county-ballenger-creek-park-frederick.jpg",
   "public/place-photos/county-buckeystown-park-frederick.jpg",
   "public/place-photos/county-catoctin-creek-park-nature-center-burkittsville.jpg",
@@ -212,7 +217,7 @@ export function inspectArtifact(root, relativePath) {
     records = ["src/data/places-official-hours.json", "src/data/places-merchant-hours.json"].includes(relativePath) && Array.isArray(value?.places)
       ? value.places.length
       : jsonRecordCount(value);
-  } else if (extension !== ".ts" && !(extension === ".jpg" && PLACE_RELEASE_ARTIFACTS.includes(relativePath))) {
+  } else if (extension !== ".ts" && !([".jpg", ".webp"].includes(extension) && PLACE_RELEASE_ARTIFACTS.includes(relativePath))) {
     throw new Error(
       `${relativePath} has unsupported release artifact type ${extension || "(none)"}`,
     );
@@ -220,7 +225,7 @@ export function inspectArtifact(root, relativePath) {
   return {
     path: relativePath,
     sha256: sha256(bytes),
-    // Static TypeScript inputs and reviewed local JPEG bytes are digest-bound
+    // Static TypeScript inputs and reviewed local photo bytes are digest-bound
     // without inventing a JSON-style record count.
     records,
     bytes: bytes.length,

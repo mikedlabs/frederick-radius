@@ -88,3 +88,43 @@
 
 .selectedKey { display: inline-block; width: .55rem; height: .55rem; margin-inline-end: .35rem; border-radius: 50%; background: var(--app-brand-press); }
 .chunkRecovery :global(.map-list) { position: static; inset: auto; overflow: visible; padding: 0 .85rem 1rem; }
+.cover {
+  display: grid;
+  grid-template-columns: minmax(7rem, .8fr) minmax(0, 1.35fr);
+  grid-template-rows: 1fr auto;
+  column-gap: .25rem;
+  align-items: center;
+  border-block: 1px solid var(--app-border);
+}
+.cover .caption {
+  display: grid;
+  justify-content: start;
+  align-content: center;
+  gap: .3rem;
+  padding: .9rem 0 .9rem clamp(.85rem, 3vw, 1.8rem);
+  grid-row: 1 / 3;
+}
+.cover .name {
+  display: block;
+  font-family: var(--font-libre-caslon), Georgia, serif;
+  font-size: clamp(1.2rem, 3.3vw, 2.4rem);
+  line-height: 1.12;
+}
+.cover .selectedKey { display: none; }
+.cover .map { height: clamp(8.75rem, 18vw, 13.75rem); }
+.cover .source { padding: 0 .55rem .35rem 0; text-align: right; }
+.coverLink {
+  justify-self: start;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: .35em;
+  font-size: .875rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: .19em;
+  color: var(--app-link);
+}
+@media (max-width: 22rem) {
+  .cover { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+}

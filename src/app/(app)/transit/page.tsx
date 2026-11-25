@@ -104,6 +104,7 @@ const TRANSIT_REFERENCE: TransitIntent[] = [
 ];
 import { officialTransitRouteShapesFC } from "@/lib/integrations/transitFrederick";
 import { getMarcBoard, getMarcAlerts } from "@/lib/integrations/marcTrains";
+import TransitNetworkPreview from "@/components/transit/TransitNetworkPreview";
 import TransitMap from "@/components/transit/TransitMapClient";
 import TransitNow from "@/components/transit/TransitNow";
 import NextTrainBoard from "@/components/transit/NextTrainBoard";
@@ -239,15 +240,12 @@ export default async function TransitPage() {
             Frederick County
           </p>
           <h1>Transit</h1>
-          <p>Find your stop, see the next buses, and know when to start walking. MARC departures are here too.</p>
+          <p>Find a bus stop, check departures or plan a MARC trip.</p>
         </div>
-        <svg className={styles.mastheadGraphic} viewBox="0 0 200 80" fill="none" aria-hidden="true" focusable="false">
-          <path d="M8 58H57C78 58 78 22 99 22H191" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-          <path d="M8 70H70C91 70 91 34 112 34H191" stroke="var(--app-border)" strokeWidth="2" strokeLinecap="round" />
-          <circle cx="24" cy="58" r="7" fill="var(--app-bg)" stroke="currentColor" strokeWidth="3" />
-          <circle cx="105" cy="22" r="7" fill="var(--app-bg)" stroke="currentColor" strokeWidth="3" />
-          <circle cx="178" cy="22" r="7" fill="var(--app-bg)" stroke="currentColor" strokeWidth="3" />
-        </svg>
+        {networkPatternCount > 0 && <a className={styles.mastheadGraphic} href="#live-network-heading">
+          <TransitNetworkPreview compact shapes={shapes} />
+          <span>Bus route map</span>
+        </a>}
       </header>
 
       <TransitHolidayNotice now={now} />

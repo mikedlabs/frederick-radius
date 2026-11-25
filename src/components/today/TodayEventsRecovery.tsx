@@ -6,8 +6,9 @@ import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { getScope, parseScope, scopeLabel as areaLabel, scopeToParam, scopeTownSlug, subscribeScopeChange } from "@/lib/scope";
 import TodayHeadlineCard from "./TodayHeadlineCard";
+import { EventWeekendCalendar } from "./EventWeekendCalendar";
+import EventStartScale from "./EventStartScale";
 import choiceStyles from "./TodayEventChoices.module.css";
-import DismissibleSection from "@/components/today/DismissibleSection";
 import { parseRecoveryEventVisual, type EventCardVisual } from "@/components/event/eventVisuals";
 import { createAbortDeadline } from "@/lib/promise-deadline";
 import { eventDisplayTitle } from "@/lib/events/display-title";
@@ -98,6 +99,7 @@ export function TodayEventBriefCard({ event, visual, lead = false }: { event: To
     <p id={`today-choice-facts-${event.slug}`} className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
       {event.venue}{event.free ? " · Free" : event.price ? ` · ${event.price}` : ""}
     </p>
+    {lead && !visual && <EventStartScale start={event.time} end={event.endTime} />}
   </div>;
   // Every choice is a ruled row. The lead may carry a wide picture; a later
   // row keeps its approved picture as a small square at the right edge.
@@ -161,11 +163,13 @@ export function TodayEventsRecoveryView({
   failed = false,
   scopeLabel = areaLabel("county"),
   eventsHref = "/events",
+  weekendFriday,
 }: {
   response: TodayEventResponse | null;
   failed?: boolean;
   scopeLabel?: string;
   eventsHref?: string;
+  weekendFriday?: string;
 }) {
   const events = response?.events ?? [];
   const healthyEmpty = response?.partial === false && events.length === 0;
@@ -176,72 +180,35 @@ export function TodayEventsRecoveryView({
     scopeLabel,
   });
 
-  if (events.length === 0) {
-    const status = healthyEmpty
-      ? "No picks in this brief"
-      : failed
-        ? "Event picks are unavailable here"
-        : "Updating today's event picks";
+  const status = healthyEmpty
+    ? "No picks in this brief"
+    : failed ? "Event picks are unavailable here" : "Updating today's event picks";
+  const hasEvents = events.length > 0;
 
-    return (
-      <section
-        className="mt-1"
-        aria-label="Events today"
-        data-today-event-recovery="true"
-        data-today-event-shortlist
-      >
-        <div
-          className="flex min-h-14 items-center justify-between gap-3 border-y px-0.5 py-2"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <div className="min-w-0">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
-              Events today
-            </p>
-            <p role="status" className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
-              {status}
-            </p>
-          </div>
-          <Link
-            href={eventsHref}
-            prefetch={false}
-            aria-label="Open the full events board"
-            className={`tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold ${choiceStyles.boardLink}`}
-            style={{ color: "var(--app-link)" }}
-          >
-            Full board
-            <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          </Link>
-        </div>
-      </section>
-    );
-  }
-
+  // Recovery may complete while either board action has keyboard focus.
+  // Render the same anchors throughout, including while appending the picks.
   return (
-    <section
-      className="space-y-3"
-      aria-label="Events today"
-      data-today-event-recovery="true"
-      data-today-event-shortlist
-    >
-      <DismissibleSection
-        id="upcoming"
-        title="Events today"
-        href={eventsHref}
-        prefetch={false}
-        cta="See all"
-        flat
-        meta={meta}
-      >
-        <ul className={choiceStyles.choices}>
-          {events.map((event, index) => {
-            const visual = parseRecoveryEventVisual(event.visual);
-            return <li key={event.slug}>
-              <TodayEventBriefCard event={event} visual={visual} lead={index === 0} />
-            </li>;
-          })}
-        </ul>
-      </DismissibleSection>
+    <section aria-label="Events today" data-today-event-recovery="true" data-today-event-shortlist>
+      <header data-today-section-heading="true" className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-y px-0.5 py-2"
+        style={{ borderColor: "var(--app-border)" }}>
+        <div className="min-w-0 flex-[1_1_9rem]">
+          <h2 className={choiceStyles.recoveryHeading}>Events today</h2>
+          <p role={hasEvents ? undefined : "status"} className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            {hasEvents ? meta : status}
+          </p>
+        </div>
+        <Link href={eventsHref} prefetch={false} aria-label={hasEvents ? "See all: Events today" : "Open the full events board"}
+          className={`tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold ${choiceStyles.boardLink}`}
+          style={{ color: "var(--app-link)" }}>
+          {hasEvents ? "See all" : "Full board"}<ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </Link>
+      </header>
+      {hasEvents && <ul className={choiceStyles.choices}>
+        {events.map((event, index) => <li key={event.slug}>
+          <TodayEventBriefCard event={event} visual={parseRecoveryEventVisual(event.visual)} lead={index === 0} />
+        </li>)}
+      </ul>}
+      {weekendFriday && <EventWeekendCalendar friday={weekendFriday} eventsHref={eventsHref} />}
     </section>
   );
 }
@@ -252,11 +219,12 @@ export function TodayEventsRecoveryView({
  * passive recovery is not an explicit visitor refresh and must not consume
  * the separate, rate-limited cache-bypass allowance.
  */
-function RecoverTodayEvents({ initialResponse, requestPath = "/api/today/events", scopeLabel = areaLabel("county"), eventsHref = "/events" }: {
+function RecoverTodayEvents({ initialResponse, requestPath = "/api/today/events", scopeLabel = areaLabel("county"), eventsHref = "/events", weekendFriday }: {
   initialResponse?: TodayEventResponse;
   requestPath?: string;
   scopeLabel?: string;
   eventsHref?: string;
+  weekendFriday?: string;
 }) {
   const [state, setState] = useState<RecoveryState>(initialResponse ? { status: "ready", response: initialResponse } : { status: "loading" });
 
@@ -299,13 +267,13 @@ function RecoverTodayEvents({ initialResponse, requestPath = "/api/today/events"
       response={initialResponse ?? (state.status === "ready" ? state.response : null)}
       failed={!initialResponse && state.status === "failed"}
       scopeLabel={scopeLabel}
-      eventsHref={eventsHref}
+      eventsHref={eventsHref} weekendFriday={weekendFriday}
     />
   );
 }
 
 const subscribeScope = (onChange: () => void) => subscribeScopeChange(() => onChange());
-function ScopedTodayEvents({ initialResponse }: { initialResponse?: TodayEventResponse }) {
+function ScopedTodayEvents({ initialResponse, weekendFriday }: { initialResponse?: TodayEventResponse; weekendFriday?: string }) {
   const stored = useSyncExternalStore(subscribeScope, getScope, () => null);
   const params = useSearchParams();
   const scope = parseScope(params.get("in")) ?? stored;
@@ -313,9 +281,9 @@ function ScopedTodayEvents({ initialResponse }: { initialResponse?: TodayEventRe
   const suffix = town && scope ? `?in=${encodeURIComponent(scopeToParam(scope))}` : "";
   // Events follow a town; Near me still reads the whole county's program.
   const scopeLabel = areaLabel(town ? scope : "county");
-  return <RecoverTodayEvents key={suffix} requestPath={`/api/today/events?v=visual-choices-1${suffix ? `&${suffix.slice(1)}` : ""}`} initialResponse={town ? undefined : initialResponse} scopeLabel={scopeLabel} eventsHref={`/events${suffix}`} />;
+  return <RecoverTodayEvents key={suffix} weekendFriday={weekendFriday} requestPath={`/api/today/events?v=visual-choices-1${suffix ? `&${suffix.slice(1)}` : ""}`} initialResponse={town ? undefined : initialResponse} scopeLabel={scopeLabel} eventsHref={`/events${suffix}`} />;
 }
 
-export default function TodayEventsRecovery({ initialResponse, scoped = false }: { initialResponse?: TodayEventResponse; scoped?: boolean } = {}) {
-  return scoped ? <Suspense fallback={<TodayEventsRecoveryView response={initialResponse ?? null} />}><ScopedTodayEvents initialResponse={initialResponse} /></Suspense> : <RecoverTodayEvents initialResponse={initialResponse} />;
+export default function TodayEventsRecovery({ initialResponse, scoped = false, weekendFriday }: { initialResponse?: TodayEventResponse; scoped?: boolean; weekendFriday?: string } = {}) {
+  return scoped ? <Suspense fallback={<TodayEventsRecoveryView response={initialResponse ?? null} weekendFriday={weekendFriday} />}><ScopedTodayEvents initialResponse={initialResponse} weekendFriday={weekendFriday} /></Suspense> : <RecoverTodayEvents initialResponse={initialResponse} weekendFriday={weekendFriday} />;
 }

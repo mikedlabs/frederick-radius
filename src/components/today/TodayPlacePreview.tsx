@@ -12,6 +12,7 @@ import { withBrowseReturnTo } from "@/lib/browse-return";
 import { getScope, parseScope, scopeToParam, subscribeScopeChange } from "@/lib/scope";
 import { useTodayPlacePhoto } from "./useTodayPlacePhoto";
 import styles from "./TodayPlacePreview.module.css";
+import PlaceHoursSign from "./PlaceHoursSign";
 
 export type TodayPlaceAvailability = "current" | "opening-soon";
 
@@ -86,12 +87,10 @@ export default function TodayPlacePreview({ place, category, hydratePhoto = fals
       data-place-availability={availability === "opening-soon" ? availability : undefined}
       data-has-photo={Boolean(photo.source)} className={`${styles.preview} ${className}`}>
       <div className={styles.content}>
-      {/* A real photograph only. Without one the row is type alone, with no
-          gray tile or category drawing standing in for a picture. */}
       {photo.source ? <div className={styles.media}>
         <PlaceCardPhoto key={photo.source.src} decodeIdentity={photo.sourceKey} source={photo.source} onResult={photo.onResult}
-          width={360} deferGoogleBytes sizes="(min-width: 640px) 128px, 96px" />
-      </div> : null}
+          width={360} deferGoogleBytes sizes="(min-width: 640px) 180px, 36vw" />
+      </div> : <PlaceHoursSign fact={fact} confidence={place.confidence} availability={availability} />}
       <div className={styles.facts}>
         <p className={styles.category}>{CATEGORY_BY_SLUG[category]?.name ?? category.replace(/-/g, " ")}</p>
         <h3 data-today-pick-name className={styles.name}>{place.name}</h3>

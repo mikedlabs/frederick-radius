@@ -672,6 +672,7 @@ export default function PlanBuilder({
                   <Stop
                     key={`${stop.order}-${stop.place?.slug ?? stop.event?.slug ?? index}`}
                     stop={stop}
+                    sequence={index === 0 && plan.stops.length > 1 ? plan.stops : undefined}
                     returnTo={planReturnTo}
                     index={stop.spec_index ?? index}
                     pending={pending || !controlsReady}
@@ -1096,8 +1097,26 @@ function PickerRow({
   );
 }
 
+function StopSequence({ stops }: { stops: Plan["stops"] }) {
+  return <nav className={styles.sequence} aria-label="Jump to a planned stop">
+    <p className={styles.sequenceHeading}>Stop sequence</p>
+    <ol>
+      {stops.map(stop => (
+        <li key={stop.order}>
+          <a href={`#plan-stop-${stop.order}`}>
+            <span className={styles.sequenceMarker} aria-hidden="true">{stop.order}</span>
+            <time dateTime={stop.at}>{clock(stop.at)}</time>
+            <span className={styles.sequenceName}>{stop.place?.name ?? stop.event?.title}</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </nav>;
+}
+
 function Stop({
   stop,
+  sequence,
   returnTo,
   index,
   pending,
@@ -1108,6 +1127,7 @@ function Stop({
   onRemove,
 }: {
   stop: Plan["stops"][number];
+  sequence?: Plan["stops"];
   returnTo?: string;
   index: number;
   pending: boolean;
@@ -1129,7 +1149,7 @@ function Stop({
   };
 
   return (
-    <li className={`${styles.stopEntry} relative`} data-plan-stop style={{ "--plan-stop-delay": `${Math.min(stop.order - 1, 5) * 55}ms` } as CSSProperties}>
+    <li id={`plan-stop-${stop.order}`} tabIndex={-1} aria-labelledby={`plan-stop-title-${stop.order}`} className={`${styles.stopEntry} relative`} data-plan-stop style={{ "--plan-stop-delay": `${Math.min(stop.order - 1, 5) * 55}ms` } as CSSProperties}>
       {stop.travel_from_previous_min && (
         <p className="mb-2 flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
           {stop.travel_mode === "walk" ? <Footprints className="h-3.5 w-3.5" aria-hidden /> : <Navigation className="h-3.5 w-3.5" aria-hidden />}
@@ -1156,7 +1176,7 @@ function Stop({
               </span>
             </div>
             <Link href={href} className={`${styles.stopDestination} group mt-1.5 block`}>
-              <h3 className="font-serif text-[19px] font-semibold leading-tight tracking-tight group-hover:underline" style={{ color: "var(--app-ink)" }}>
+              <h3 id={`plan-stop-title-${stop.order}`} className="font-serif text-[19px] font-semibold leading-tight tracking-tight group-hover:underline" style={{ color: "var(--app-ink)" }}>
                 {name}
               </h3>
               {where && (
@@ -1170,6 +1190,7 @@ function Stop({
           <PlaceMedallion place={fallbackPlace} size={48} className={`${styles.stopMedallion} rounded-[var(--app-radius-sm)]`} />
         </div>
         </div>
+        {sequence && <StopSequence stops={sequence} />}
         <PlanStopPhoto stop={stop} />
         <div className={styles.stopBody} style={{ paddingTop: 12 }}>
         <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{stop.why}</p>

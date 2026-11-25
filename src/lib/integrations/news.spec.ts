@@ -104,6 +104,24 @@ describe("local news publication and availability boundary", () => {
     expect(rows[1].published_at).toBeNull();
   });
 
+  it("removes the Catholic Virginian's title template while retaining cross-state local coverage and literal percentages", async () => {
+    const title = "Charlottesville youth take pilgrimage to Emmitsburg";
+    const template = " - Biweekly Newspaper for the Diocese of Richmond %";
+    const source = "catholicvirginian.org";
+    const article = (headline: string) => `<item><title>${headline} - ${source}</title><source>${source}</source><link>https://news.google.com/rss/articles/pilgrimage</link></item>`;
+    vi.mocked(fetch).mockResolvedValueOnce(response(rss(
+      article(title + template),
+      article("Emmitsburg fundraiser reaches 75%"),
+      item("Emmitsburg library displays" + template),
+    )) as Response);
+    const rows = await getLocalHeadlines();
+    expect(rows.map((row) => [row.title, row.source])).toEqual([
+      [title, source],
+      ["Emmitsburg fundraiser reaches 75%", source],
+      ["Emmitsburg library displays" + template, "The Frederick News-Post"],
+    ]);
+  });
+
   it("distinguishes all failed feeds from a successful empty RSS response", async () => {
     vi.mocked(fetch).mockRejectedValue(new Error("offline"));
     expect(await getLocalHeadlinesResult()).toEqual({ items: [], status: "unavailable" });

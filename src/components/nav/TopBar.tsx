@@ -398,7 +398,6 @@ export default function TopBar() {
     <>
       <header
         data-today-header={pathname === "/today" || undefined}
-        data-map-header={pathname === "/map" ? "true" : undefined}
         className={`${styles.bar} sticky top-0 border-b border-[var(--app-border)] pt-[env(safe-area-inset-top)]`}
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.

@@ -48,10 +48,17 @@ export const SecondaryWaysToExplore: Story = {
   render: () => <TodayQuickNeeds />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    for (const name of ["Open now", "Public essentials", "Plan a few hours", "Local services"]) {
+    for (const [name, description, kind] of [
+      ["Open now", "Places by their listed hours", "hours"],
+      ["Public essentials", "Restrooms, water & seating", "essentials"],
+      ["Plan a few hours", "Ask for a two-hour outing", "outing"],
+      ["Local services", "City & county contacts", "services"],
+    ]) {
       const shortcut = canvas.getByRole("link", { name });
-      await expect(shortcut).toBeVisible();
+      await expect(shortcut).toHaveAccessibleDescription(description);
+      await expect(shortcut.querySelector(`svg[data-tool-illustration="${kind}"][aria-hidden="true"]`)).toBeVisible();
       await expect(shortcut.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      await expect(shortcut.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);
     }
     await expect(canvas.queryByRole("link", { name: "Find a place, service, event, or answer" })).not.toBeInTheDocument();
   },

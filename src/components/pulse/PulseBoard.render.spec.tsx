@@ -59,6 +59,12 @@ describe("Pulse briefing presentation", () => {
         roadCheck: { verified: false, currentCount: 0, checkedAt: null, earlierCount: 2, unverifiedSources: ["MDOT CHART"] },
       },
     });
+    const coverage = container.querySelector('[aria-label="Sources in this update"]')!;
+    expect(coverage.querySelector("h2")?.textContent).toContain("2 of 4 sources verified in this update");
+    expect(Array.from(coverage.querySelectorAll("li"), row => row.textContent)).toEqual([
+      "1 earlier", "1 unavailable",
+    ]);
+    expect(coverage.querySelectorAll('[aria-hidden] > [data-state]')).toHaveLength(4);
     const checks = container.querySelector("[data-pulse-source-checks]");
     expect(checks?.querySelector("summary")?.textContent).toBe("Source checks");
     expect(checks?.hasAttribute("open")).toBe(false);

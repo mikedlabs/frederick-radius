@@ -68,7 +68,7 @@ const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement, us
       await expect(canvas.getByRole("link", { name: credit.license.label })).toHaveAttribute("href", credit.license.url);
     }
   }
-  const stops = args.guide.route ? canvas.getByRole("list", { name: "Walking itinerary" }) : canvas.getByRole("list");
+  const stops = args.guide.route ? canvas.getByRole("list", { name: "Walking itinerary" }) : canvas.getByRole("list", { name: "Weekend guide picks" });
   const items = within(stops).getAllByRole("listitem");
   await expect(items).toHaveLength(args.guide.stops.length);
   for (const [index, stop] of args.guide.stops.entries()) {
@@ -120,6 +120,23 @@ export const WeekendOnPhone: Story = {
   args: { guide: weekend, returnTo: "https://example.org/" },
   globals: { viewport: { value: "radiusMobileLarge", isRotated: false } },
   play: usableGuide,
+};
+
+export const ThanksgivingWeekendSchedule: Story = {
+  args: { guide: weekendGuide(new Date("2026-11-25T17:00:00Z")) },
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const agenda = within(canvasElement).getByRole("navigation", { name: "Friday, Nov 27" });
+    const choices = within(agenda).getAllByRole("link");
+    await expect(choices).toHaveLength(2);
+    for (const [index, link] of choices.entries()) {
+      await expect(link).toHaveAttribute("href", `#weekend-choice-${index + 1}`);
+      await expect(link).toHaveAccessibleDescription(/Overlaps 1 other displayed event/);
+      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      await expect(canvasElement.querySelector(`#weekend-choice-${index + 1}`)).toBeTruthy();
+    }
+    await expect(agenda.querySelectorAll("[data-schedule-overlap]")).toHaveLength(2);
+  },
 };
 
 export const NarrowWithEnlargedText: Story = {

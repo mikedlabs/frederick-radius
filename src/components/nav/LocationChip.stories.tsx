@@ -36,10 +36,7 @@ export const MapAt320: Story = {
     viewport: { value: "radiusMobileNarrow", isRotated: false },
   },
   render: () => (
-    <header
-      data-map-header="true"
-      className="flex min-h-16 items-center justify-end px-4"
-    >
+    <header className="flex min-h-16 items-center justify-end px-4">
       <LocationChip />
     </header>
   ),

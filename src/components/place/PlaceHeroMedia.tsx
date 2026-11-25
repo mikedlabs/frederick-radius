@@ -3,6 +3,8 @@
 import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import { Expand } from "lucide-react";
+import CountyLocator from "@/components/map/CountyLocator";
+import type { LngLat } from "@/lib/geo";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { PlaceCardPhotoCredit } from "@/components/place/PlaceCardPhoto";
@@ -19,7 +21,7 @@ export { isPlacePhotoFailureSignal, placePhotoFailureSignalSrc } from "@/lib/pla
  * full-height photo placeholder. The server-supplied plate stays behind it. */
 export default function PlaceHeroMedia({
   plan, name, aspectRatio, width, height, size, priority,
-  skyTop, skyBottom, golden, children,
+  skyTop, skyBottom, golden, children, slug, location,
 }: {
   plan: PlaceCardPhotoPlan;
   name: string;
@@ -27,6 +29,8 @@ export default function PlaceHeroMedia({
   width: number;
   height: number;
   size: "card" | "hero";
+  slug?: string;
+  location?: LngLat & { town: string };
   priority: boolean;
   googleMapsUri?: string;
   skyTop?: string;
@@ -54,7 +58,12 @@ export default function PlaceHeroMedia({
   ) : null;
   return (
     <>
-      <div data-place-hero data-place-hero-size={size}
+      {!source && size === "hero" && slug && location && Number.isFinite(location.lat) && Number.isFinite(location.lng) ? (
+        <div data-place-hero data-place-hero-size={size} data-place-hero-source="none" data-place-photo-failed={plan.sources.length > 0 || undefined}>
+          <CountyLocator point={{ ...location, label: name, kind: "Selected place" }}
+            cover={{ title: location.town, href: `/map?place=${encodeURIComponent(slug)}`, action: "Open map" }} />
+        </div>
+      ) : <div data-place-hero data-place-hero-size={size}
         data-place-hero-source={source?.kind ?? "none"}
         data-place-photo-failed={!source && plan.sources.length > 0 || undefined}
         className={`relative w-full overflow-hidden${size === "hero" && source ? " max-h-[38vh]" : ""}`}
@@ -80,7 +89,7 @@ export default function PlaceHeroMedia({
               style={{ background: "radial-gradient(120% 80% at 85% 8%, color-mix(in srgb, var(--app-brand) 16%, transparent) 0%, transparent 60%)" }} />}
           </>
         )}
-      </div>
+      </div>}
       <PlaceCardPhotoCredit source={source} loaded={loaded} />
       {/* Keep the chosen source until explicit dismissal. A hero load/error
           must not unmount a viewer that owns its own history/failure state. */}

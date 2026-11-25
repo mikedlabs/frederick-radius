@@ -272,7 +272,7 @@ for (const recordsPath of ["src/data/credited-local-place-photos.ts", "src/lib/o
 }
 
 
-for (const photoPath of PLACE_RELEASE_ARTIFACTS.filter((path) => path.endsWith(".jpg"))) {
+for (const photoPath of PLACE_RELEASE_ARTIFACTS.filter((path) => /\.(jpg|webp)$/.test(path))) {
   test(`changing reviewed local photo bytes ${photoPath} invalidates the places promotion without a metadata edit`, () => {
     const root = fixtureRoot();
     const manifest = fixtureManifest(root);
@@ -304,7 +304,7 @@ for (const photoPath of PLACE_RELEASE_ARTIFACTS.filter((path) => path.endsWith("
 
 test("unregistered JPEG paths and unsupported formats are still rejected", () => {
   const root = fixtureRoot();
-  for (const photoPath of ["public/place-photos/unreviewed.jpg", "public/unreviewed.jpg", "public/place-photos/unreviewed.png"]) {
+  for (const photoPath of ["public/place-photos/unreviewed.jpg", "public/unreviewed.jpg", "public/place-photos/unreviewed.png", "public/images/towns/unreviewed.webp"]) {
     const target = join(root, photoPath);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, Buffer.from([0xff, 0xd8, 0xff, 0xd9]));

@@ -6,6 +6,9 @@ import { normalizeBrowseReturnTo } from "@/lib/browse-return";
 import { routeTimePreview, type GuideAction, type GuideStop, type LocalOutingGuide as Guide } from "@/lib/today/local-outing-guides";
 import RouteTimeStrip from "./RouteTimeStrip";
 import WalkStopMap from "./WalkStopMap";
+import EventTimeRail from "@/components/event/EventTimeRail";
+import { buildDaySchedule } from "@/lib/events/day-schedule";
+import { easternDayKey } from "@/lib/tz";
 import styles from "./LocalOutingGuide.module.css";
 
 const STOP_ICONS = { parking: SquareParking, info: Info, art: Palette, water: Waves };
@@ -56,10 +59,10 @@ function StopPicture({ photo }: { photo: NonNullable<GuideStop["photo"]> }) {
   );
 }
 
-function OutingStop({ stop, primary, order }: { stop: GuideStop; primary: boolean; order?: number }) {
+function OutingStop({ stop, primary, order, anchor = stop.anchor }: { stop: GuideStop; primary: boolean; order?: number; anchor?: string }) {
   const Marker = stop.icon ? STOP_ICONS[stop.icon] : CalendarDays;
   return (
-    <li id={stop.anchor} tabIndex={stop.anchor ? -1 : undefined} className={styles.stop} data-photo={stop.photo ? "" : undefined}>
+    <li id={anchor} tabIndex={anchor ? -1 : undefined} className={styles.stop} data-photo={stop.photo ? "" : undefined}>
       {order && <span className={styles.stopNumber} aria-label={`Stop ${order}`}>{order}</span>}
       {stop.photo && <StopPicture photo={stop.photo} />}
       <div className={styles.stopBody}>
@@ -155,6 +158,39 @@ function RouteOverview({ stops, allowanceMinutes, note }: { stops: GuideStop[]; 
   );
 }
 
+const weekendDay = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "long", month: "short", day: "numeric" });
+
+function WeekendSchedule({ stops }: { stops: GuideStop[] }) {
+  const groups = new Map<string, { stop: GuideStop; timing: NonNullable<GuideStop["timing"]>; index: number }[]>();
+  stops.forEach((stop, index) => {
+    if (!stop.timing || !Number.isFinite(Date.parse(stop.timing.starts_at))) return;
+    const day = easternDayKey(new Date(stop.timing.starts_at));
+    const row = { stop, timing: stop.timing, index };
+    const sameDay = groups.get(day);
+    if (sameDay) sameDay.push(row);
+    else groups.set(day, [row]);
+  });
+  return [...groups].sort(([a], [b]) => a.localeCompare(b)).map(([day, rows]) => {
+    rows.sort((a, b) => Date.parse(a.timing.starts_at) - Date.parse(b.timing.starts_at));
+    const marks = buildDaySchedule(rows.map(row => row.timing), day);
+    if (marks.size < 2) return null;
+    return <nav key={day} className={styles.weekendSchedule} aria-labelledby={`weekend-when-${day}`}>
+      <h2 id={`weekend-when-${day}`}><time dateTime={day}>{weekendDay.format(new Date(rows[0].timing.starts_at))}</time></h2>
+      <ol>{rows.map(({ stop, timing, index }) => {
+        const mark = marks.get(timing);
+        if (!mark) return null;
+        const descriptionId = `weekend-time-${index}`;
+        return <li key={index}>
+          <a href={`#weekend-choice-${index + 1}`} aria-describedby={descriptionId}>
+            <span className={styles.choiceIdentity}>{stop.title}</span>
+            <EventTimeRail mark={mark} id={descriptionId} />
+          </a>
+        </li>;
+      })}</ol>
+    </nav>;
+  });
+}
+
 function HolidayNotice({ notice }: { notice: NonNullable<Guide["notice"]> }) {
   const sources = (
     <div className={styles.creditLinks}>
@@ -218,13 +254,15 @@ export default function LocalOutingGuide({
             {guide.summary && <p className={styles.summary}>{guide.summary}</p>}
           </div>
           <GuideCover guide={guide} />
+          {guide.stopLayout === "choices" && <WeekendSchedule stops={guide.stops} />}
         </header>
       )}
 
       {guide.notice && !guide.notice.active && <HolidayNotice notice={guide.notice} />}
-      <ol role="list" aria-label={guide.route ? "Walking itinerary" : undefined} className={styles.stops} data-layout={guide.route ? "route" : guide.stopLayout}>
+      <ol role="list" aria-label={guide.route ? "Walking itinerary" : "Weekend guide picks"} className={styles.stops} data-layout={guide.route ? "route" : guide.stopLayout}>
         {guide.stops.map((stop, index) => (
-          <OutingStop key={`${stop.title}:${stop.action.href}`} stop={stop} primary={!guide.route && index === 0} order={guide.route ? index + 1 : undefined} />
+          <OutingStop key={`${stop.title}:${stop.action.href}`} stop={stop} primary={!guide.route && index === 0} order={guide.route ? index + 1 : undefined}
+            anchor={guide.stopLayout === "choices" ? `weekend-choice-${index + 1}` : stop.anchor} />
         ))}
       </ol>
 
