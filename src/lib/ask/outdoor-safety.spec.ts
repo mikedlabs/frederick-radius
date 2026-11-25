@@ -151,6 +151,37 @@ describe("applyAskOutdoorSafety", () => {
     expect(guarded.answer).not.toContain("creekside concert");
   });
 
+  it("keeps the parks but leads with a caveat when live feeds can't be verified", () => {
+    // A monitoring gap, not a hazard: loadOutdoorSafetyHold only returns
+    // "unavailable" after ruling out an active alert and unhealthy air.
+    const unavailable = {
+      kind: "unavailable" as const,
+      event: "Outdoor safety check unavailable",
+      reason: "Current weather alerts and air quality could not be verified.",
+      url: "/pulse",
+      unavailableFeeds: ["weather alerts", "air quality"] as Array<"weather alerts" | "air quality">,
+    };
+    const guarded = applyAskOutdoorSafety(result(), "playground near me", unavailable);
+
+    // The parks are NOT buried, unlike a real hazard hold.
+    expect(guarded.sources.map((source) => source.name)).toContain("Hill Street Skate Park");
+    // The safety caveat leads (card first, and in the answer) so it never
+    // reads as an all-clear.
+    expect(guarded.sources[0]?.name).toBe("Outdoor conditions not verified");
+    expect(guarded.answer).toContain("could not be verified");
+    expect(guarded.answer).toContain("check official conditions");
+    expect(guarded.answer).toContain("Hill Street Skate Park");
+    expect(guarded.actions?.some((a) => a.kind === "open" && a.href === "/pulse")).toBe(true);
+    expect(guarded.intelligence?.tools).toContain("weather");
+  });
+
+  it("still fully suppresses outdoor picks during a real NWS hazard", () => {
+    // Contrast with the unavailable case: an active alert removes the park.
+    const guarded = applyAskOutdoorSafety(result(), "playground near me", HOLD);
+    expect(guarded.answer).toContain("leaving outdoor suggestions out");
+    expect(guarded.sources.map((source) => source.name)).not.toContain("Hill Street Skate Park");
+  });
+
   it("uses measured AirNow AQI as the trust source", () => {
     const observation: AqiObservation = {
       parameter: "PM2.5",
