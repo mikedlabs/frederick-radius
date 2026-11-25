@@ -84,26 +84,32 @@ const SCRIM_OPACITY = 0.45;
 const SCRIM_FADE_PX = 300;
 
 /**
- * Scrim opacity for a sheet sitting `y` below its rest position.
+ * How far below its rest position a sheet at `y` sits, in pixels.
  *
  * A drag reports `y` in pixels, but the entrance and exit animate it as a
- * percentage of the panel's own height ("100%" is fully off screen). Feeding
- * those strings to a numeric range produced NaN, which the browser ignored:
- * with motion on, every sheet opened with no scrim until its first drag.
- * Reading both forms as pixels below rest makes the scrim follow the sheet.
+ * percentage of the panel's own height ("100%" is fully off screen), and the
+ * entrance comes to rest on the string "0%".
+ */
+export function sheetOffsetPx(y: number | string, panelHeight: number): number {
+  if (typeof y === "number") return y;
+  const amount = Number.parseFloat(y);
+  if (!Number.isFinite(amount)) return 0;
+  if (!y.trim().endsWith("%")) return amount;
+  if (panelHeight > 0) return (amount / 100) * panelHeight;
+  // Before the panel is measured, any offset counts as fully away.
+  return amount > 0 ? Number.POSITIVE_INFINITY : 0;
+}
+
+/**
+ * Scrim opacity for a sheet sitting `y` below its rest position.
+ *
+ * Feeding the percentage strings to a numeric range produced NaN, which the
+ * browser ignored: with motion on, every sheet opened with no scrim until its
+ * first drag. Reading both forms as pixels below rest makes the scrim follow
+ * the sheet.
  */
 export function sheetScrimOpacity(y: number | string, panelHeight: number): number {
-  let below = 0;
-  if (typeof y === "number") below = y;
-  else {
-    const amount = Number.parseFloat(y);
-    if (Number.isFinite(amount)) {
-      // Before the panel is measured, any offset counts as fully away.
-      below = !y.trim().endsWith("%") ? amount
-        : panelHeight > 0 ? (amount / 100) * panelHeight
-        : amount > 0 ? Number.POSITIVE_INFINITY : 0;
-    }
-  }
+  const below = sheetOffsetPx(y, panelHeight);
   // A panel shorter than the fade distance still reaches a clear scrim.
   const fade = panelHeight > 0 ? Math.min(SCRIM_FADE_PX, panelHeight) : SCRIM_FADE_PX;
   return SCRIM_OPACITY * (1 - Math.min(Math.max(below / fade, 0), 1));
@@ -377,6 +383,23 @@ export default function BottomSheet({
     historyLayer.leaveTo(href);
   };
 
+  // Motion takes a drag's starting point from `y`, which the entrance leaves
+  // as the string "0%". Motion converts that to pixels only while it holds a
+  // layout measurement, and it drops the measurement when the sheet renders
+  // within 250 ms of a window resize, such as a phone rotating. The drag then
+  // wrote "0%6" as a position, which the browser ignores, so the sheet and its
+  // scrim stayed put under a pull. Hand Motion pixels before every drag.
+  const startDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    const latest = y.get() as number | string;
+    if (typeof latest === "string") {
+      const below = sheetOffsetPx(latest, sheetRef.current?.offsetHeight ?? 0);
+      // `set`, not `jump`: a jump also stops the running animation, and Motion
+      // refuses a drag on a sheet that is leaving, so the exit would freeze.
+      if (Number.isFinite(below)) y.set(below);
+    }
+    dragControls.start(event);
+  };
+
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if ((info.offset.y > 120 || info.velocity.y > 500) && dismiss()) return;
     // With ordinary motion, replace release momentum with the return spring.
@@ -441,9 +464,7 @@ export default function BottomSheet({
             style={{ y, maxHeight }}
             className="absolute inset-x-0 bottom-0 flex flex-col overflow-clip rounded-t-[var(--app-radius-lg)] border-t bg-[var(--app-bg-elevated-solid)] pb-[env(safe-area-inset-bottom,0px)] shadow-[var(--app-shadow-3)] sm:bottom-4 sm:left-1/2 sm:right-auto sm:w-[min(760px,calc(100vw-2rem))] sm:rounded-[var(--app-radius-lg)] sm:border sm:[translate:-50%_0]"
           >
-            <SheetDragContext.Provider
-              value={(event) => dragControls.start(event)}
-            >
+            <SheetDragContext.Provider value={startDrag}>
               {children(dismiss)}
             </SheetDragContext.Provider>
           </motion.div>
