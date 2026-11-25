@@ -356,7 +356,7 @@ export function daypartLeadReason(
   // A curation tag alone does not explain a concrete benefit in the brief
   // answer. Full comparison surfaces retain their existing editorial labels.
   const reasons = (lead.decisionReasons ?? []).filter((reason) =>
-    (includeEditorialLabels || !["local-favorite", "hidden-gem"].includes(reason.id)) &&
+    (includeEditorialLabels || !["local-favorite", "hidden-gem", "review-evidence"].includes(reason.id)) &&
     !(factsAlreadyShown && ((reason.id === "availability" && availability) || (reason.id === "proximity" && distance))));
   const priority = [
     "availability",

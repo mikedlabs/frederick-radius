@@ -108,6 +108,9 @@ export default function ToolDeckDialog({
   useEffect(() => {
     if (!open || (presentation === "modal" && !mounted)) return;
     const frame = window.requestAnimationFrame(() => {
+      // A visitor may have already focused the filter before the opening frame.
+      // Keep their cursor there so the next keystroke reaches the same field.
+      if (panelRef.current?.contains(document.activeElement)) return;
       (closeRef.current ?? panelRef.current)?.focus();
     });
     return () => window.cancelAnimationFrame(frame);

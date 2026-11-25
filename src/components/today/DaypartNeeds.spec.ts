@@ -567,6 +567,14 @@ describe("DaypartNeeds", () => {
     }])).toBe("Current hours show it is open now.");
   });
 
+  it("leaves a review-count ranking detail out of the one-place Today brief", () => {
+    expect(daypartLeadReason([{
+      slug: "evening-cafe", name: "Evening Cafe", rating: null, confidence: "confirmed",
+      fact: "Closing soon · 9pm",
+      decisionReasons: [{ id: "review-evidence", label: "It has substantial Google review history.", evidenceIds: ["google-places"] }],
+    }], { includeEditorialLabels: false, factsAlreadyShown: true })).toBeNull();
+  });
+
   it("uses an exact distance before a generic review-history tie-breaker", () => {
     expect(daypartLeadReason([{
       slug: "nearby-only",
