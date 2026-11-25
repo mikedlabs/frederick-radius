@@ -1558,7 +1558,7 @@ export function EmptyState() {
       </div>
       </div>
       {showCarillon && <Link href={withBrowseReturnTo("/places/joseph-dill-baker-memorial-carillon-bell-tower", "/my-radius")} className={discoveryStyles.suggestion}>
-        <span className={discoveryStyles.suggestionLabel}>Explore a place in Frederick City</span>
+        <span className={discoveryStyles.suggestionLabel}>Frederick City</span>
         <DiscoveryPlacePhoto slug="joseph-dill-baker-memorial-carillon-bell-tower" sizes="(max-width: 736px) 100vw, 450px" />
         <span className={discoveryStyles.suggestionTitle}>Baker Park’s memorial carillon <ArrowRight aria-hidden size={17}/></span>
       </Link>}

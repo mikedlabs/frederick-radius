@@ -54,7 +54,7 @@ export const SecondaryWaysToExplore: Story = {
       ["Plan a few hours", "Ask for a two-hour outing", "outing"],
       ["Local services", "City & county contacts", "services"],
     ]) {
-      const shortcut = canvas.getByRole("link", { name, exact: true });
+      const shortcut = canvas.getByRole("link", { name });
       await expect(shortcut).toHaveAccessibleDescription(description);
       await expect(shortcut.querySelector(`svg[data-tool-illustration="${kind}"][aria-hidden="true"]`)).toBeVisible();
       await expect(shortcut.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);

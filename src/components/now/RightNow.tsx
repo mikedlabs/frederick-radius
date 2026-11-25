@@ -606,7 +606,7 @@ export default function RightNow({
             Find something nearby
           </h1>
           <p id="nearby-intro" className={styles.pickerArea}>
-            {areaName ? `Places listed in ${areaName}.` : "Places listed across Frederick County."}
+            {areaName ? `Choose a category in ${areaName}.` : "Choose a category in Frederick County."}
           </p>
         </header>
         {photographed.length > 0 && <ul className={styles.featureChoices} aria-label="Categories with local examples">

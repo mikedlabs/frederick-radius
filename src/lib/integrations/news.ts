@@ -61,7 +61,13 @@ function splitTitleSource(raw: string, fallback: string): { title: string; sourc
   const suffix = raw.slice(i + 3).trim();
   if (suffix.length === 0 || suffix.length > 80) return { title: raw, source: fallback };
   if (/[.!?]$/.test(suffix)) return { title: raw, source: fallback };
-  return { title: raw.slice(0, i).trim(), source: suffix || fallback };
+  const title = raw.slice(0, i).trim();
+  // This publisher's Open Graph template appends its site name and a stray
+  // percent sign after the article heading. Google then appends the domain.
+  const cleaned = suffix.toLowerCase() === "catholicvirginian.org"
+    ? title.replace(/ - Biweekly Newspaper for the Diocese of Richmond %$/, "")
+    : title;
+  return { title: cleaned, source: suffix };
 }
 
 function parseItems(xml: string): NewsHeadline[] {

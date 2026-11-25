@@ -45,6 +45,7 @@ describe("town guide atlas", () => {
     expect(form.getAttribute("action")).toBe("/towns#town-location");
     expect(form.method).toBe("get");
     expect(form.querySelector("select")?.name).toBe("town");
+    expect(form.querySelector("select")?.getAttribute("autocomplete")).toBe("off");
     expect([...form.querySelectorAll("option")].map((option) => option.value)).toEqual(["brunswick", "frederick", "urbana"]);
     expect(form.querySelector("select")?.value).toBe("urbana");
     const chosen = doc.querySelector('[data-selected-town="urbana"]')!;

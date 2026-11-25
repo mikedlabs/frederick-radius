@@ -56,7 +56,8 @@ export default function TownPicker({ stats, town }: { stats: TownStat[]; town?: 
       <form className={styles.form} action="/towns#town-location" method="get" onSubmit={locate}>
         <label htmlFor="atlas-selection">Locate a community</label>
         <div className={styles.controls}>
-          <select id="atlas-selection" key={selected.slug} name="town" defaultValue={selected.slug}>
+          {/* On native Back, restore the town in this URL instead of a later unsent choice. */}
+          <select id="atlas-selection" key={selected.slug} name="town" autoComplete="off" defaultValue={selected.slug}>
             {alphabetical.map((stat) => <option key={stat.slug} value={stat.slug}>{stat.name}</option>)}
           </select>
           <button type="submit">Show on map</button>
