@@ -20,7 +20,7 @@ import {
 } from "@/lib/integrations/evCharging";
 import { getHistoricCemeteries } from "@/lib/integrations/fcCemeteries";
 import { occupancyByGarageSlug } from "@/lib/integrations/parking-live";
-import { PARKING_GARAGES } from "@/data/parking-garages";
+import { garageRateSummary, PARKING_GARAGES } from "@/data/parking-garages";
 import type { ParkingPin } from "@/lib/map/parking";
 import { loadTodayEventSnapshot } from "@/lib/loaders/todayEventSnapshot";
 import { eventPinFromEvent } from "@/lib/map/eventPin";
@@ -523,7 +523,7 @@ export async function GET(request: Request) {
           address: garage.address,
           lng: garage.geom!.lng,
           lat: garage.geom!.lat,
-          rate: garage.hourly_rate,
+          rate: garageRateSummary(new Date()),
           available: occupancy?.available ?? null,
           percentFull: occupancy?.percentFull ?? null,
           isClosed: occupancy?.isClosed ?? false,

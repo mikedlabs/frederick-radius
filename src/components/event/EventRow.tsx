@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { useId } from "react";
+import type { EventScheduleMark } from "@/lib/events/day-schedule";
+import EventTimeRail from "./EventTimeRail";
 import type { ReactNode } from "react";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import styles from "./EventRow.module.css";
@@ -10,6 +13,7 @@ export type EventRowMediaKind = "photo" | "artwork" | "none";
 
 export type EventRowProps = {
   slug: string;
+  schedule?: EventScheduleMark;
   title: string;
   weekday: string;
   month: string;
@@ -60,6 +64,7 @@ export type EventRowProps = {
 };
 
 export default function EventRow({
+  schedule,
   slug,
   title,
   weekday,
@@ -89,6 +94,7 @@ export default function EventRow({
   layout,
   poster,
 }: EventRowProps) {
+  const scheduleId = useId();
   const { clock, meridiem } = clockParts(startTime);
   const note = eventRowTimingNote(startTime, timing);
   const Heading = headingLevel === 2 ? "h2" : "h3";
@@ -112,7 +118,7 @@ export default function EventRow({
     banner ? styles.withBanner : "",
     cancelled ? styles.cancelled : "",
   ].filter(Boolean).join(" ");
-  const bannerElement = banner ? <div className={styles.banner}>{banner}</div> : null;
+  const bannerElement = banner ? <div data-event-banner className={styles.banner}>{banner}</div> : null;
   return (
     <article
       data-decision-impression="true"
@@ -162,7 +168,7 @@ export default function EventRow({
           </p>
         )}
         <Heading className={styles.title}>
-          <Link href={`/events/${slug}`} data-decision-action="open" data-press-target="card" prefetch={false} className={styles.link}>
+          <Link href={`/events/${slug}`} data-decision-action="open" data-press-target="card" prefetch={false} aria-describedby={schedule ? scheduleId : undefined} className={styles.link}>
             {/* The press contract: the link's hit rectangle stays still and
                 only this face responds to a press. */}
             <span data-press-face className="block">{title}</span>
@@ -175,6 +181,7 @@ export default function EventRow({
       </div>
       {bannerAfterFacts && bannerElement}
       {mediaCredit}
+      {schedule && <EventTimeRail mark={schedule} id={scheduleId} />}
     </article>
   );
 }

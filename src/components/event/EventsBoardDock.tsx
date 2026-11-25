@@ -5,9 +5,9 @@ import styles from "./EventsBoardDock.module.css";
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
-  useTransition,
   type ReactNode,
 } from "react";
 import {
@@ -101,6 +101,23 @@ export const EVENTS_PRIMARY_WHEN_PRESETS = WHEN_PRESETS.filter(
 
 type Pane = "what" | "when" | "where";
 
+export type EventBoardFilters = {
+  intent: IntentId | null;
+  sub: string | null;
+  cat: string | null;
+  lens: TimeKey;
+  tod: Daypart | null;
+  day: string | null;
+  town: string | null;
+  q: string;
+  freeOnly: boolean;
+  happyOnly: boolean;
+  kidsOnly: boolean;
+  lgbtqOnly: boolean;
+  communicationAccessOnly: boolean;
+  recurringOnly: boolean;
+};
+
 export type EventsBoardDockProps = {
   photoOverview?: boolean;
   /** Server `now` (ISO) — the dateline + the ribbon's "today". */
@@ -120,35 +137,11 @@ export type EventsBoardDockProps = {
   /** A non-town shared scope such as a consented device location. */
   whereLabel?: string | null;
 
-  // ── Filter state (owned by EventsExplorer; the dock is presentational) ──
-  intent: IntentId | null;
-  setIntent: (id: IntentId | null) => void;
-  sub: string | null;
-  setSub: (slug: string | null) => void;
-  cat: string | null;
-  setCat: (slug: string | null) => void;
-  lens: TimeKey;
-  setLens: (t: TimeKey) => void;
-  tod: Daypart | null;
-  setTod: (d: Daypart | null) => void;
-  day: string | null;
-  setDay: (d: string | null) => void;
-  town: string | null;
-  setTown: (slug: string | null) => void;
-  q: string;
-  setQ: (v: string) => void;
-  freeOnly: boolean;
-  setFreeOnly: (v: boolean) => void;
-  happyOnly: boolean;
-  setHappyOnly: (v: boolean) => void;
-  kidsOnly: boolean;
-  setKidsOnly: (v: boolean) => void;
-  lgbtqOnly: boolean;
-  setLgbtqOnly: (v: boolean) => void;
-  communicationAccessOnly: boolean;
-  setCommunicationAccessOnly: (v: boolean) => void;
-  recurringOnly: boolean;
-  setRecurringOnly: (v: boolean) => void;
+  filters: EventBoardFilters;
+  applyFilters: (filters: EventBoardFilters, changeTown: boolean) => void;
+  /** Return null while any source or continuation is incomplete. */
+  previewCount: (filters: EventBoardFilters) => number | null;
+  onOpenFilters: () => void;
 
   /** Any filter active — drives the single clear-all ×. */
   anyFilter: boolean;
@@ -247,7 +240,7 @@ function EventDisplayControls({
         align={align}
         label="Order"
       />
-      <div className="eb-lensseg" role="group" aria-label="View">
+      <div className={`eb-lensseg ${styles.views}`} role="group" aria-label="View">
         {VIEW_ITEMS.map(({ key, label, Icon }) => (
           <button
             key={key}
@@ -262,6 +255,7 @@ function EventDisplayControls({
             }}
           >
             <Icon className="h-[15px] w-[15px]" strokeWidth={2} aria-hidden />
+            <span>{label}</span>
           </button>
         ))}
       </div>
@@ -292,34 +286,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     categories,
     towns,
     whereLabel = null,
-    intent,
-    setIntent,
-    sub,
-    setSub,
-    cat,
-    setCat,
-    lens,
-    setLens,
-    tod,
-    setTod,
-    day,
-    setDay,
-    town,
-    setTown,
-    q,
-    setQ,
-    freeOnly,
-    setFreeOnly,
-    happyOnly,
-    setHappyOnly,
-    kidsOnly,
-    setKidsOnly,
-    lgbtqOnly,
-    setLgbtqOnly,
-    communicationAccessOnly,
-    setCommunicationAccessOnly,
-    recurringOnly,
-    setRecurringOnly,
+    filters, applyFilters, previewCount, onOpenFilters,
     anyFilter,
     clear,
     view,
@@ -328,6 +295,10 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     setSort,
   } = props;
 
+  const { intent, sub, cat, lens, tod, day, town, q, freeOnly, happyOnly, kidsOnly, lgbtqOnly, communicationAccessOnly, recurringOnly } = filters;
+  const [edits, setEdits] = useState<Partial<EventBoardFilters>>({});
+  const draft = useMemo(() => ({ ...filters, ...edits }), [filters, edits]);
+  const edit = (patch: Partial<EventBoardFilters>) => setEdits((previous) => ({ ...previous, ...patch }));
   const [pane, setPane] = useState<Pane | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
@@ -441,6 +412,15 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   }, [displayOpen]);
 
   const closePane = () => historyLayer.dismiss();
+  const applyDraft = () => {
+    // Commit after returning to the underlying browse entry, so its popstate
+    // reader cannot replace the user's new filters with the previous URL.
+    if (!Object.keys(edits).length) return closePane();
+    historyLayer.leave(() => applyFilters(draft, Object.hasOwn(edits, "town")));
+  };
+  const draftCount = useMemo(() => paneOpen ? previewCount(draft) : null, [draft, paneOpen, previewCount]);
+  const draftIntent = draft.intent ? INTENT_BY_ID[draft.intent] : null;
+  const draftPreset = activeWhenPreset(draft);
   useEffect(() => {
     if (!paneOpen) return;
     // WebKit touch activation can leave focus on the document body. The
@@ -462,6 +442,8 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
       if (historyLayer.isDismissing()) return;
       if (mobileDisplayRef.current) mobileDisplayRef.current.open = false;
       restoreRef.current = filterTriggerRef.current ?? document.activeElement as HTMLElement | null;
+      setEdits({});
+      onOpenFilters();
       setPane(p);
     }
   };
@@ -471,7 +453,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
     if (e.key !== "Tab" || !paneRef.current) return;
     const nodes = Array.from(
       paneRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
-    ).filter((n) => n.offsetParent !== null);
+    ).filter((n) => n.offsetParent !== null && n.tabIndex >= 0);
     if (nodes.length === 0) return;
     const first = nodes[0];
     const last = nodes[nodes.length - 1];
@@ -567,13 +549,6 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         : "what";
 
   const activePreset = activeWhenPreset({ lens, tod });
-  const [pendingWhenPreset, setPendingWhenPreset] = useState<
-    (typeof WHEN_PRESETS)[number]["key"] | null | undefined
-  >(undefined);
-  const visibleWhenPreset = pendingWhenPreset === undefined
-    ? activePreset
-    : pendingWhenPreset;
-  const [, startWhenTransition] = useTransition();
   // A deep link such as /weekend can select a chip beyond the narrow phone
   // viewport. Keep the active choice in view without moving the page itself.
   useEffect(() => {
@@ -596,65 +571,29 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
   // ── Pane control handlers ──
   const pickEverything = () => {
     haptic("light");
-    setIntent(null);
-    setSub(null);
-    setCat(null);
+    edit({ intent: null, sub: null, cat: null });
   };
-  const pickIntent = (nextIntent: IntentId) => {
+  const pickIntent = (id: IntentId) => {
     haptic("light");
-    setCat(null);
-    setSub(null);
-    setIntent(intent === nextIntent ? null : nextIntent);
+    edit({ intent: draft.intent === id ? null : id, sub: null, cat: null });
   };
-  const pickSub = (nextSub: string) => {
+  const pickSub = (id: string) => {
     haptic("light");
-    setCat(null);
-    setSub(sub === nextSub ? null : nextSub);
+    edit({ sub: draft.sub === id ? null : id, cat: null });
   };
-  const pickCategory = (nextCategory: string | null) => {
+  const pickCategory = (id: string | null) => {
     haptic("light");
-    setIntent(null);
-    setSub(null);
-    setCat(cat === nextCategory ? null : nextCategory);
+    edit({ cat: draft.cat === id ? null : id, intent: null, sub: null });
   };
-  const pickPreset = (p: (typeof WHEN_PRESETS)[number]) => {
+  const pickPreset = (preset: (typeof WHEN_PRESETS)[number]) => {
     haptic("light");
-    const turningOff = visibleWhenPreset === p.key;
-    const nextPreset = turningOff ? null : p.key;
-    // A discrete local state update acknowledges the tap in the current
-    // frame. The larger event-board re-slice remains a transition, so a busy
-    // live feed cannot make the chip look ignored.
-    setPendingWhenPreset(nextPreset);
-    window.requestAnimationFrame(() => {
-      startWhenTransition(() => {
-        if (turningOff) {
-          setLens("all");
-          setTod(null);
-        } else {
-          setLens(p.lens);
-          setTod(p.tod);
-        }
-        setDay(null);
-        setPendingWhenPreset(undefined);
-      });
-    });
+    const selected = activePreset === preset.key;
+    applyFilters({ ...filters, lens: selected ? "all" : preset.lens, tod: selected ? null : preset.tod, day: null }, false);
   };
-  const pickDaypart = (d: Daypart) => {
-    haptic("light");
-    setTod(tod === d ? null : d);
-  };
-  const pickDay = (key: string | null) => {
-    setDay(key);
-    if (key) {
-      setLens("all");
-      setTod(null);
-    }
-  };
+  const pickDay = (key: string | null) => edit(key ? { day: key, lens: "all", tod: null } : { day: null });
   const jumpNextWeekend = () => {
     haptic("light");
-    setLens("weekend");
-    setTod(null);
-    setDay(null);
+    edit({ lens: "weekend", tod: null, day: null });
   };
   const closeMobileDisplay = () => closeDisplay(mobileDisplayRef.current);
   const viewLabel = VIEW_ITEMS.find((item) => item.key === view)?.label ?? "List";
@@ -689,7 +628,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
             <EbChip
               key={p.key}
               preset={p.key}
-              on={visibleWhenPreset === p.key}
+              on={activePreset === p.key}
               color="var(--app-brand)"
               onClick={() => pickPreset(p)}
             >
@@ -818,7 +757,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
         aria-label="Event filters"
         aria-hidden={pane === null}
         // Collapsed via max-height:0 (not display:none), so without `inert` a
-        // keyboard user still Tabs onto the hidden "Done" button (2026-07
+        // keyboard user still Tabs onto the hidden Cancel button (2026-07
         // shell-hardening P3). inert removes the whole pane from tab order +
         // the a11y tree while closed.
         inert={pane === null}
@@ -829,15 +768,27 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
           <div className="dock-pane-head">
             <span className="dock-pane-title font-serif">Filters</span>
             <button type="button" className="dock-done" onClick={closePane}>
-              Done
+              Cancel
             </button>
           </div>
-          <div className="eb-pane-tabs" role="tablist" aria-label="Event filter sections">
+          <div className="eb-pane-tabs" role="tablist" aria-label="Event filter sections" onKeyDown={(event) => {
+            const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+            const index = tabs.indexOf(event.target as HTMLButtonElement);
+            if (index < 0) return;
+            const next = { ArrowRight: (index + 1) % tabs.length, ArrowLeft: (index + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1 }[event.key];
+            if (next === undefined) return;
+            event.preventDefault();
+            tabs[next].focus();
+            tabs[next].click();
+          }}>
             {(["what", "when", "where"] as const).map((section) => (
               <button
                 key={section}
                 type="button"
                 role="tab"
+                id={`eb-tab-${section}`}
+                aria-controls={pane === section ? `eb-panel-${section}` : undefined}
+                tabIndex={pane === section ? 0 : -1}
                 aria-selected={pane === section}
                 style={{ minHeight: 44 }}
                 onClick={() => {
@@ -852,23 +803,33 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
           {/* ── WHAT ── */}
           {pane === "what" && (
-            <div>
+            <div role="tabpanel" id="eb-panel-what" aria-labelledby="eb-tab-what">
               <label className="eb-filterfield">
                 <Search className="h-[14px] w-[14px] shrink-0" strokeWidth={2.2} aria-hidden />
                 <input
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  value={draft.q}
+                  onChange={(e) => edit({ q: e.target.value })}
                   placeholder="Filter these events…"
                   aria-label="Filter the events shown"
                 />
               </label>
+
+              <Sect>Cost</Sect>
+              <div className="eb-chips" role="group" aria-label="Event cost">
+                <EbChip on={!draft.freeOnly} onClick={() => { haptic("light"); edit({ freeOnly: false }); }}>
+                  Any price
+                </EbChip>
+                <EbChip on={draft.freeOnly} onClick={() => { haptic("light"); edit({ freeOnly: !draft.freeOnly }); }}>
+                  Free
+                </EbChip>
+              </div>
 
               <Sect>Interest</Sect>
               {/* Interests are compact filter chips like every other group in
                   this pane, not tall boxed tiles. */}
               <div className="eb-chips" role="group" aria-label="Event interests">
                 <EbChip
-                  on={!intent && !cat && !sub}
+                  on={!draft.intent && !draft.cat && !draft.sub}
                   onClick={pickEverything}
                 >
                   Any interest
@@ -878,7 +839,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                   return (
                     <EbChip
                       key={item.id}
-                      on={intent === item.id}
+                      on={draft.intent === item.id}
                       color={item.tucked ? "var(--app-civic)" : "var(--app-brand)"}
                       onClick={() => pickIntent(item.id)}
                       icon={Icon}
@@ -889,14 +850,14 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 })}
               </div>
 
-              {intentDef?.subs?.length ? (
+              {draftIntent?.subs?.length ? (
                 <>
-                  <Sect>Narrow {intentDef.label}</Sect>
-                  <div className="eb-chips" role="group" aria-label={`${intentDef.label} categories`}>
-                    {intentDef.subs.map((item) => (
+                  <Sect>Narrow {draftIntent.label}</Sect>
+                  <div className="eb-chips" role="group" aria-label={`${draftIntent.label} categories`}>
+                    {draftIntent.subs.map((item) => (
                       <EbChip
                         key={item.slug}
-                        on={sub === item.slug}
+                        on={draft.sub === item.slug}
                         color="var(--app-cool)"
                         onClick={() => pickSub(item.slug)}
                       >
@@ -909,35 +870,32 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
               <Sect>Good for</Sect>
               <div className="eb-chips" role="group" aria-label="Event qualities">
-                <EbChip on={kidsOnly} color="var(--app-accent)" onClick={() => { haptic("light"); setKidsOnly(!kidsOnly); }}>
+                <EbChip on={draft.kidsOnly} color="var(--app-accent)" onClick={() => { haptic("light"); edit({ kidsOnly: !draft.kidsOnly }); }}>
                   Kid-friendly
                 </EbChip>
-                <EbChip on={freeOnly} color="var(--app-accent)" onClick={() => { haptic("light"); setFreeOnly(!freeOnly); }}>
-                  Free
-                </EbChip>
                 <EbChip
-                  on={lgbtqOnly}
+                  on={draft.lgbtqOnly}
                   color="var(--app-accent)"
                   ariaLabel="LGBTQ+ community events"
-                  onClick={() => { haptic("light"); setLgbtqOnly(!lgbtqOnly); }}
+                  onClick={() => { haptic("light"); edit({ lgbtqOnly: !draft.lgbtqOnly }); }}
                 >
                   LGBTQ+
                 </EbChip>
                 <EbChip
-                  on={communicationAccessOnly}
+                  on={draft.communicationAccessOnly}
                   color="var(--app-accent)"
                   ariaLabel="Events for the Deaf community or with confirmed communication access"
                   onClick={() => {
                     haptic("light");
-                    setCommunicationAccessOnly(!communicationAccessOnly);
+                    edit({ communicationAccessOnly: !draft.communicationAccessOnly });
                   }}
                 >
                   Deaf community &amp; access
                 </EbChip>
-                <EbChip on={recurringOnly} color="var(--app-accent)" onClick={() => { haptic("light"); setRecurringOnly(!recurringOnly); }}>
+                <EbChip on={draft.recurringOnly} color="var(--app-accent)" onClick={() => { haptic("light"); edit({ recurringOnly: !draft.recurringOnly }); }}>
                   Recurring
                 </EbChip>
-                <EbChip on={happyOnly} color="var(--app-accent)" onClick={() => { haptic("light"); setHappyOnly(!happyOnly); }}>
+                <EbChip on={draft.happyOnly} color="var(--app-accent)" onClick={() => { haptic("light"); edit({ happyOnly: !draft.happyOnly }); }}>
                   Happy hour
                 </EbChip>
               </div>
@@ -946,8 +904,8 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 <details className="group mt-4 border-y" style={{ borderColor: "var(--app-border)" }}>
                   <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-[12px] font-semibold text-[var(--app-ink-2)]">
                     <span>
-                      {cat
-                        ? `Category · ${categories.find((item) => item.slug === cat)?.name ?? cat}`
+                      {draft.cat
+                        ? `Category · ${categories.find((item) => item.slug === draft.cat)?.name ?? draft.cat}`
                         : "More specific categories"}
                     </span>
                     <ChevronDown
@@ -957,13 +915,13 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                     />
                   </summary>
                   <div className="eb-chips border-t py-3" role="group" aria-label="Event categories" style={{ borderColor: "var(--app-border)" }}>
-                    <EbChip on={!cat && !intent && !sub} onClick={() => pickCategory(null)}>
+                    <EbChip on={!draft.cat && !draft.intent && !draft.sub} onClick={() => pickCategory(null)}>
                       Any category
                     </EbChip>
                     {categories.map((c) => (
                       <EbChip
                         key={c.slug}
-                        on={cat === c.slug}
+                        on={draft.cat === c.slug}
                         color={CATEGORY_BY_SLUG[c.slug]?.color}
                         onClick={() => pickCategory(c.slug)}
                       >
@@ -978,15 +936,15 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
           {/* ── WHEN ── */}
           {pane === "when" && (
-            <div>
+            <div role="tabpanel" id="eb-panel-when" aria-labelledby="eb-tab-when">
               <Sect>Time</Sect>
               <div className="eb-chips">
                 {WHEN_PRESETS.map((p) => (
                   <EbChip
                     key={p.key}
-                    on={activePreset === p.key}
+                    on={draftPreset === p.key}
                     color="var(--app-brand)"
-                    onClick={() => pickPreset(p)}
+                    onClick={() => { haptic("light"); edit({ day: null, lens: draftPreset === p.key ? "all" : p.lens, tod: draftPreset === p.key ? null : p.tod }); }}
                   >
                     {p.label}
                   </EbChip>
@@ -998,9 +956,9 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 {DAYPARTS.map((d) => (
                   <EbChip
                     key={d.key}
-                    on={tod === d.key}
+                    on={draft.tod === d.key}
                     color="var(--app-cool)"
-                    onClick={() => pickDaypart(d.key)}
+                    onClick={() => { haptic("light"); edit({ tod: draft.tod === d.key ? null : d.key }); }}
                   >
                     {d.label}
                   </EbChip>
@@ -1011,7 +969,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               <EventWeekRibbon
                 nowISO={nowISO}
                 countByDate={dayCounts}
-                activeDay={day}
+                activeDay={draft.day}
                 onPickDay={pickDay}
               />
 
@@ -1030,7 +988,7 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
                 <input
                   type="date"
                   aria-label="Jump to a date"
-                  value={day ?? ""}
+                  value={draft.day ?? ""}
                   min={new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(nowISO))}
                   onChange={(e) => pickDay(e.target.value || null)}
                   className="ml-auto h-8 rounded-[var(--app-radius-sm)] border px-2 font-mono text-[12px]"
@@ -1054,18 +1012,18 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
 
           {/* ── WHERE ── */}
           {pane === "where" && (
-            <div>
+            <div role="tabpanel" id="eb-panel-where" aria-labelledby="eb-tab-where">
               <Sect>Town</Sect>
               <div className="eb-chips">
-                <EbChip on={!town} onClick={() => { haptic("light"); setTown(null); }}>
+                <EbChip on={!draft.town && (!whereLabel || Object.hasOwn(edits, "town"))} onClick={() => { haptic("light"); edit({ town: null }); }}>
                   Whole county
                 </EbChip>
                 {MUNICIPALITIES.map((m) => (
                   <EbChip
                     key={m.slug}
-                    on={town === m.slug}
+                    on={draft.town === m.slug}
                     color="var(--app-cool)"
-                    onClick={() => { haptic("light"); setTown(town === m.slug ? null : m.slug); }}
+                    onClick={() => { haptic("light"); edit({ town: draft.town === m.slug ? null : m.slug }); }}
                   >
                     {m.name}
                   </EbChip>
@@ -1076,6 +1034,11 @@ export default function EventsBoardDock(props: EventsBoardDockProps) {
               </p>
             </div>
           )}
+        </div>
+        <div className={styles.actions}>
+          <button type="button" onClick={applyDraft}>
+            <span aria-live="polite" aria-atomic="true">{draftCount === null ? "Show results" : `Show ${draftCount} ${draftCount === 1 ? "event" : "events"}`}</span>
+          </button>
         </div>
       </div>
     </div>

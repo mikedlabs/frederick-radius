@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { ArrowDownAZ, Check, ChevronDown } from "lucide-react";
 
 /**
@@ -21,9 +21,8 @@ import { ArrowDownAZ, Check, ChevronDown } from "lucide-react";
  *   - Closed by default; clicking the trigger toggles open state.
  *   - Clicking an option commits the value and closes.
  *   - Esc closes; a press outside closes; focus moving on to another
- *     control closes; Enter/Space on the trigger toggles. Roving focus
- *     inside the menu uses native browser tab order; the items are
- *     real buttons in DOM order so VO/NVDA announce them correctly.
+ *     control closes; Enter/Space on the trigger toggles. Tab follows DOM
+ *     order. Arrows move between options and Home/End reach either end.
  *   - The Escape this menu consumes is marked `defaultPrevented`, so a
  *     disclosure that contains it (the Events Display panel) leaves
  *     that press alone and stays open.
@@ -65,8 +64,32 @@ export default function SortDropdown<K extends string = string>({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const choicesRef = useRef<HTMLDivElement>(null);
+  const openAt = useRef<"first" | "last" | null>(null);
   const choicesId = useId();
   const current = options.find((o) => o.key === value) ?? options[0];
+
+  function navigateOptions(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const { key } = event;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (key !== "ArrowDown" && key !== "ArrowUp" && key !== "Home" && key !== "End") return;
+    if (!open) {
+      if (key !== "ArrowDown" && key !== "ArrowUp") return;
+      event.preventDefault();
+      openAt.current = key === "ArrowDown" ? "first" : "last";
+      setOpen(true);
+      return;
+    }
+    const choices = Array.from(choicesRef.current?.querySelectorAll("button") ?? []);
+    if (!choices.length) return;
+    event.preventDefault();
+    const active = choices.findIndex(button => button === event.target);
+    let index = 0;
+    if (key === "End" || (key === "ArrowUp" && active <= 0)) index = choices.length - 1;
+    else if (key === "ArrowDown") index = (active + 1) % choices.length;
+    else if (key === "ArrowUp") index = active - 1;
+    choices[index].focus();
+  }
 
   // An outside press + Escape closes the menu. Bound only while open
   // so we don't add listeners pages don't need. The press is pointerdown,
@@ -74,6 +97,10 @@ export default function SortDropdown<K extends string = string>({
   // which left the menu open behind a swipe.
   useEffect(() => {
     if (!open) return;
+    if (openAt.current) {
+      choicesRef.current?.querySelector<HTMLButtonElement>(`button:${openAt.current}-child`)?.focus();
+      openAt.current = null;
+    }
     const onDown = (e: PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
@@ -100,6 +127,7 @@ export default function SortDropdown<K extends string = string>({
   return (
     <div
       ref={ref}
+      onKeyDown={navigateOptions}
       className={`relative inline-block ${className}`}
       // Tabbing past the last choice leaves the menu, so it closes and
       // aria-expanded cannot stay true behind the user. Safari does not focus
@@ -119,7 +147,7 @@ export default function SortDropdown<K extends string = string>({
         aria-controls={choicesId}
         aria-label={`${label}: ${current?.label ?? ""}`}
         title={label}
-        className="tap-44 inline-flex items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 py-1 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg)] px-3 py-1 text-[12px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
         style={{
           borderColor: "var(--app-control-border)",
           color: "var(--app-ink)",
@@ -146,6 +174,7 @@ export default function SortDropdown<K extends string = string>({
       {open && (
         <div
           id={choicesId}
+          ref={choicesRef}
           role="group"
           aria-label={label}
           // A popover is opaque (the solid token) and never wider than the

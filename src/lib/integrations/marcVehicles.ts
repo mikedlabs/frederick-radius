@@ -17,6 +17,8 @@
  * Camden), positions, bearings, and per-fix timestamps. Only route 11704 is
  * retained; a geographic box alone also catches Penn Line trains.
  */
+import { brunswickCancelled } from "@/lib/transit-service-calendar";
+import { easternDayKey } from "@/lib/tz";
 import { gtfsRealtime } from "@/lib/integrations/gtfsRealtimeBindings";
 
 const VEHICLE_POSITIONS_URL =
@@ -157,12 +159,13 @@ export async function getMarcVehiclesResult(): Promise<MarcVehicleFeedResult> {
         timestamp: toNum(v.timestamp) ?? undefined,
       });
     }
+    const receivedAt = Date.now();
     return {
-      data: slimMarcVehicles(raw),
+      data: brunswickCancelled(easternDayKey(new Date(receivedAt))) ? [] : slimMarcVehicles(raw),
       status: "ok",
       available: true,
       feedTimestamp: feedTimestamp(feed.header.timestamp),
-      receivedAt: Date.now(),
+      receivedAt,
     };
   } catch {
     return {

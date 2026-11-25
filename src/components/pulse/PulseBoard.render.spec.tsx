@@ -111,11 +111,11 @@ describe("Pulse briefing presentation", () => {
     expect(checks?.querySelector("time")).toBeNull();
   });
   it("keeps a raw measurement as a value and unit without inventing a progress gauge", () => {
-    const container = render({}, [{ ...weather, key: "rivers", label: "Monocacy River", kind: "gauge", feature: undefined, gauge: { value: 2.4, unit: "ft", decimals: 1 }, countLabel: "At Jug Bridge", sourceLabel: "USGS Water Services" }]);
+    const container = render({}, [{ ...weather, key: "rivers", label: "Monocacy River", kind: "gauge", feature: undefined, gauge: { value: 2.4, unit: "ft", decimals: 1 }, countLabel: "At Jug Bridge", sourceLabel: "USGS Water Data" }]);
     const reading = container.querySelector('[data-pulse-key="rivers"]');
     expect(reading?.textContent).toContain("2.4ft");
     expect(reading?.textContent).toContain("At Jug Bridge");
-    expect(reading?.textContent).toContain("USGS Water Services");
+    expect(reading?.textContent).toContain("USGS Water Data");
     expect(container.querySelector('progress, meter, [role="progressbar"]')).toBeNull();
   });
 });

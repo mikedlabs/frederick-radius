@@ -1,3 +1,4 @@
+import { eventPublisherArtwork } from "@/components/event/eventVisuals";
 import type { Event } from "@/data/events";
 import type { EventCardVisual } from "@/components/event/eventVisuals";
 import { isUtilityEvent } from "@/lib/event-kind";
@@ -169,7 +170,7 @@ export function selectTodayEvents(
       ...(!event.is_all_day && eventHasTrustworthyEnd(event) && event.ends_at ? { endTime: clock(event.ends_at) } : {}),
       ...(event.price_text?.trim() ? { price: event.price_text.trim() } : {}),
       moment,
-      image: event.hero_image ?? null,
+      image: eventPublisherArtwork(event)?.src ?? null,
       free: event.is_free,
       ...(visual ? { visual } : {}),
     };

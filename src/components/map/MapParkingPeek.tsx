@@ -53,7 +53,7 @@ export default function MapParkingPeek({
   const spaces = parkingSpacesLabel(pin);
   const spacesColor = TONE_COLOR[tone];
 
-  const directionsUrl = directionsHref(pin.lat, pin.lng);
+  const directionsUrl = directionsHref(pin.lat, pin.lng, "driving");
   // userLoc is the device fix, so the distance is measured from the reader.
   const distance = userLoc
     ? distanceFrom(haversineMeters(userLoc, { lng: pin.lng, lat: pin.lat }), "from you")

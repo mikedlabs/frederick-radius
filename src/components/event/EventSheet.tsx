@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties, type RefObject } from "react";
 import Link from "next/link";
-import { ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
+import { ArrowRight, ExternalLink, MapPin, Navigation, Ticket, CalendarCheck } from "lucide-react";
 import BottomSheet, { SheetHandle } from "@/components/ui/BottomSheet";
 import ItineraryButton from "@/components/saved/ItineraryButton";
 import EventActions from "@/components/event/EventActions";
@@ -10,6 +10,8 @@ import EventVenuePhoto from "@/components/event/EventVenuePhoto";
 import EventArtwork from "@/components/event/EventArtwork";
 import { eventCardVisual } from "@/components/event/eventVisuals";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { eventDetailDestinations, eventPlanLink } from "@/lib/events/detail-destinations";
+import { eventPlanEligibility } from "@/lib/plan/event-plan-eligibility";
 import { eventDateBlock } from "@/lib/events/format";
 import { eventDecisionLocation, eventDecisionTime, eventTimeCaution } from "@/lib/events/decision-facts";
 import { eventHasPreciseLocation } from "@/lib/events/geo-confidence";
@@ -100,7 +102,7 @@ function EventSheetSkeleton({ onClose, onOpenFullPage }: { onClose: () => void; 
       {onOpenFullPage ? (
         <div className="px-5 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]">
           <button type="button" onClick={onOpenFullPage} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold" style={{ color: "var(--app-ink)", background: "var(--app-bg-sunken)" }}>
-            Open full page <ExternalLink className="h-4 w-4" aria-hidden />
+            Event details in Radius <ArrowRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
       ) : null}
@@ -119,27 +121,33 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
   const attendance = eventAttendanceMode(event);
   const physicalAttendance = hasPhysicalAttendance(event);
   const onlineActionHref = eventOnlineActionUrl(event);
-  const ticketHref =
-    event.ticket_url ?? event.rsvp_url ??
+  const ticketUrl = isLikelyEventActionUrl(event.ticket_url) ? event.ticket_url : null;
+  const rsvpUrl = isLikelyEventActionUrl(event.rsvp_url) ? event.rsvp_url : null;
+  const ticketHref = ticketUrl ?? rsvpUrl ??
     (attendance !== "physical" ? onlineActionHref : null);
   const ticketLabel =
-    event.ticket_url ? "Tickets" :
-    event.rsvp_url ? "RSVP" :
+    ticketUrl ? "Tickets" :
+    rsvpUrl ? "RSVP" :
     attendance === "online" ? "Online details" :
     "Online option";
   const attendanceLabel = eventDecisionLocation(event);
   const [openedAt] = useState(() => new Date());
   const canAttend = status === "scheduled" && !isEventListingEnded(event, openedAt);
   const timeCaution = eventTimeCaution(event);
-  const sourceHref = isLikelyEventActionUrl(event.source_url) ? event.source_url : null;
+  const { multipleSites, hasNamedSite, venueName, directionsLabel, sourceHref, sourceLabel, venueLabel } = eventDetailDestinations(event, event.sheet_venue?.name);
+  const browseOrigin = typeof window === "undefined" ? null : browseReturnFromLocation(new URL(window.location.href));
+  const eventPageHref = withBrowseReturnTo(`/events/${event.slug}`, browseOrigin);
+  const plan = eventPlanEligibility(event, {
+    nowMs: openedAt.getTime(), hasResolvedVenue: Boolean(event.sheet_venue), venueOperational: event.sheet_venue?.operational,
+  });
+  const secondaryDirections = Boolean(ticketHref || (multipleSites && sourceHref));
+  const showPlan = plan.eligible && !multipleSites && (!event.venue_place_slug || event.sheet_venue !== undefined);
   // Directions are a promise of a real doorstep: only offer them when the
   // coordinate is addressable (same rule that gates distance stamping —
   // an area-centroid event must never hand out turn-by-turn to a point
   // that isn't the event).
-  const preciseGeo =
-    physicalAttendance &&
-    eventHasPreciseLocation(event);
-  const parking = preciseGeo && canAttend ? nearestEventParking(event.geom) : null;
+  const preciseGeo = physicalAttendance && (!multipleSites || hasNamedSite) && eventHasPreciseLocation(event);
+  const parking = !multipleSites && preciseGeo && canAttend ? nearestEventParking(event.geom) : null;
   const eventVisual = eventCardVisual(event);
   const photoVisual = eventVisual?.presentation === "photo" ? eventVisual : null;
 
@@ -154,9 +162,9 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
     });
   }, [event.slug]);
 
-  const attendanceDecisionAction: DecisionAction = event.ticket_url
+  const attendanceDecisionAction: DecisionAction = ticketUrl
     ? "ticket"
-    : event.rsvp_url
+    : rsvpUrl
       ? "reservation"
       : "website";
 
@@ -176,7 +184,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
               <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</p>
               <ItineraryButton eventId={event.slug} label={`Add ${eventDisplayTitle(event)} to itinerary`} />
             </div>
-            <h2 className={`mt-1 break-words text-[1.375rem] font-semibold leading-tight tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
+            <h2 className={`mt-1 break-words text-[1.375rem] font-semibold leading-snug tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
               style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h2>
           </header>
 
@@ -228,7 +236,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 </span>
               ) : null}
               {physicalAttendance && event.address ? <span>{event.address}</span> : null}
-              {physicalAttendance && event.distance_m !== undefined && (
+              {physicalAttendance && !multipleSites && event.distance_m !== undefined && (
                 <span>
                   <span className="font-mono tabular-nums">{formatDistance(event.distance_m)}</span> away in a straight line
                 </span>
@@ -274,13 +282,18 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 } as CSSProperties}
               >
                 <span data-press-face className="inline-flex min-w-0 items-center justify-center gap-2">
-                  {event.ticket_url ? (
+                  {ticketUrl ? (
                     <Ticket className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                   ) : (
                     <CalendarCheck className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                   )}
                   {ticketLabel}
                 </span>
+              </a>
+            )}
+            {multipleSites && sourceHref && (!canAttend || sourceHref !== ticketHref) && (
+              <a href={sourceHref} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center gap-2 break-words rounded-[var(--app-radius-md)] border px-3 py-2 text-center text-sm font-semibold" style={ticketHref || !canAttend ? { color: "var(--app-link)", borderColor: "var(--app-control-border)" } : { color: "var(--app-on-brand)", background: "var(--app-brand-press)" }}>
+                {sourceLabel} <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
               </a>
             )}
             {preciseGeo && canAttend && (
@@ -301,10 +314,10 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 rel="noopener noreferrer"
                 data-press-target="control"
                 className={`flex min-h-11 w-full items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[12.5px] font-semibold ${
-                  ticketHref && canAttend ? "border" : ""
+                  secondaryDirections ? "border" : ""
                 }`}
                 style={
-                  ticketHref && canAttend
+                  secondaryDirections
                     ? {
                         borderColor: "var(--app-border-strong)",
                         color: "var(--app-ink)",
@@ -322,23 +335,28 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                     strokeWidth={2.25}
                     style={{
                       color:
-                        ticketHref && canAttend
+                        secondaryDirections
                           ? "var(--app-link)"
                           : "var(--app-on-brand)",
                     }}
                     aria-hidden
                   />
-                  Directions
+                  {directionsLabel}
                 </span>
               </a>
             )}
-            {(!ticketHref || !canAttend) && sourceHref && (
+            {!multipleSites && sourceHref && (!canAttend || sourceHref !== ticketHref) && (
               <a href={sourceHref} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-md)] border px-4 text-[13px] font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-link)" }}>
                 <ExternalLink className="h-4 w-4" aria-hidden />
-                {canAttend ? "Check event details" : "See event source"}
+                {sourceLabel}
               </a>
             )}
             {!canAttend && <Link href="/events?lens=today" prefetch={false} onClick={onClose} className="flex min-h-11 items-center justify-center rounded-[var(--app-radius-md)] px-4 text-[13px] font-semibold" style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}>Find upcoming events</Link>}
+            {showPlan && (
+              <Link href={eventPlanLink(event.slug, browseOrigin)} prefetch={false} onClick={onClose} className="tap-44 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4" style={{ color: "var(--app-link)" }}>
+                Plan around this event <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+              </Link>
+            )}
             <EventActions event={{ ...event, ends_at: eventHasTrustworthyEnd(event) ? event.ends_at : event.starts_at }} actions={canAttend && !isDateOnlyEventAnchor(event) ? ["calendar", "share"] : ["share"]} labeled className="pt-1" />
           </div>
 
@@ -366,7 +384,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
             <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
               <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>Parking near the venue</p>
               <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{eventParkingSummary(parking)} The walking route and space availability may differ.</p>
-              <Link href={`/places/${parking.slug}`} onClick={onClose} className="tap-44 inline-flex items-center text-[13px] font-semibold underline" style={{ color: "var(--app-link)" }}>See garage &amp; directions</Link>
+              <Link href={`/places/${parking.slug}`} onClick={onClose} className="tap-44 inline-flex items-center text-[13px] font-semibold underline" style={{ color: "var(--app-link)" }}>{parking.name} in Radius</Link>
             </div>
           )}
 
@@ -375,7 +393,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
            *  map with the venue's peek open and the Eat & drink lens on,
            *  which also surfaces the nearest garage line. Only for events
            *  at a KNOWN venue; a guessed point gets no plan built on it. */}
-          {preciseGeo && event.venue_place_slug && canAttend && (
+          {!multipleSites && preciseGeo && event.venue_place_slug && canAttend && (
             <div className="mt-4 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
               <p className="text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                 Around the venue
@@ -398,9 +416,9 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
 
           {/* Footer — the committed tap: the real page, with getting-there,
            *  pairings, and provenance. */}
-          <div className="mt-5 flex items-center justify-between border-t pt-4 text-xs" style={{ borderColor: "var(--app-border)" }}>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 border-t pt-2 text-sm" style={{ borderColor: "var(--app-border)" }}>
             <Link
-              href={withBrowseReturnTo(`/events/${event.slug}`, typeof window !== "undefined" ? browseReturnFromLocation(new URL(window.location.href)) : null)}
+              href={eventPageHref}
               // BottomSheet replaces the document atomically, so speculative
               // App Router data is unused and can race that navigation.
               prefetch={false}
@@ -419,8 +437,11 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
               className="tap-44 inline-flex items-center gap-1 font-medium"
               style={{ color: "var(--app-link)" }}
             >
-              See full page <ExternalLink className="h-3 w-3" aria-hidden />
+              Event details in Radius <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
             </Link>
+            {physicalAttendance && event.venue_place_slug && event.sheet_venue && venueName && (
+              <Link href={withBrowseReturnTo(`/places/${event.venue_place_slug}`, eventPageHref)} prefetch={false} onClick={onClose} className="tap-44 inline-flex min-h-11 items-center break-words font-medium" style={{ color: "var(--app-link)" }}>{venueLabel}</Link>
+            )}
             <span className="font-mono text-[11px]" style={{ color: "var(--app-ink-3)" }}>
               {event.municipality_name}
             </span>

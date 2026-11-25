@@ -26,11 +26,20 @@ let container: HTMLDivElement;
 let root: Root;
 let height = 56;
 let notify: ResizeObserverCallback;
+let nextFrame = 1;
+const frames = new Map<number, FrameRequestCallback>();
 const observe = vi.fn();
 const disconnect = vi.fn();
 
 beforeEach(() => {
   height = 56;
+  frames.clear();
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation(callback => {
+    const id = nextFrame++;
+    frames.set(id, callback);
+    return id;
+  });
+  vi.spyOn(window, "cancelAnimationFrame").mockImplementation(id => { frames.delete(id); });
   observe.mockReset();
   disconnect.mockReset();
   document.documentElement.style.removeProperty(property);
@@ -61,6 +70,12 @@ async function mount() { await act(async () => root.render(<TopBar />)); }
 function resize(nextHeight: number) {
   height = nextHeight;
   notify([], {} as ResizeObserver);
+  flushFrames();
+}
+function flushFrames() {
+  const pending = [...frames.values()];
+  frames.clear();
+  pending.forEach(callback => callback(0));
 }
 
 describe("TopBar measured chrome height", () => {
@@ -89,6 +104,24 @@ describe("TopBar measured chrome height", () => {
     expect(document.documentElement.style.getPropertyValue(property)).toBe("73px");
     resize(200);
     expect(document.documentElement.style.getPropertyValue(property)).toBe("73px");
+  });
+
+  it("coalesces header reflows outside the observer delivery and cancels pending work on unmount", async () => {
+    await mount();
+    flushFrames();
+    height = 180;
+    notify([], {} as ResizeObserver);
+    height = 236;
+    notify([], {} as ResizeObserver);
+    expect(document.documentElement.style.getPropertyValue(property)).toBe("56px");
+    expect(frames.size).toBe(1);
+    flushFrames();
+    expect(document.documentElement.style.getPropertyValue(property)).toBe("236px");
+    height = 292;
+    notify([], {} as ResizeObserver);
+    await act(async () => root.render(null));
+    expect(frames.size).toBe(0);
+    expect(document.documentElement.style.getPropertyValue(property)).toBe("");
   });
 
   it("does not erase a newer owner's property on unmount", async () => {

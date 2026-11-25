@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
-import { downtownGuide, weekendGuide } from "@/lib/today/local-outing-guides";
+import { downtownGuide, downtownGuideForDate, weekendGuide } from "@/lib/today/local-outing-guides";
 import LocalOutingGuide from "./LocalOutingGuide";
 
 const todayOrigin = "/today?in=frederick#local-outings";
@@ -21,13 +21,54 @@ type Story = StoryObj<typeof meta>;
 const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement, userEvent }) => {
   const canvas = within(canvasElement);
   await canvasElement.ownerDocument.fonts.ready;
-  await expect(canvas.getByRole("heading", { level: 1, name: args.guide.title })).toBeVisible();
+  const heading = canvas.getByRole("heading", { level: 1, name: args.guide.title });
+  await expect(heading).toBeVisible();
+  await expect(heading.scrollWidth).toBeLessThanOrEqual(heading.clientWidth + 1);
   await expect(canvas.getByRole("img", { name: args.guide.photo.alt })).toBeVisible();
   await expect(canvas.getByRole("link", { name: "Back to Today" })).toHaveAttribute(
     "href",
     args.returnTo === todayOrigin ? todayOrigin : "/today",
   );
-  const stops = canvas.getByRole("list");
+  if (args.guide.route) {
+    const overview = within(canvas.getByRole("navigation", { name: "Route overview" }));
+    for (const stop of args.guide.stops) {
+      const link = overview.getByRole("link", { name: new RegExp(stop.routeName!) });
+      await expect(link).toHaveAttribute("href", `#${stop.anchor}`);
+      await expect(link).toHaveAccessibleName(new RegExp(stop.suggestedMinutes ? `${stop.suggestedMinutes} minutes` : "start here"));
+      const box = link.getBoundingClientRect();
+      await expect(box.width).toBeGreaterThanOrEqual(44);
+      await expect(box.height).toBeGreaterThanOrEqual(44);
+      await expect(canvasElement.querySelector(`[id="${stop.anchor}"]`)).toBeTruthy();
+    }
+    const markers = overview.getAllByRole("link", { name: /^Stop [0-9]/ });
+    await expect(markers).toHaveLength(args.guide.stops.length);
+    for (let i = 0; i < markers.length; i++) {
+      const a = markers[i].getBoundingClientRect();
+      for (const sibling of markers.slice(i + 1)) {
+        const b = sibling.getBoundingClientRect();
+        await expect(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top).toBe(true);
+      }
+    }
+    const minutes = args.guide.stops.reduce((sum, stop) => sum + (stop.suggestedMinutes ?? 0), args.guide.route.allowanceMinutes);
+    await expect(overview.getByRole("img", { name: new RegExp(`${minutes} minutes total`) })).toBeVisible();
+    await expect(overview.getByRole("link", { name: /OpenStreetMap contributors/ })).toHaveAttribute("href", "https://www.openstreetmap.org/copyright");
+    const notice = args.guide.notice;
+    if (notice) {
+      const aside = within(canvas.getByRole("complementary", { name: notice.heading }));
+      if (notice.active) await expect(aside.getByText(notice.text)).toBeVisible();
+      else await expect(aside.getByText(notice.text)).not.toBeVisible();
+      await userEvent.click(aside.getByText(notice.active ? "Holiday hours and parking sources" : `${notice.heading} · Closures and parking`));
+      await expect(aside.getByText(notice.text)).toBeVisible();
+      for (const source of notice.sources) await expect(aside.getByRole("link", { name: source.label })).toHaveAttribute("href", source.href);
+    }
+    const { credit } = args.guide.photo;
+    if (credit) {
+      await userEvent.click(canvas.getByText(`${credit.creator} · ${credit.capturedYear}`));
+      await expect(canvas.getByRole("link", { name: `Photo by ${credit.creator}` })).toHaveAttribute("href", credit.source_url);
+      await expect(canvas.getByRole("link", { name: credit.license.label })).toHaveAttribute("href", credit.license.url);
+    }
+  }
+  const stops = args.guide.route ? canvas.getByRole("list", { name: "Walking itinerary" }) : canvas.getByRole("list");
   const items = within(stops).getAllByRole("listitem");
   await expect(items).toHaveLength(args.guide.stops.length);
   for (const [index, stop] of args.guide.stops.entries()) {
@@ -64,6 +105,13 @@ const usableGuide: NonNullable<Story["play"]> = async ({ args, canvasElement, us
 };
 
 export const DowntownOnPhone: Story = {
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  args: { guide: downtownGuideForDate(new Date("2026-11-24T17:00:00Z")) },
+  play: usableGuide,
+};
+
+export const ThanksgivingOnPhone: Story = {
+  args: { guide: downtownGuideForDate(new Date("2026-11-26T17:00:00Z")) },
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
   play: usableGuide,
 };

@@ -9,6 +9,8 @@ export type HoursDateException = {
   reason: string;
   /** A full closure wins over weekly hours, including yesterday's spill. */
   closed?: true;
+  /** With closes_at, replaces this date with the one expressly published window. */
+  opens_at?: string;
   /** Early closure clips the normal schedule; it never invents an opening. */
   closes_at?: string;
 };

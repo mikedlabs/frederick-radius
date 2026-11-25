@@ -100,9 +100,8 @@ describe("TonightHeadline", () => {
     const html = renderToStaticMarkup(
       createElement(TonightHeadline, {
         event: event({
-          source: "ticketmaster",
+          source: "ticketmaster", source_url: "https://www.ticketmaster.com/event/1A234",
           hero_image: "https://s1.ticketm.net/dam/a/approved-poster.jpg",
-          source_url: "https://www.ticketmaster.com/approved-event",
           title: "Live Theatre Production",
           presenter: "Other Voices Theatre",
         }),
@@ -122,7 +121,7 @@ describe("TonightHeadline", () => {
     expect(html).toContain("Event image · Ticketmaster");
     expect(html.match(/Event image · Ticketmaster/g)).toHaveLength(1);
     expect(html.indexOf("</a>")).toBeLessThan(html.indexOf("Event image · Ticketmaster"));
-    expect(html).toContain('href="https://www.ticketmaster.com/approved-event"');
+    expect(html).toContain('href="https://www.ticketmaster.com/event/1A234"');
     expect(html).not.toContain("<figcaption");
     expect(html).not.toContain(">View event<");
   });
@@ -189,7 +188,7 @@ describe("TonightHeadline", () => {
     const html = renderToStaticMarkup(
       createElement(TonightHeadline, {
         event: event({
-          source: "ticketmaster",
+          source: "ticketmaster", source_url: "https://www.ticketmaster.com/event/1A234",
           hero_image: "https://s1.ticketm.net/dam/a/approved-event.jpg",
         }),
         now,

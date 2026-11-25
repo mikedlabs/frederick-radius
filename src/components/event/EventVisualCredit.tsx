@@ -7,13 +7,25 @@ export default function EventVisualCredit({
   visual,
   overlay = false,
   compact = false,
+  discloseLicense = false,
   className = "",
 }: {
   visual: EventCardVisual;
   overlay?: boolean;
   compact?: boolean;
+  discloseLicense?: boolean;
   className?: string;
 }) {
+  if (visual.licensedCredit && discloseLicense) {
+    const credit = eventPhotoCredit(visual.licensedCredit);
+    return <details data-event-photo-credit data-event-licensed-credit data-overview-photo-rights className={className}>
+      <summary aria-label={`${visual.caption}. Photo by ${credit.author}, ${credit.license}. View photo credits`}>
+        <span>{visual.caption}</span>
+        <span data-rights-byline>{credit.author} · {credit.license}</span>
+      </summary>
+      <PhotoCreditLine credit={credit} />
+    </details>;
+  }
   if (visual.licensedCredit) {
     return <div data-event-photo-credit data-event-licensed-credit
       className={`break-words text-xs leading-snug ${className}`}

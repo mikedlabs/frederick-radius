@@ -2,7 +2,7 @@ import type { CurrentSituationSnapshot, CurrentSituationSources } from "@/lib/li
 import { isUnexpiredWeatherAlert, selectPulseStatus, sourceDisplayState, sourceFreshnessAt } from "@/lib/live/currentSituationModel";
 import type { RoadIntelligenceSnapshot } from "@/lib/live/roadIntelligenceModel";
 import type { OfficialCivicAlertsResult } from "@/lib/integrations/official-alert-feeds";
-import { currentLocalCivicAlerts } from "@/lib/integrations/official-alert-feeds";
+import { CIVIC_ALERT_CATEGORY_NAMES, CIVIC_ALERT_MAX_CHECK_AGE_MS, currentLocalCivicAlerts } from "@/lib/integrations/official-alert-feeds";
 import { powerOutageTone, pulseAlertPriority } from "@/lib/pulse/signal-priority";
 import { roadAttentionSource, roadSourceIsCurrent, verifiedRoadAttention } from "@/lib/live/roadIntelligenceModel";
 import { MDOT_WZDX_MAX_FEED_AGE_MS } from "@/lib/integrations/mdot-wzdx";
@@ -48,12 +48,19 @@ export function deriveCountyStatus(
     asOf: source.asOf, asOfBasis: source.asOfBasis,
   }));
   for (const key of checkedRoadSources) checks.push({ source: ROAD_LABELS[key], state: snapshotCurrent && roadSourceCurrent(key) ? "current" : road?.sources?.[key]?.available ? "stale" : "unavailable", asOf: road?.sources?.[key]?.checkedAt ?? null, asOfBasis: "retrieval" });
-  if (civic?.sourceHealth?.length) {
-    for (const source of civic.sourceHealth) checks.push({ source: source.publisher, state: source.available ? "current" : "unavailable", asOf: source.asOf, asOfBasis: "provider" });
-  } else if (!civic?.available || civic.degraded) {
+  const civicChecks = (civic?.sourceHealth ?? []).map((source) => {
+    const lastCheck = source.checkedAt ?? source.asOf;
+    const fresh = source.available && !source.stale && currentTime(lastCheck ?? undefined, now, CIVIC_ALERT_MAX_CHECK_AGE_MS);
+    const state = fresh ? "current" : source.stale || source.available ? "stale" : "unavailable";
+    checks.push({ source: CIVIC_ALERT_CATEGORY_NAMES[source.id], state,
+      asOf: lastCheck, asOfBasis: source.checkedAt ? "retrieval" : source.asOf ? "provider" : null });
+    return { id: source.id, fresh, lastCheck };
+  });
+  if (!civicChecks.length && (!civic?.available || civic.degraded)) {
     checks.push({ source: "City and County civic notices", state: "unavailable", asOf: null, asOfBasis: null });
   }
-  const localCivicAlerts = currentLocalCivicAlerts(civic?.alerts ?? [], now);
+  const localCivicAlerts = currentLocalCivicAlerts(civic?.alerts ?? [], now)
+    .filter((alert) => !civicChecks.length || civicChecks.some((source) => source.id === alert.kind && source.fresh));
   const categorySources = { weather: "weather", schools: "schools", roads: "traffic", power: "power", fireRescue: "fireRescue", air: "air" } as const;
   const unverifiedBaseCount = Object.entries(categorySources).reduce((total, [category, source]) => total + (sourceDisplayState(sources[source]) === "current" ? 0 : situation.summary.activeByCategory[category as keyof typeof categorySources]), 0);
   const expiredWeatherCount = sourceDisplayState(sources.weather) === "current"
@@ -61,7 +68,7 @@ export function deriveCountyStatus(
   const count = Math.max(0, base.count - unverifiedBaseCount - expiredWeatherCount) + currentRoadSignals.length + localCivicAlerts.length;
   const ok = base.ok && roadVerified && road !== null && road.summary.coverage === "complete"
     && Object.values(sources).every((source) => !source.requiredForQuiet || sourceDisplayState(source) === "current")
-    && civic !== null && civic.available && !civic.degraded;
+    && civic !== null && civic.available && !civic.degraded && civicChecks.every((source) => source.fresh);
   const { weather, power, air } = sources;
   // An active category is not automatically urgent. Apply the same published
   // severity rules used for Pulse's details rather than promoting all NWS
@@ -80,6 +87,9 @@ export function deriveCountyStatus(
   // A client cannot recompute this projection when an accepted source or
   // alert expires between polls. Bound its validity without re-dating checks.
   const deadlines = [Date.parse(situation.generatedAt) + COUNTY_STATUS_MAX_SNAPSHOT_AGE_MS];
+  for (const source of civicChecks) {
+    if (source.fresh && source.lastCheck) deadlines.push(Date.parse(source.lastCheck) + CIVIC_ALERT_MAX_CHECK_AGE_MS);
+  }
   for (const source of Object.values(sources)) {
     if (sourceDisplayState(source) === "current") deadlines.push(Date.parse(source.asOf ?? "") + source.staleAfterSeconds * 1_000);
   }

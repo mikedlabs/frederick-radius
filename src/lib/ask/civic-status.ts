@@ -8,11 +8,13 @@ import {
   type ChartIncident,
   type ChartIncidentsResult,
 } from "@/lib/integrations/mdot-chart";
-import type {
-  FcpsAlert,
-  FcpsAlertsResult,
+import {
+  currentFcpsOperationsNotices,
+  isCurrentFcpsNotice,
+  type FcpsAlert,
+  type FcpsAlertsResult,
 } from "@/lib/integrations/fcps";
-import { currentFcpsOperationsNotices } from "@/lib/integrations/fcps";
+import { FCPS_CHECK_MAX_AGE_SECONDS, sourceEnvelope } from "@/lib/live/currentSituationModel";
 import {
   advisoryReleases,
   type CivicPressItem,
@@ -722,8 +724,24 @@ function schoolSource(alert: FcpsAlert): AskSource {
 export function schoolStatusAskResult(
   result: FcpsAlertsResult,
   context: CivicAskContext = {},
+  now = new Date(),
 ): AskResult {
-  const alerts = currentFcpsOperationsNotices(result.data);
+  const source = sourceEnvelope({
+    source: "fcps",
+    data: result.data,
+    availability: result.available ? "available" : "unavailable",
+    requiredForQuiet: true,
+    capturedAt: now,
+    asOf: result.checkedAt,
+    asOfBasis: "retrieval",
+    staleAfterSeconds: FCPS_CHECK_MAX_AGE_SECONDS,
+  });
+  const verified = source.freshness === "fresh";
+  const alerts = verified
+    ? currentFcpsOperationsNotices(
+        result.data.filter(alert => isCurrentFcpsNotice(alert.published_at, now.getTime())),
+      )
+    : [];
   const sources: AskSource[] = alerts.length > 0
     ? alerts.slice(0, 3).map(schoolSource)
     : [{
@@ -733,16 +751,16 @@ export function schoolStatusAskResult(
         city: "Frederick County",
         href: FCPS_STATUS_URL,
         eyebrow: "Official school status",
-        reason: result.available
+        reason: verified
           ? "No current operations notice in the feed"
-          : "Operations feed unavailable",
-        confidence: result.available ? "high" : "medium",
+          : "Current school status unverified",
+        confidence: verified ? "high" : "medium",
       }];
 
   let answer: string;
-  if (!result.available) {
+  if (!verified) {
     answer =
-      "I couldn’t load the FCPS operations feed. Check FCPS directly before relying on a school opening, delay, or closure status.";
+      "I couldn’t verify the latest FCPS school status. Check FCPS directly for openings, delays, or closures.";
   } else if (alerts.length === 0) {
     answer =
       "The FCPS operations feed has no current closure, delay, or early-dismissal notice. Check FCPS directly for a specific school or after-school activity.";
@@ -764,7 +782,7 @@ export function schoolStatusAskResult(
     ],
     intelligence: {
       tools: ["schools"],
-      confidence: result.available ? "high" : "medium",
+      confidence: verified ? "high" : "medium",
       retrieval: "keyword",
     },
   };

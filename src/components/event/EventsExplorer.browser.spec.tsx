@@ -41,9 +41,10 @@ vi.mock("./EventsBoardDock", async (importOriginal) => {
   const ActualDock = (await importOriginal<typeof import("./EventsBoardDock")>()).default;
   return { default: (props: ComponentProps<typeof ActualDock>) => {
     if (recommendationContext.actualDisplay) return <ActualDock {...props} />;
-    const { q, setQ, town, lens, cat, filteredCount, countComplete, view, setView, setSort } = props;
+    const { filters, applyFilters, filteredCount, countComplete, view, setView, setSort } = props;
+    const { q, town, lens, cat } = filters;
     return <div data-test-dock data-view={view} data-town={town ?? "county"} data-time={lens} data-category={cat ?? "all"} data-count={filteredCount} data-complete={String(countComplete)}>
-      <input aria-label="Filter the events shown" value={q} onChange={(event) => setQ(event.currentTarget.value)} />
+      <input aria-label="Filter the events shown" value={q} onChange={(event) => applyFilters({ ...filters, q: event.currentTarget.value }, false)} />
       <button type="button" onClick={() => setView("calendar")}>Calendar test view</button>
       <button type="button" onClick={() => setSort("time")}>Soonest test sort</button>
     </div>;
@@ -423,6 +424,65 @@ describe("Recommended attendance promotion through the mounted explorer", () => 
     expect(ordinary?.closest("section")?.querySelector(".section-heading h2")?.textContent).toBe("Today1");
     expect(host.querySelector("[data-test-dock]")?.getAttribute("data-count")).toBe("2");
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("previews the full draft, leaves the URL, results and town unchanged on cancellation, and applies choices together", async () => {
+    recommendationContext.actualDisplay = true;
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+    vi.stubGlobal("scrollTo", vi.fn());
+    const paid = { ...listedEvent("paid-concert", "frederick"), is_free: false };
+    await render(props([listedEvent(), paid], healthy));
+    const trigger = host.querySelector<HTMLButtonElement>(".eb-filter-trigger")!;
+    const dialog = host.querySelector<HTMLElement>('[role="dialog"]')!;
+    const button = (name: string) => Array.from(dialog.querySelectorAll("button")).find((node) => node.textContent?.trim() === name)!;
+    const click = (node: HTMLButtonElement) => act(async () => node.click());
+    const url = window.location.href;
+    for (const apply of [false, true]) {
+      await click(trigger);
+      await click(button("Free"));
+      expect(button("Show 1 event")).toBeDefined();
+      await click(button("Where"));
+      await click(button("Thurmont"));
+      expect(window.location.href).toBe(url);
+      expect(eventLinks()).toContain("/events/paid-concert");
+      expect(trigger.textContent).not.toContain("Thurmont");
+
+      await act(async () => {
+        const popped = new Promise((resolve) => window.addEventListener("popstate", resolve, { once: true }));
+        if (apply) button("Show 1 event").click();
+        else host.querySelector<HTMLElement>(".eb-scrim")!.click();
+        await popped;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(document.activeElement).toBe(trigger);
+      if (!apply) {
+        expect(window.location.href).toBe(url);
+        expect(trigger.textContent).not.toContain("Thurmont");
+      }
+    }
+    expect(eventLinks()).toEqual(["/events/recovered-concert"]);
+    expect(new URL(window.location.href).searchParams.get("in")).toBe("thurmont");
+    expect(new URL(window.location.href).searchParams.get("free")).toBe("true");
+    expect(request).not.toHaveBeenCalled();
+    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  });
+
+  it("offers Show results without a numeric promise for incomplete calendar coverage", async () => {
+    recommendationContext.actualDisplay = true;
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+    vi.stubGlobal("scrollTo", vi.fn());
+    await render(props([listedEvent()], degraded));
+    await act(async () => host.querySelector<HTMLButtonElement>(".eb-filter-trigger")!.click());
+    const dialog = host.querySelector<HTMLElement>('[role="dialog"]')!;
+    expect(dialog.textContent).toContain("Show results");
+    expect(dialog.textContent).not.toMatch(/Show \d+ events?/);
+    expect(request).not.toHaveBeenCalled();
+    await act(async () => {
+      const popped = new Promise((resolve) => window.addEventListener("popstate", resolve, { once: true }));
+      (Array.from(dialog.querySelectorAll("button")).find((node) => node.textContent?.trim() === "Cancel"))!.click();
+      await popped;
+    });
+    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   });
 
   it("goes directly from Recommended to the real Agenda view and back without losing dated listings or the usable lead", async () => {

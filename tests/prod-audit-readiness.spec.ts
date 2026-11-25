@@ -43,6 +43,7 @@ function payload(): TestHealthPayload {
         search: "ready",
         eventArchive: "ready",
         sourceHealth: "ready",
+        dataTruth: "ready",
       },
       heartbeats: {
         status: "current",
@@ -66,6 +67,33 @@ describe("production public-readiness canary", () => {
       failures: [],
       partialSurfaces: [],
     });
+  });
+
+  it("accepts only hours-policy partials when all critical evidence is current", () => {
+    const base = payload();
+    const input = {
+      ...base,
+      products: { hours: { status: "policy_hold" } },
+      readiness: {
+        ...base.readiness, status: "partial",
+        capabilities: { currentHours: { status: "policy_hold" } },
+      },
+    };
+    for (const name of ["today", "ask", "map"]) {
+      input.readiness.surfaces[name] = { status: "partial", reasons: ["current_hours_policy_hold"] };
+    }
+    expect(publicReadinessGate(input)).toEqual({
+      passes: true, failures: [], partialSurfaces: ["today", "ask", "map"],
+    });
+
+    input.readiness.surfaces.ask.reasons.push("unavailable_archive");
+    expect(publicReadinessGate(input).passes).toBe(false);
+    input.readiness.surfaces.ask.reasons.pop();
+    input.readiness.migrations.dataTruth = "missing";
+    expect(publicReadinessGate(input).passes).toBe(false);
+    input.readiness.migrations.dataTruth = "ready";
+    input.readiness.surfaces.events.status = "hold";
+    expect(publicReadinessGate(input).passes).toBe(false);
   });
 
   it("allows an honest partial surface when critical evidence remains current", () => {

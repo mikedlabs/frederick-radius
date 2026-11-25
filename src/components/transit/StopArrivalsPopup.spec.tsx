@@ -30,6 +30,18 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("StopArrivalsPopup existing selected-stop snapshot", () => {
+  it("displays the official holiday override even when a cached stop reports an arriving bus", async () => {
+    const holiday = Date.parse("2026-11-26T08:00:00-05:00");
+    const text = await render(shared({
+      providerUpdatedAt: holiday, checkedAt: holiday,
+      predictions: [{ stopId: "s1", routeId: "6154", headsign: "Regular bus", arrivalEpoch: holiday / 1000 + 300, timestamp: holiday / 1000 }],
+    }), holiday);
+    expect(text).toContain("cancelled all service");
+    expect(host.querySelector("a")?.href).toContain("DocumentCenter/View/376188/");
+    expect(text).not.toContain("Regular bus");
+    expect(text).not.toContain("5 min");
+  });
+
   it("renders current existing predictions with zero duplicate requests or timers", async () => {
     const text = await render(shared());
     expect(text).toContain("Live arrivals"); expect(text).toContain("to Frederick destination"); expect(text).toContain("5 min");

@@ -56,3 +56,15 @@ test("two builds produce distinct workers that retire the previous cache", async
     }
   }
 });
+
+test("the registered URL serves the generated root-scoped worker", async ({ request }) => {
+  // Calling GET directly cannot catch a conflicting file at public/sw.js.
+  const response = await request.get("/sw.js");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toContain("application/javascript");
+  expect(response.headers()["service-worker-allowed"]).toBe("/");
+  expect(response.headers()["cache-control"]).toContain("must-revalidate");
+  const script = await response.text();
+  expect(script).toMatch(/const CACHE_VERSION = "fr-[^"]+"/);
+  expect(script).toContain("purgeLegacyRuntimeEntries()");
+});

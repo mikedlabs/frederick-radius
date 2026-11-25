@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createRef, useState, type ComponentPropsWithoutRef } from "react";
+import { act, createRef, useLayoutEffect, useState, type ComponentPropsWithoutRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -86,6 +86,29 @@ async function paint() {
 }
 
 describe("reduced-motion sheet Back focus", () => {
+  it("honors native Back on the opening commit of a cold place sheet", async () => {
+    const returnFocusRef = createRef<HTMLElement>();
+    returnFocusRef.current = opener;
+    const closed = vi.fn();
+    function ImmediateBack() {
+      const [present, setPresent] = useState(true);
+      useLayoutEffect(() => {
+        // The fallback and loaded place share one same-URL entry. The browser
+        // can return it as soon as the real dialog appears, before passive effects.
+        expect(window.history.state?.__frederickRadiusLayer).toBe("cold-place");
+        window.history.replaceState({}, "", origin);
+        window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
+      }, []);
+      return present ? <BottomSheet present ariaLabel="Cold place" historyLayerId="cold-place" returnFocusRef={returnFocusRef}
+        onClose={() => { closed(); setPresent(false); }}>{() => <h2>Place details</h2>}</BottomSheet> : null;
+    }
+    await act(async () => root.render(<ImmediateBack />));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(closed).toHaveBeenCalledTimes(1);
+    await paint();
+    expect(document.activeElement).toBe(opener);
+  });
+
   it("waits for the closed layer to paint, survives parent unmount and verifies a later successful focus", async () => {
     await mount();
     const focus = vi.spyOn(opener, "focus").mockImplementationOnce(() => undefined);

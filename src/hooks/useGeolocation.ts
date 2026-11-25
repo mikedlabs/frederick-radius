@@ -6,16 +6,11 @@ import { useEffect, useState, useCallback } from "react";
 // because lib/connect has a top-level import for the nearbyNow join.
 import { resolveMunicipality, locationLabel } from "@/lib/location";
 
-export type GeoPosition = {
-  lng: number;
-  lat: number;
-  accuracy: number;
-  /** Reverse-geocoded muni slug if user is inside one of our 12, else "frederick-county" */
-  municipality_slug?: string;
-  /** Friendly label like "1.2 mi from Carroll Creek" or "Brunswick, MD" */
-  label?: string;
-  timestamp: number;
-};
+import {
+  clearGeoPosition, GEOLOCATION_CHANGE_EVENT, persistGeoPosition, readCachedGeoPosition,
+  type GeoPosition,
+} from "@/lib/device-location-cache";
+export { GEOLOCATION_CHANGE_EVENT, readCachedGeoPosition, type GeoPosition };
 
 export type GeoState =
   | { status: "idle" }
@@ -25,13 +20,6 @@ export type GeoState =
   | { status: "unavailable" }
   | { status: "error"; message: string };
 
-const STORAGE_KEY = "fr_geo_v1";
-const TTL_MS = 1000 * 60 * 30; // 30 min cache
-/** Same-document signal for surfaces that need to re-rank after a location
- * fix changes. The browser `storage` event does not fire in the tab that made
- * the change, so sessionStorage alone cannot keep independent components in
- * sync. */
-export const GEOLOCATION_CHANGE_EVENT = "fr:geolocation-change";
 /** A refusal has its own event: listeners of GEOLOCATION_CHANGE_EVENT treat
  * it as a new device fix and refresh ranking (Today's daypart shelves reset
  * the chosen category), which a refusal must not trigger. */
@@ -43,6 +31,7 @@ export const GEOLOCATION_REFUSAL_EVENT = "fr:geolocation-refusal";
  * under it, which no longer has a location control of its own. Kept in
  * memory only: a reload starts fresh, and a later grant clears it.
  */
+let clearGeneration = 0;
 let lastRefusal: "denied" | "unavailable" | null = null;
 
 /** Record a refusal and tell every same-tab surface. */
@@ -58,55 +47,9 @@ export function resetLocationRefusalForTests(): void {
   lastRefusal = null;
 }
 
-function announceLocationChange(): void {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(GEOLOCATION_CHANGE_EVENT));
-  }
-}
-
-/**
- * Persist a consented fix and notify every same-tab surface that depends on
- * location ranking. Keeping this write in one exported contract prevents map,
- * search, and Today from silently maintaining incompatible location state.
- */
 export function cacheGeolocationPosition(position: GeoPosition): void {
-  if (typeof window === "undefined") return;
   lastRefusal = null;
-  try {
-    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(position));
-  } catch {
-    // storage may be full or disabled; the requesting hook still has the fix
-  }
-  announceLocationChange();
-}
-
-/**
- * Read the cached geolocation fix WITHOUT prompting or mounting the hook.
- *
- * Returns the user's last-known coordinates if a fresh (< 30 min) fix is
- * cached in sessionStorage, else null. Used by surfaces that want to
- * center "from where you're standing" only when we already have consent —
- * e.g. arriving on the map via a category tile. Never triggers a
- * permission prompt: if there's no cached fix, the caller falls back to
- * the city center. Safe to call during a client render (SSR-guarded).
- */
-export function readCachedGeoPosition(): GeoPosition | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const cached = JSON.parse(raw) as GeoPosition;
-    if (
-      Number.isFinite(cached.lng) &&
-      Number.isFinite(cached.lat) &&
-      Date.now() - cached.timestamp < TTL_MS
-    ) {
-      return cached;
-    }
-  } catch {
-    // ignore parse / storage errors — treat as no fix
-  }
-  return null;
+  persistGeoPosition(position);
 }
 
 /** Coordinate-only compatibility reader for ranking consumers that should not
@@ -163,9 +106,11 @@ export function useGeolocation() {
       announceLocationRefusal("unavailable");
       return;
     }
+    const generation = clearGeneration;
     setState({ status: "loading" });
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (generation !== clearGeneration) return;
         const coords = {
           lng: pos.coords.longitude,
           lat: pos.coords.latitude,
@@ -182,12 +127,12 @@ export function useGeolocation() {
             ? hit.municipality.slug
             : "frederick-county",
           label: locationLabel(coords),
-          timestamp: Date.now(),
+          timestamp: Number.isFinite(pos.timestamp) ? pos.timestamp : Date.now(),
         };
         cacheGeolocationPosition(position);
-        setState({ status: "granted", position });
       },
       (err) => {
+        if (generation !== clearGeneration) return;
         if (err.code === err.PERMISSION_DENIED) {
           setState({ status: "denied" });
           announceLocationRefusal("denied");
@@ -223,11 +168,12 @@ export function useGeolocation() {
       return false;
     }
 
+    const generation = clearGeneration;
     try {
       const permission = await navigator.permissions.query({
         name: "geolocation",
       });
-      if (permission.state !== "granted") return false;
+      if (permission.state !== "granted" || generation !== clearGeneration) return false;
       requestPosition(false);
       return true;
     } catch {
@@ -238,11 +184,9 @@ export function useGeolocation() {
   }, [requestPosition]);
 
   const clear = useCallback(() => {
-    if (typeof window !== "undefined") {
-      try { window.sessionStorage.removeItem(STORAGE_KEY); } catch {}
-    }
-    setState({ status: "idle" });
-    announceLocationChange();
+    clearGeneration++;
+    lastRefusal = null;
+    clearGeoPosition();
   }, []);
 
   return { state, request, requestHighAccuracy, requestIfGranted, clear };

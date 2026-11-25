@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { countyServiceCancelled } from "@/lib/transit-service-calendar";
 
 export type StopPrediction = {
   stopId: string;
@@ -186,5 +187,8 @@ export function useStopArrivals(stopId: string): {
       Math.abs(nowMs - snapshot.providerUpdatedAt) > PROVIDER_STALE_MS)
       ? { ...snapshot, status: "stale" }
       : snapshot;
+  if (effectiveSnapshot.predictions.length && countyServiceCancelled(nowMs)) {
+    return { snapshot: { ...effectiveSnapshot, predictions: [] }, nowMs };
+  }
   return { snapshot: effectiveSnapshot, nowMs };
 }

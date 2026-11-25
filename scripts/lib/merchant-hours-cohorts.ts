@@ -16,6 +16,7 @@ const SAFEWAY_COHORTS: readonly OfficialHoursCohort[] = SAFEWAY_LOCATIONS.map((l
     postalCode: "[itemprop='postalCode']", phone: "[itemprop='telephone']", schedule: ".js-hours-table",
   },
   hours_section: ".js-intent-hours-section", toggle: ".RedesignCore-hoursButtons > button",
+  dated_early_close: true,
   panel: ".RedesignCore-hoursWrapper > .js-intent-core-hours", toggle_labels: ["Store Hours", "Pharmacy Hours"], store_label: "Store Hours", independent_offer_names: ["Delivery in a Flash"],
   hero_schedule: ".RedesignHero-hours > .js-hours-today[data-days]", panel_schedule: ":scope > .js-hours-today[data-days]",
   schedule_row: ".c-hours-details > tbody > tr", day: ".c-hours-details-row-day", periods: ".c-hours-details-row-intervals",
@@ -479,6 +480,7 @@ export const MERCHANT_HOURS_COHORTS: readonly OfficialHoursCohort[] = [{
   source_url: "https://www.commonmarket.coop/",
   shape: "shared_daily_contact_card",
   organization_name: "Common Market",
+  thanksgiving_2026_banner: "h2.slide-title",
   schedule_container: ".hours",
   selectors: {
     card: "address.vcard", name: ".org[itemprop='name']", address: ".adr[itemprop='address']",

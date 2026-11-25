@@ -5,26 +5,29 @@ import { usePathname } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import Sheet from "@/components/ui/Sheet";
 import { track } from "@/lib/track";
-import { BETA_ID_COOKIE } from "@/lib/beta-constants";
 import { FEEDBACK_MAX_MESSAGE } from "@/lib/feedback";
 import {
+  feedbackInMoreMenu,
   OPEN_FEEDBACK_EVENT,
   PENDING_FEEDBACK_KEY,
 } from "@/lib/feedback-ui";
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
 /**
- * FeedbackWidget — the always-available "Send feedback" affordance for beta
- * and the public food-truck board.
+ * FeedbackWidget — the always-available "Send feedback" affordance on every
+ * app page.
  *
- * A small floating trigger (bottom-left, lifted clear of the bottom-nav pill and
+ * Today and Parking offer feedback in More tools to keep reading controls clear.
+ * Elsewhere, a floating trigger (bottom-left, lifted clear of the bottom-nav pill and
  * the map's bottom-right controls) opens the canonical bottom Sheet, which
  * already carries the a11y contract: role=dialog + aria-modal, focus trap, ESC,
  * and focus restore to the trigger on close.
  *
- * The general app is gated on the readable `fr_who` beta-identity cookie. The
- * public food-truck board is the one exception so a visitor can correct a stop
- * without joining the beta first.
+ * Every visitor can send a note. It used to appear only for beta testers
+ * (the `fr_who` cookie) and on the food-truck board; the beta layer was
+ * retired in #1952, which left public visitors with no way to reach the
+ * owner. The intake route is same-origin only, rate-limited and size-capped.
+ * The food-truck board keeps its own confirmation wording.
  */
 
 type Phase = "idle" | "sending" | "ok" | "error";
@@ -38,11 +41,6 @@ export const FEEDBACK_TRIGGER_BOTTOM =
  * bottom). Lift the trigger clear of the 48px bar plus its 8px inset. */
 export const FEEDBACK_TRIGGER_BOTTOM_MAP =
   `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_CHROME_RESERVE} + 12px + 56px)`;
-
-function hasBetaCookie(): boolean {
-  if (typeof document === "undefined") return false;
-  return new RegExp(`(?:^|;\\s*)${BETA_ID_COOKIE}=`).test(document.cookie);
-}
 
 export function publicFeedbackSurface(
   pathname: string | null,
@@ -84,7 +82,6 @@ export function feedbackSendErrorMessage(error?: string): string {
 
 export default function FeedbackWidget() {
   const pathname = usePathname();
-  const [show, setShow] = useState(false);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
@@ -93,25 +90,20 @@ export default function FeedbackWidget() {
   const resetTimer = useRef<number | null>(null);
   // The floating trigger steps aside for its own sheet, so it is already gone
   // when the sheet looks for the focused control. Remember it at the click so
-  // closing returns focus to it. Event-driven opens clear this and keep the
-  // control that actually opened the sheet.
+  // closing returns focus to it. Other openers can supply their own visible
+  // return target, including the header menu summary.
   const openerRef = useRef<HTMLElement | null>(null);
 
   const publicSurface = publicFeedbackSurface(pathname);
   const isPublicFoodTruckBoard = publicSurface === "food-trucks";
 
-  // Reads document.cookie after mount; both the server and first client render
-  // return null, so there is no hydration mismatch.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from document.cookie, which only exists client-side
-    setShow(hasBetaCookie() || publicSurface !== null);
-  }, [publicSurface]);
 
   useEffect(() => {
-    const openFeedback = () => {
-      // The request came from elsewhere on the page, so there is no trigger
-      // here to hand focus back to.
-      openerRef.current = null;
+    const openFeedback = (event?: Event) => {
+      // An item inside a closing menu returns to its still-visible summary.
+      // Older inline events can rely on the sheet’s active-element fallback.
+      const requested = event instanceof CustomEvent ? event.detail?.returnFocusTo : null;
+      openerRef.current = requested instanceof HTMLElement && requested.isConnected ? requested : null;
       try {
         window.sessionStorage.removeItem(PENDING_FEEDBACK_KEY);
       } catch {
@@ -189,7 +181,6 @@ export default function FeedbackWidget() {
     }
   }
 
-  if (!show) return null;
 
   const sending = phase === "sending";
   const succeeded = phase === "ok";
@@ -198,10 +189,10 @@ export default function FeedbackWidget() {
     <>
       {/* A compact icon-only tab, not a full text pill (beta review, Jul 2026:
           the pill overlapped content and fought the bottom controls). 44px so
-          the tap target stays comfortable. During beta the owner wants feedback
-          reachable on every screen (owner call, 2026-07-20), so the tab stays up
+          the tap target stays comfortable. The owner wants feedback reachable on
+          every screen. On routes that use the tab, it stays up
           over other bottom sheets and only steps aside for its OWN open sheet. */}
-      {!open && (
+      {!open && !feedbackInMoreMenu(pathname) && (
         <button
           type="button"
           onClick={(event) => {
@@ -264,7 +255,7 @@ export default function FeedbackWidget() {
           <p className="pb-1 text-[14px]" style={{ color: "var(--app-ink-2)" }}>
             {isPublicFoodTruckBoard
               ? "We use these notes to correct the board. If you left an email, we may write back."
-              : "We read every note during the beta. If you left an email, we may write back."}
+              : "We read every note. If you left an email, we may write back."}
           </p>
         ) : (
           <div className="flex flex-col gap-3 pb-1">

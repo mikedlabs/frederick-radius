@@ -107,6 +107,7 @@ beforeEach(async () => {
   nativeReplace = window.history.replaceState;
   navigation.pathname = "/events";
   vi.clearAllMocks();
+  navigation.leaveTo.mockReset();
   fetchMock.mockReset().mockResolvedValue(response("Fresh fixture result"));
   vi.stubGlobal("fetch", fetchMock);
   vi.spyOn(window, "scrollTo").mockImplementation(() => {});
@@ -242,10 +243,10 @@ describe("Find continuity through the real lazy header and overlay", () => {
       if (method === "Enter") {
         input().dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       } else {
-        const link = [...container.querySelectorAll<HTMLAnchorElement>("a")]
-          .find((node) => node.textContent?.trim() === "Open");
-        if (!link) throw new Error("The result action is missing");
-        link.click();
+        const result = container.querySelector<HTMLAnchorElement>('#search-results a[href="/places/fixture"]');
+        if (!result) throw new Error("The place result link is missing");
+        expect(result.textContent).toContain("Fresh fixture result");
+        result.click();
       }
     });
     expect(navigation.leaveTo).toHaveBeenCalledOnce();
@@ -258,6 +259,34 @@ describe("Find continuity through the real lazy header and overlay", () => {
       layerId,
     });
     expect(window.sessionStorage.getItem(DRAFT_KEY)).toBe("coffee");
+  });
+
+  it("restores the selected place on its own Back entry even after the tab draft changed", async () => {
+    fetchMock.mockResolvedValueOnce(response("First search result")).mockResolvedValueOnce(response("Fresh result on Back"));
+    await open();
+    await type("Beans");
+    await settle();
+    const oldLayer = window.history.state.__frederickRadiusLayer;
+    navigation.leaveTo.mockImplementationOnce((href: string) => window.history.pushState({}, "", href));
+    await act(async () => {
+      container.querySelector<HTMLAnchorElement>('#search-results a[href="/places/fixture"]')!.click();
+    });
+    navigation.pathname = "/places/fixture";
+    await mount();
+    window.sessionStorage.setItem(DRAFT_KEY, "unrelated words");
+    await act(async () => { window.history.back(); });
+    await settle(30);
+    navigation.pathname = "/events";
+    await mount();
+    await settle();
+    expect(input().value).toBe("Beans");
+    expect(container.textContent).toContain("Fresh result on Back");
+    expect(document.activeElement).toBe(container.querySelector('#search-results a[href="/places/fixture"]'));
+    expect(window.history.state.__frederickRadiusLayer).toBe(oldLayer);
+    expect(JSON.stringify(window.history.state)).not.toContain("Beans");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await close();
+    expect(window.history.state.__frederickRadiusLayer).toBeUndefined();
   });
 
   it("keeps the tab's query through a fresh shell mount but clearing starts a new search", async () => {

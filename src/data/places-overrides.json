@@ -91,6 +91,12 @@
     "baker-park-bandshell"
   ],
   "patch": {
+    "frederick-health-urgent-care": {
+      "name": "Frederick Health Toll House Urgent Care",
+      "address": "501 West 7th St, Suite 104",
+      "phone": "301-698-8374",
+      "website": "https://www.frederickhealth.org/locations/frederick-health-toll-house-urgent-care/"
+    },
     "alekos-middletown": {
       "category": "restaurant"
     },

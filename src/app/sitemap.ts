@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { JOJOS_WINE_SPECIAL } from "@/data/jojos-wine-special";
 import { publicPlaces } from "@/lib/loaders/places";
 import { allUpcoming } from "@/lib/loaders/events";
 import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
@@ -45,6 +46,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/places`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE}/amenities`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/parks`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/parking`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/transit`, changeFrequency: "daily", priority: 0.6 },
+    { url: `${BASE}/towns`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/dear-frederick`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/install`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/contacts`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/access`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/pulse`, lastModified: now, changeFrequency: "hourly", priority: 0.75 },
@@ -93,6 +99,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: event.lastModifiedAt,
     });
   }
+  // Its historical event URL now explains a weekly venue special and is noindex.
+  eventRoutes.delete(JOJOS_WINE_SPECIAL.slug);
   const events = [...eventRoutes.values()].map((event) => ({
     url: `${BASE}/events/${event.slug}`,
     lastModified: new Date(event.lastModified),

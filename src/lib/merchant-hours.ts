@@ -84,9 +84,10 @@ function validateExceptions(value: unknown): asserts value is HoursDateException
   let previous = "";
   for (const exception of value) {
     if (!exception || typeof exception !== "object" || Array.isArray(exception)
-      || Object.keys(exception).some((key) => !["date", "reason", "closed", "closes_at"].includes(key))
+      || Object.keys(exception).some((key) => !["date", "reason", "closed", "opens_at", "closes_at"].includes(key))
       || !isCalendarDate(exception.date) || exception.date <= previous || !plainText(exception.reason, 160)
       || (exception.closed !== undefined && exception.closed !== true)
+      || (exception.opens_at !== undefined && (!clock(exception.opens_at) || !exception.closes_at || exception.opens_at >= exception.closes_at))
       || (exception.closed === true) === (exception.closes_at !== undefined)
       || (exception.closes_at !== undefined && !clock(exception.closes_at))) throw new Error("Invalid or ambiguous merchant date exception.");
     previous = exception.date;

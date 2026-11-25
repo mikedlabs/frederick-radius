@@ -147,7 +147,7 @@ test("a map place sheet carries its live camera, layers, and query to the full p
   ).toBeVisible();
   await page.getByRole("button", { name: "Details", exact: true }).click();
 
-  const fullPage = page.getByRole("link", { name: /See full page/ });
+  const fullPage = page.getByRole("link", { name: /Place details in Radius/ });
   await expect(fullPage).toBeVisible();
   const fullPageHref = await fullPage.getAttribute("href");
   const mapReturnHref = new URL(

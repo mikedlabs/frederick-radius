@@ -39,7 +39,7 @@ const visual: EventCardVisual = {
   key: "component-artwork",
   caption: "Event image · Ticketmaster",
   presentation: "artwork",
-  sourceHref: "https://publisher.example/component-event",
+  sourceHref: "https://www.ticketmaster.com/event/1A234",
 };
 const event = {
   slug: "component-event", title: "Community arts afternoon", description: "Demonstration fixture.",

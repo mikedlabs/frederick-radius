@@ -142,7 +142,7 @@ function isVisibleFocusSurface(element: HTMLElement): boolean {
 
 function isActionableFocusReturn(element: HTMLElement): boolean {
   return isVisibleFocusSurface(element) && element.tabIndex >= 0
-    && element.matches("a[href],button,input,select,textarea,[tabindex],[contenteditable='true']")
+    && element.matches("a[href],button,details > summary:first-of-type,input,select,textarea,[tabindex],[contenteditable='true']")
     && !element.matches(":disabled,[aria-disabled='true']");
 }
 
@@ -275,7 +275,10 @@ export default function BottomSheet({
   // Keep Tab within the sheet while it's open.
   useFocusTrap(sheetRef, open && present);
 
-  useEffect(() => {
+  // A visitor can press Back as soon as the lazy dialog replaces its fallback.
+  // Capture the opener and synchronize presence in that same commit so a later
+  // mount effect cannot reopen a sheet whose history entry has already closed.
+  useLayoutEffect(() => {
     if (present) {
       focusReturnGeneration.current++;
       openPath.current = window.location.pathname;
@@ -301,7 +304,9 @@ export default function BottomSheet({
   // races its exit animation. Search-only map state changes stay on the same
   // pathname and intentionally keep the sheet open.
   useEffect(() => {
-    if (!open || pathname === openPath.current) return;
+    // The router can report no pathname before it is ready. Only a known
+    // destination can tell us the visitor actually left the sheet's route.
+    if (!open || !pathname || pathname === openPath.current) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- closes a route-scoped overlay after its owning route has changed
     setOpen(false);
     onCloseRef.current();
@@ -422,7 +427,7 @@ export default function BottomSheet({
             ref={sheetRef}
             onClickCapture={onLinkCapture}
             tabIndex={-1}
-            initial={{ y: "100%" }}
+            initial={reduce ? false : { y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={reduce ? NO_MOTION : SHEET_SPRING}

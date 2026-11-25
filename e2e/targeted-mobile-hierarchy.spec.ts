@@ -31,7 +31,7 @@ test("Events keeps one discovery doorway visible and nests filter and display ch
   await expect(dialog.getByRole("tab", { name: "What" })).toBeVisible();
   await expect(dialog.getByRole("tab", { name: "When" })).toBeVisible();
   await expect(dialog.getByRole("tab", { name: "Where" })).toBeVisible();
-  await dialog.getByRole("button", { name: "Done" }).click();
+  await dialog.getByRole("button", { name: "Cancel" }).click();
 
   await expect(page.getByRole("button", { name: "List view" })).toBeHidden();
   await page.locator("summary").filter({ hasText: "Display" }).click();

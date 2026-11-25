@@ -22,7 +22,8 @@ import { MAX_FOLLOWED_PLACES } from "@/lib/follows-contract";
 // namespaced so they can never appear in it. Reading that map here meant
 // every event saved from a real feed silently vanished from this page.
 import type { EventWithMeta } from "@/lib/loaders/events";
-import type { EventsBySlugsResolution } from "@/lib/loaders/eventsBySlugs";
+import { fetchSavedEventsHydration, mergeSavedEventHydration } from "@/lib/events/saved-event-hydration";
+export { fetchSavedEventsHydration, mergeSavedEventHydration } from "@/lib/events/saved-event-hydration";
 import { normalizeRequestedEventSlugList } from "@/lib/events/eventSlugBatch";
 import PlaceCard from "@/components/place/PlaceCard";
 import MyTaps from "@/components/beer/MyTaps";
@@ -102,72 +103,6 @@ function planTokenFromSaved(slugs: string[]): string {
  *  surface renders them rather than re-deriving anything. */
 type DecoratedEvent = EventWithMeta;
 
-/** Hydrate a bounded saved-event batch without putting personal state in a
- * query string or risking browser/proxy URL limits. Exported for the focused
- * client contract test. */
-export async function fetchSavedEventsHydration(
-  slugs: readonly unknown[],
-  signal?: AbortSignal,
-): Promise<EventsBySlugsResolution> {
-  const requested = normalizeRequestedEventSlugList(slugs);
-  const response = await fetch("/api/events/by-slugs", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ slugs: requested }),
-    signal,
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const data = (await response.json()) as {
-    events?: unknown;
-    resolvedSlugs?: unknown;
-    unresolvedSlugs?: unknown;
-    missingSlugs?: unknown;
-    degraded?: unknown;
-  };
-  if (!Array.isArray(data.events)) throw new Error("Invalid events response");
-  const events = data.events as EventWithMeta[];
-  const resolved = new Set(events.map((event) => event.slug));
-  // During an atomic deployment these fields arrive together. The fallback is
-  // intentionally conservative for an older cached API response: an omitted
-  // row remains unresolved rather than being misreported as deleted.
-  const unresolvedSlugs = Array.isArray(data.unresolvedSlugs)
-    ? normalizeRequestedEventSlugList(data.unresolvedSlugs)
-    : requested.filter((slug) => !resolved.has(slug));
-  const missingSlugs = Array.isArray(data.missingSlugs)
-    ? normalizeRequestedEventSlugList(data.missingSlugs)
-    : [];
-  const resolvedSlugs = Array.isArray(data.resolvedSlugs)
-    ? data.resolvedSlugs.flatMap((value) => {
-        if (!value || typeof value !== "object" || Array.isArray(value)) {
-          return [];
-        }
-        const row = value as Record<string, unknown>;
-        const requestedSlug = normalizeRequestedEventSlugList([
-          row.requestedSlug,
-        ])[0];
-        const canonicalSlug = normalizeRequestedEventSlugList([
-          row.canonicalSlug,
-        ])[0];
-        return requestedSlug && canonicalSlug
-          ? [{ requestedSlug, canonicalSlug }]
-          : [];
-      })
-    : events.map((event) => ({
-        requestedSlug: event.slug,
-        canonicalSlug: event.slug,
-      }));
-  return {
-    events,
-    resolvedSlugs,
-    unresolvedSlugs,
-    missingSlugs,
-    degraded:
-      typeof data.degraded === "boolean"
-        ? data.degraded
-        : unresolvedSlugs.length > 0,
-  };
-}
-
 /** Existing row-only contract retained for tests and any small callers. */
 export async function fetchSavedEventsBySlugs(
   slugs: readonly unknown[],
@@ -196,28 +131,6 @@ export function savedEventRowIds(
     if (event && !(event.slug in ids)) ids[event.slug] = item.id;
   }
   return ids;
-}
-
-export function mergeSavedEventHydration(
-  previous: ReadonlyMap<string, EventWithMeta>,
-  result: EventsBySlugsResolution,
-): Map<string, EventWithMeta> {
-  const next = new Map(previous);
-  const resolved = new Set(result.events.map((event) => event.slug));
-  for (const slug of result.missingSlugs) {
-    // A malformed response must not let a status field override an event row
-    // delivered in the same payload. The row is the stronger evidence.
-    if (!resolved.has(slug)) next.delete(slug);
-  }
-  for (const event of result.events) next.set(event.slug, event);
-  const eventsByCanonical = new Map(
-    result.events.map((event) => [event.slug, event]),
-  );
-  for (const binding of result.resolvedSlugs) {
-    const event = eventsByCanonical.get(binding.canonicalSlug);
-    if (event) next.set(binding.requestedSlug, event);
-  }
-  return next;
 }
 
 /** A successful catalog answer can confirm an omitted slug; a failed
@@ -969,7 +882,7 @@ export default function SavedList({
   ) {
     return (
       <div className="space-y-4">
-        <Masthead stand="Outings, places, events, and transit you want to keep" />
+        <Masthead stand="Nothing saved yet" />
         <EmptyState />
         <KeepRadiusCard variant="row" />
       </div>
@@ -1603,7 +1516,7 @@ export function EmptyState() {
         className="font-sans text-[18px] font-semibold leading-snug"
         style={{ color: "var(--app-ink)" }}
       >
-        Save an outing, place, event, bus trip, or stop to keep it here for later.
+        Use Save on a place, event or outing to return to it here.
       </p>
       {/* Plain tool: one action, then the other two routes as plain text
           links rather than a row of competing buttons. */}
@@ -1613,7 +1526,7 @@ export function EmptyState() {
         style={{ background: "var(--app-ink)", color: "var(--app-bg)" }}
       >
         <Search className="h-4 w-4" strokeWidth={2} aria-hidden />
-        Find something to save
+        Find a place or event
         <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
       </Link>
       <div className="flex flex-wrap gap-x-6">

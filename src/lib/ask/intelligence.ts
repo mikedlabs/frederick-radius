@@ -1,3 +1,4 @@
+import { eventPublisherArtwork } from "@/components/event/eventVisuals";
 import "server-only";
 import { Output, ToolLoopAgent, stepCountIs, tool } from "ai";
 import { z } from "zod";
@@ -331,7 +332,7 @@ function eventSource(event: EventWithMeta, trust: AskEventTrust): AskSource {
           ? "Confirm details before going"
           : undefined,
     confidence: trust.confidence,
-    photo_url: event.hero_image,
+    photo_url: eventPublisherArtwork(event)?.src,
   };
 }
 

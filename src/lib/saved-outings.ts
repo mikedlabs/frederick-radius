@@ -1,5 +1,4 @@
-import { decodeSavedPlanToken, type PlanSpec } from "@/lib/plan/plan-token";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { decodeSavedPlanToken, planAreaName, type PlanSpec } from "@/lib/plan/plan-token";
 
 export const SAVED_OUTINGS_KEY = "fr:outings:v1";
 export const MAX_SAVED_OUTINGS = 12;
@@ -19,6 +18,7 @@ export function parseSavedOutings(raw: string | null): SavedOuting[] {
   const parsed: unknown = JSON.parse(raw);
   if (!Array.isArray(parsed) || parsed.length > MAX_SAVED_OUTINGS) throw new Error("Saved outings could not be read.");
   const tokens = new Set<string>();
+  const outings: SavedOuting[] = [];
   for (const item of parsed) {
     if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("Saved outings could not be read.");
     const row = item as Record<string, unknown>;
@@ -28,9 +28,16 @@ export function parseSavedOutings(raw: string | null): SavedOuting[] {
       || !Number.isFinite(Date.parse(row.saved_at))
       || Object.keys(row).some((key) => !["token", "title", "saved_at"].includes(key))
       || tokens.has(row.token as string)) throw new Error("Saved outings could not be read.");
-    tokens.add(row.token as string);
+    const token = row.token as string;
+    tokens.add(token);
+    // Older visitor plans used "in Frederick" even when the token covered a
+    // different town or the whole county. Leave custom and event titles alone.
+    const title = spec.i.audience === "visitor" && /^(A morning|An afternoon|An evening) in Frederick$/.test(row.title)
+      ? row.title.replace(/in Frederick$/, `in ${planAreaName(spec.i)}`)
+      : row.title;
+    outings.push({ token, title, saved_at: row.saved_at });
   }
-  return parsed as SavedOuting[];
+  return outings;
 }
 
 /** The exact validated token, never a fresh plan from generic Saved defaults. */
@@ -41,9 +48,7 @@ export function savedOutingHref(token: string): string | null {
 export function savedOutingDetails(token: string): { spec: PlanSpec; town: string; stopCount: number; dateLabel: string } | null {
   const spec = decodeSavedPlanToken(token);
   if (!spec) return null;
-  const town = spec.i.municipality
-    ? MUNICIPALITY_BY_SLUG[spec.i.municipality]?.name ?? "Frederick County"
-    : "Frederick County";
+  const town = planAreaName(spec.i);
   const dateLabel = spec.i.start_at
     ? new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(spec.i.start_at))
     : "No start time saved";

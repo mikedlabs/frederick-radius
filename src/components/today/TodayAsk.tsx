@@ -24,11 +24,13 @@ export default function TodayAsk({
   embedded = false,
   showQuickNeeds = true,
   density = "standard",
+  shortcut,
 }: {
   children?: ReactNode;
   embedded?: boolean;
   showQuickNeeds?: boolean;
   density?: "standard" | "arrival" | "header";
+  shortcut?: "Meta+K" | "Control+K";
 }) {
   const findInteractionReady = useSyncExternalStore(subscribeReady, () => true, () => false);
   return (
@@ -63,6 +65,8 @@ export default function TodayAsk({
           requestFind("global");
         }}
         aria-label="Find a place, service, event, or answer"
+        aria-keyshortcuts={shortcut}
+        aria-haspopup={findInteractionReady ? "dialog" : undefined}
         className={styles.launcher}
       >
         <span
@@ -71,6 +75,8 @@ export default function TodayAsk({
         >
           <Search className="h-6 w-6" strokeWidth={1.8} />
         </span>
+        {density === "header" && <span>Find</span>}
+        {shortcut && <kbd aria-hidden>{shortcut === "Meta+K" ? "⌘K" : "Ctrl K"}</kbd>}
         {density !== "header" && <span className="min-w-0 flex-1">
           <span className={styles.prompt}>
             Find what you need

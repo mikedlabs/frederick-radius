@@ -113,7 +113,7 @@ describe("PulseIndicator status transport", () => {
     await mountPulse();
     expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Unable to verify; current alerts are unverified");
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unverified");
-    expect(container.querySelector("a")?.className.split(/\s+/)).toContain("inline-flex");
+    expect(container.querySelector("a")?.getAttribute("data-pulse-mobile-visible")).toBe("true");
   });
   it("bounds a delayed body and ignores its late outcome, then clears stale on valid recovery", async () => {
     const body = deferred<unknown>();
@@ -130,7 +130,7 @@ describe("PulseIndicator status transport", () => {
     await advance(5 * 60 * 1000);
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Clear in checked feeds; no active alerts");
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Clear");
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Clear in checked feeds");
     expect(container.querySelector("a")?.getAttribute("data-pulse-state")).toBe("ready");
   });
   it("consumes a late body rejection after its deadline", async () => {
@@ -187,7 +187,7 @@ describe("PulseIndicator status transport", () => {
     await mountPulse();
     const indicator = container.querySelector("[data-pulse-indicator]");
     expect(indicator?.getAttribute("aria-label")).toBe(`County status: ${level === "Clear" ? "Clear in checked feeds" : level === "Unknown" ? "Unable to verify" : level}${details}`);
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe(level === "Unknown" ? "Unverified" : level);
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe(level === "Clear" ? "Clear in checked feeds" : level === "Unknown" ? "Unverified" : level);
     expect(container.querySelector("[data-pulse-desktop-state]")?.textContent).toBe(level === "Clear" ? "Clear in checked feeds" : level === "Unknown" ? "Unable to verify" : level);
   });
   it("cancels pending work and all polling on unmount", async () => {
@@ -247,17 +247,17 @@ describe("PulseIndicator status transport", () => {
     expect(container.querySelector("a")?.getAttribute("aria-label")).toBe("County status: Clear in checked feeds; no active alerts");
   });
 
-  it("keeps mobile checking visible after failure until a valid recovery clears it", async () => {
+  it("keeps mobile status present through failure, checking and a qualified quiet recovery", async () => {
     const body = deferred<unknown>();
     const fetchMock = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ ok: true, json: () => body.promise }); vi.stubGlobal("fetch", fetchMock);
     await mountPulse();
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Unverified");
     await advance(5 * 60 * 1000);
-    expect(container.querySelector("a")?.className.split(/\s+/)).toContain("inline-flex");
+    expect(container.querySelector("a")?.getAttribute("data-pulse-mobile-visible")).toBe("true");
     expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Checking");
     await act(async () => body.resolve({ ...quiet, lastUpdated: new Date().toISOString(), validUntil: new Date(Date.now() + 360_000).toISOString() }));
-    expect(container.querySelector("a")?.className.split(/\s+/)).toContain("hidden");
-    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Clear");
+    expect(container.querySelector("a")?.getAttribute("data-pulse-mobile-visible")).toBe("true");
+    expect(container.querySelector("[data-pulse-mobile-state]")?.textContent).toBe("Clear in checked feeds");
   });
 
 });

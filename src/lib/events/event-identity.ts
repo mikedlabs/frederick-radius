@@ -1,4 +1,5 @@
 import "server-only";
+import { applyVenueTimeCorrection } from "@/data/thanksgiving-events";
 import { isResolvableEventSlug } from "@/lib/events/resolvable-event-slug";
 import { getSql } from "@/lib/db/client";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -118,7 +119,7 @@ export function archivedEventFromSnapshot(
   ) {
     return null;
   }
-  return { ...(row as unknown as EventWithMeta), slug };
+  return applyVenueTimeCorrection({ ...(row as unknown as EventWithMeta), slug });
 }
 
 async function beforeDeadline<T>(

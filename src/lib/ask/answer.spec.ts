@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Positive availability scenarios need a stable reviewed fixture even when
 // production legitimately withholds every expired schedule. Never refresh
@@ -1418,40 +1418,61 @@ describe("askFrederick structured answers", () => {
     expect(result.answer).not.toMatch(/\bis quiet\b/i);
   });
 
-  it("answers a nearest-stop question from the committed GTFS stop layer", async () => {
-    const result = await askFrederick("Where is the nearest bus stop?", downtown);
-    expect(result.usedModel).toBe(false);
-    expect(result.intelligence?.tools).toEqual(["transit"]);
-    expect(result.sources[0]).toMatchObject({
-      name: "Square Corner (East Patrick Street at North Market Street)",
-      category: "transit",
-      confidence: "high",
+  describe("local transit answers", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-11-24T14:00:00Z"));
     });
-    expect(result.sources[0]?.href).toContain("show=transit");
-    expect(result.sources[0]?.distance).toBeTruthy();
-    expect(result.answer).toContain("fare-free");
-  });
+    afterEach(() => vi.useRealTimers());
 
-  it("keeps a current bus-service question on the transit tools and official schedule", async () => {
-    const result = await askFrederick("Can I catch a bus right now?", downtown);
+    it.each([
+      ["Do buses run this Friday?", "cancelled all service", "County transit bulletin (PDF)"],
+      ["Can I catch a bus Thanksgiving at 4pm?", "cancelled all service", "County transit bulletin (PDF)"],
+      ["Do shuttles run the Saturday after Thanksgiving?", "regular Saturday schedules", "County transit bulletin (PDF)"],
+      ["Will the MARC Brunswick Line run on November 27?", "has no service", "MARC holiday schedule"],
+    ])("answers %s with the dated rider publication", async (question, content, source) => {
+      const result = await askFrederick(question, downtown);
+      expect(result.usedModel).toBe(false);
+      expect(result.answer).toContain(content);
+      expect(result.sources[0].name).toBe(source);
+    });
 
-    expect(result.usedModel).toBe(false);
-    expect(result.intelligence?.tools).toEqual(["transit"]);
-    expect(result.sources.map((source) => source.name)).toEqual([
-      "Frederick County TransIT",
-      "Official Connector schedules",
-    ]);
-    expect(result.sources.every((source) => source.category === "transit")).toBe(true);
-    expect(result.sources.map((source) => source.href)).toEqual([
-      "/transit",
-      "https://www.frederickcountymd.gov/199/Connector-Schedules",
-    ]);
-    expect(result.actions?.map((action) => action.label)).toEqual([
-      "Open the live transit map",
-      "Check official schedules",
-    ]);
-    expect(result.actions?.some((action) => /plan|independent|walking/i.test(action.label))).toBe(false);
-    expect(result.answer).toContain("cannot confirm a specific departure");
+    it("answers a nearest-stop question from the committed GTFS stop layer", async () => {
+      const result = await askFrederick("Where is the nearest bus stop?", downtown);
+      expect(result.usedModel).toBe(false);
+      expect(result.intelligence?.tools).toEqual(["transit"]);
+      expect(result.sources[0]).toMatchObject({
+        name: "Square Corner (East Patrick Street at North Market Street)",
+        category: "transit",
+        confidence: "high",
+      });
+      expect(result.sources[0]?.href).toContain("show=transit");
+      expect(result.sources[0]?.distance).toBeTruthy();
+      expect(result.answer).toContain("fare-free");
+    });
+
+    it("keeps a current bus-service question on the transit tools and official schedule", async () => {
+      const result = await askFrederick("Can I catch a bus right now?", downtown);
+
+      expect(result.usedModel).toBe(false);
+      expect(result.intelligence?.tools).toEqual(["transit"]);
+      expect(result.sources.map((source) => source.name)).toEqual([
+        "Frederick County TransIT",
+        "Official Connector schedules",
+      ]);
+      expect(result.sources.every((source) => source.category === "transit")).toBe(true);
+      expect(result.sources.map((source) => source.href)).toEqual([
+        "/transit",
+        "https://www.frederickcountymd.gov/199/Connector-Schedules",
+      ]);
+      expect(result.actions?.map((action) => action.label)).toEqual([
+        "Open the live transit map",
+        "Check official schedules",
+      ]);
+      expect(result.actions?.some((action) => /plan|independent|walking/i.test(action.label))).toBe(false);
+      expect(result.answer).toContain("cannot confirm a specific departure");
+    });
+
   });
 
   it("evaluates late-night food at a real late-night hour", async () => {

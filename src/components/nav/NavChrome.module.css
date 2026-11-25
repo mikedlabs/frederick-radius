@@ -1,18 +1,3 @@
-/* PLAIN TOOL chrome. The header and the tab bar are flat instruments on the
-   white ground: no boxes, no floating pill, no gradient. A single hairline
-   separates each from the page. */
-.bar {
-  background: var(--app-bg);
-  box-shadow: none;
-}
-.search {
-  min-height: 44px;
-  box-shadow: none;
-}
-.tool {
-  box-shadow: none;
-  transition: background-color var(--app-dur-fast) var(--app-ease-out), color var(--app-dur-fast) var(--app-ease-out);
-}
 .rail {
   background: var(--app-bg);
   border: 0;
@@ -96,170 +81,167 @@
   background: var(--app-ink);
   opacity: 0.6;
 }
-.tool:focus-visible,
-.search:focus-visible {
-  outline: 2px solid var(--app-brand);
-  outline-offset: 2px;
-}
 .destination:focus-visible {
   outline: 2px solid var(--app-brand);
   outline-offset: -3px;
 }
 @media (hover: hover) {
-  .tool:hover {
-    background: var(--app-bg-sunken);
-  }
   .destination:not([data-selected="true"]):hover {
     color: var(--app-ink);
   }
 }
-.tool:active {
-  background: var(--app-bg-sunken);
-}
 @media (prefers-reduced-motion: reduce) {
-  .tool,
   .destination {
     transition: none;
     transform: none;
   }
-  .tool:hover,
-  .tool:active,
   .destination:active {
     transform: none;
   }
 }
 
-/* The row publishes its measured height to the rest of the shell. Text
-   enlargement can add a line, while a normal masthead occupies 56px. */
-.bar .row {
+/* The upper band carries identity and actions. A quieter second line gives
+   phones room to name both the selected area and the county-wide report. */
+.bar {
+  --masthead-ground: var(--app-media-ink);
+  --masthead-type: var(--app-paper);
+  --masthead-stroke: color-mix(in srgb, var(--masthead-type) 55%, transparent);
+  --masthead-hover: color-mix(in srgb, var(--masthead-type) 12%, transparent);
   --header-gutter: 16px;
-  position: relative;
-  min-height: 56px;
-  height: auto;
-  flex-wrap: wrap;
-  column-gap: 2px;
-  padding-block: 6px;
-  padding-left: max(var(--header-gutter), env(safe-area-inset-left, 0px));
-  padding-right: max(var(--header-gutter), env(safe-area-inset-right, 0px));
+  --header-bottom-space: calc(14 * var(--spacing) + 1px + env(safe-area-inset-bottom, 0px));
+  --header-panel-room: max(44px, calc(100dvh - env(safe-area-inset-top, 0px) - var(--app-topbar-h) - var(--header-bottom-space) - 8px));
+  --header-start: max(var(--header-gutter), env(safe-area-inset-left, 0px));
+  --header-end: max(var(--header-gutter), env(safe-area-inset-right, 0px));
+  background: var(--masthead-ground);
 }
-
-.row > button,
-.row .home,
-.row .tool,
-.row :global([data-location-chip]),
-.row :global([data-pulse-indicator]) {
-  min-width: 44px;
-  min-height: 44px;
-  height: auto;
-}
-
-.row > button:not(.search):not([data-header-back]) {
-  width: 44px;
-  height: 44px;
-}
-.row > :global([data-header-back]) { margin-left: 0; }
-.row > button > svg,
-.row .tool > svg {
-  max-width: 24px;
-  max-height: 24px;
-}
-.row :global([data-location-chip]) > svg {
-  max-width: 16px;
-  max-height: 16px;
-}
-
-.home {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 5px;
-  max-width: 100%;
-}
-.home > svg {
-  flex: none;
-  width: 26px;
-  height: 26px;
-}
-.home [data-header-wordmark] {
-  display: block;
-  color: var(--app-ink);
-  white-space: nowrap;
-  font-size: 1.375rem;
-  line-height: 1;
-  letter-spacing: -0.045em;
-}
-.home [data-product-status] { display: none; }
-
-.todayDisclosure {
-  flex: none;
-  min-width: 44px;
-}
-.todayDisclosure > summary::-webkit-details-marker { display: none; }
-.todayHeaderTrigger {
+.row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 44px;
-  min-height: 44px;
-  padding-inline: 5px;
-  list-style: none;
-  cursor: pointer;
-  border-radius: var(--app-radius-sm);
-  color: var(--app-ink);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1.15;
+  flex-wrap: wrap;
+  position: relative;
+  max-width: 64rem;
+  margin-inline: auto;
+  padding-inline: var(--header-start) var(--header-end);
 }
-.todayHeaderTrigger > span { min-width: 0; }
-.todayHeaderTrigger > svg,
-.utilityRow > svg { flex: none; }
-.moreLabel, .todayHeaderTrigger [data-today-scope-compact] { display: none; }
-
-.todayDisclosure[open] > summary {
-  color: var(--app-link);
+.identity { flex: 1 0 auto; max-width: 100%; }
+.actions, .context { display: flex; align-items: center; flex-wrap: wrap; }
+.actions { gap: 0.25rem; }
+.identity, .actions { padding-block: 6px; }
+.home, .back, .search, .todayHeaderTrigger, .utilityRow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+}
+.home, .back, .search, .actions .todayHeaderTrigger { color: var(--masthead-type); }
+.home { gap: 0.45rem; max-width: 100%; }
+.home svg { flex: none; width: 29px; height: 29px; }
+.home [data-header-wordmark] {
+  font-size: clamp(1.45rem, 4.5vw, 1.75rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+.back, .search, .todayHeaderTrigger {
+  justify-content: center;
+  gap: 0.375rem;
+  padding-inline: 0.625rem;
+  border-radius: var(--app-radius-sm);
+  font-size: 0.875rem;
+  line-height: 1.15;
+  font-weight: 600;
+}
+.back { padding-inline-start: 0; }
+.search { border: 1px solid var(--masthead-stroke); }
+.actions kbd { display: none; }
+.search:disabled { cursor: wait; opacity: 0.7; }
+.todayDisclosure { min-width: 0; }
+.todayHeaderTrigger {
+  cursor: pointer;
+  list-style: none;
+}
+.todayHeaderTrigger::-webkit-details-marker { display: none; }
+.todayHeaderTrigger > svg, .utilityRow > svg, .search svg { flex: none; }
+.todayHeaderTrigger [data-today-scope-full] { display: none; }
+.todayHeaderTrigger[data-today-area-trigger] { color: var(--app-ink); padding-inline-start: 0; }
+.actions .todayHeaderTrigger { padding-inline-end: 0.25rem; }
+.context {
+  flex: 1 0 calc(100% + var(--header-start) + var(--header-end));
+  justify-content: space-between;
+  column-gap: 0.5rem;
+  margin-inline: calc(-1 * var(--header-start)) calc(-1 * var(--header-end));
+  padding-inline: var(--header-start) var(--header-end);
   background: var(--app-bg-sunken);
 }
-.row :global([data-find-density="header"]) a:focus-visible,
-.todayHeaderTrigger:focus-visible,
-.utilityRow:focus-visible {
+.context > * { flex: 0 0 auto; max-width: 100%; }
+.context > :only-child { margin-inline-start: auto; }
+.context :global([data-pulse-indicator]) {
+  min-width: 44px;
+  max-width: 100%;
+  background: transparent;
+  --pulse-ground: var(--app-bg-sunken);
+  padding-inline: 0.25rem;
+}
+.context :global([data-pulse-indicator][aria-current="page"]) {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.context :global([data-location-chip]) {
+  width: auto;
+  min-width: 44px;
+  max-width: 100%;
+  justify-content: flex-start;
+  padding-inline: 0 0.375rem;
+}
+.context :global([data-location-scope-label="compact"]) { display: inline; }
+.context :global([data-location-scope-label="full"]) { display: none; }
+.context :global([data-location-chip]) > svg { flex: none; display: block; width: 16px; height: 16px; }
+.context :global([data-location-chip]) > svg:last-child { width: 13px; height: 13px; }
+.row :is(a, button, summary):focus-visible {
   outline: 2px solid var(--app-focus);
   outline-offset: -2px;
 }
-
+.identity :is(a, button):focus-visible,
+.actions > .search:focus-visible,
+.actions :global([data-find-density="header"]) a:focus-visible,
+.actions .todayHeaderTrigger:focus-visible { outline-color: var(--masthead-type); }
 .todayHeaderPanel {
   position: absolute;
   z-index: 1;
+  inset-inline-end: max(var(--header-gutter), env(safe-area-inset-right, 0px));
   top: 100%;
-  right: max(var(--header-gutter), env(safe-area-inset-right, 0px));
-  width: min(21rem, calc(100% - var(--header-gutter) * 2));
-  max-height: min(70dvh, 24rem);
+  width: min(21rem, calc(100% - 2 * var(--header-gutter)));
+  max-height: min(65dvh, 26rem, var(--header-panel-room));
+  overscroll-behavior: contain;
   overflow: auto;
   padding: 12px;
   border: 1px solid var(--app-control-border);
   border-radius: var(--app-radius-md);
   background: var(--app-bg-elevated-solid);
+  box-shadow: var(--app-shadow-3);
+  color: var(--app-ink);
+}
+.context :global([data-location-scope-menu]) {
+  /* LocationChip starts 0.375rem below the masthead. */
+  max-height: min(65dvh, 31rem, max(44px, calc(var(--header-panel-room) - 0.375rem)));
+}
+.todayDisclosure:not([open]) > .todayHeaderPanel { display: none; }
+.todayDisclosure[data-today-header-disclosure="tools"] > .todayHeaderPanel {
+  width: min(17rem, calc(100% - 2 * var(--header-gutter)));
+  padding: 4px;
 }
 .todayHeaderPanel :global([data-today-scope-density="header"]) { margin: 0; }
 .todayHeaderPanel :global([data-today-scope-density="header"] label) { width: 100%; }
 .todayHeaderPanel :global([data-today-scope-density="header"] select) {
   width: 100%;
-  /* Native WebKit menus ignore min-height alone. */
   height: max(44px, 2.75rem);
   padding-inline: 8px;
   font-size: 1rem;
 }
 .todayHeaderPanel :global([data-today-scope-density="header"] button) { min-height: 44px; }
-.todayDisclosure:not([open]) > .todayHeaderPanel { display: none; }
-
-.todayDisclosure[data-today-header-disclosure="tools"] > .todayHeaderPanel {
-  width: min(17rem, calc(100% - var(--header-gutter) * 2));
-  padding: 4px;
-}
+.actions .todayHeaderPanel { top: auto; margin-block-start: 6px; }
 .utilityRow {
   position: relative;
-  display: flex;
-  align-items: center;
   gap: 12px;
   width: 100%;
   min-height: 46px;
@@ -276,119 +258,107 @@
 .utilityRow :global([data-top-tool-rule]) {
   position: absolute;
   inset-block: 12px;
-  inset-inline: 0 auto;
+  inset-inline-start: 0;
   width: 2px;
-  height: auto;
   background: var(--app-link);
 }
+
 @media (hover: hover) {
-  .todayHeaderTrigger:hover,
-  .utilityRow:hover { background: var(--app-bg-sunken); }
+  .search:hover, .back:hover, .actions .todayHeaderTrigger:hover { background: var(--masthead-hover); }
+  .utilityRow:hover, .context .todayHeaderTrigger:hover { background: var(--app-ink-tint-6); }
 }
+.actions .todayDisclosure[open] > summary { background: var(--masthead-hover); }
+.context .todayDisclosure[open] > summary { background: var(--app-ink-tint-8); }
 
 @media (max-width: 639.98px) {
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) {
-    width: 44px;
-    padding-inline: 0;
+  /* One scroll area keeps the last town reachable when large text leaves
+     less than a full tap target beneath the picker heading. */
+  .context :global([data-location-scope-menu]) { overflow-y: auto; overscroll-behavior: contain; }
+  .context :global([data-location-options]) { flex: none; overflow: visible; }
+  .context {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.75rem), 1fr));
+    row-gap: 4px;
+    align-items: center;
   }
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) > span,
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) > svg:last-child { display: none; }
-  .row :global([data-pulse-indicator]) { padding-inline: 2px; }
-  .todayDisclosure[data-today-header-disclosure="area"] {
-    max-width: min(24vw, 8rem);
-  }
-  .todayHeaderTrigger[data-today-area-trigger] { overflow-wrap: anywhere; }
-}
-
-@media (min-width: 520px) and (max-width: 639.98px) {
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) {
-    width: auto;
-    max-width: 106px;
-    padding-inline: 5px;
-  }
-  .bar[data-dense-mobile-header="true"] :global([data-location-chip]) > :global([data-location-scope-label="compact"]) {
-    display: block;
-  }
-}
-
-@media (max-width: 519.98px) {
-  .bar[data-today-header]:has([data-pulse-mobile-visible]) .todayDisclosure[data-today-header-disclosure="area"] {
-    max-width: clamp(49px, calc(50vw - 134px), 76px);
-  }
-  .bar[data-today-header]:has([data-pulse-mobile-visible]) .todayHeaderTrigger[data-today-area-trigger] {
-    padding-inline: 1px;
-    text-align: center;
-  }
-  .bar[data-today-header]:has([data-pulse-mobile-visible]) [data-today-area-trigger] :is(svg, [data-today-scope-full]) { display: none; }
-  .bar[data-today-header]:has([data-pulse-mobile-visible]) [data-today-area-trigger] [data-today-scope-compact] { display: inline; }
-  .bar .row { --header-gutter: 12px; column-gap: 2px; }
-  .bar .row > [data-header-spacer] { display: none; }
-  .row > .home, .row > [data-header-back] { margin-inline-end: auto; }
-  .bar[data-map-header] .row :global([data-location-chip][data-compact="true"]) {
-    min-width: 44px;
-    max-width: 102px;
-    padding-inline: 4px;
-  }
-}
-@media (max-width: 429.98px) {
-  .home { gap: 4px; }
-  .home > svg { width: 24px; height: 24px; }
-  .home [data-header-wordmark] { font-size: 1.1875rem; }
-}
-@media (min-width: 360px) and (max-width: 389.98px) {
-  .bar .row { --header-gutter: 8px; }
-  .home [data-header-wordmark] { font-size: 1.125rem; }
+  .context > * { justify-self: start; }
+  .context :global([data-pulse-indicator]) { justify-self: end; }
+  .context :global([data-pulse-indicator]):only-child { grid-column: 1 / -1; }
+  .context .todayHeaderTrigger { max-width: 100%; }
 }
 @media (max-width: 359.98px) {
-  .bar .row { --header-gutter: 5px; }
-  /* With four actions, put the mark above its name. This buys a complete
-     town and status label without depending on the native font's advance. */
-  .bar:has([data-find-interaction-ready]):has([data-pulse-mobile-visible]) .home {
-    flex-direction: column;
-    justify-content: center;
-    gap: 0;
-  }
-  .bar:has([data-find-interaction-ready]) [data-pulse-mobile-visible] {
-    width: max(44px, 3.5rem);
-  }
-  .bar[data-today-header]:has([data-pulse-mobile-visible]) .todayDisclosure[data-today-header-disclosure="area"] {
-    width: 3.5rem;
-    max-width: 3.5rem;
-  }
-  .home { gap: 2px; }
-  .home [data-header-wordmark] { font-size: 1rem; letter-spacing: -0.04em; }
-  .row :global([data-pulse-indicator]) { padding-inline: 0; }
-  .bar[data-map-header] .row :global([data-location-chip][data-compact="true"]) {
-    min-width: 44px;
-    max-width: 82px;
-    padding-inline: 2px;
-    column-gap: 2px;
-  }
-  .bar[data-map-header] .row :global([data-location-chip]) > svg:first-child { display: none; }
-  .todayDisclosure[data-today-header-disclosure="area"] { max-width: 49px; }
-  .todayHeaderTrigger[data-today-area-trigger] {
-    padding-inline: 0;
-  }
-  .todayHeaderTrigger[data-today-area-trigger] > svg { display: none; }
+  .bar { --header-gutter: 10px; }
+  .home { gap: 0.25rem; }
+  .actions { gap: 2px; }
+  .actions .search, .actions :global([data-find-density="header"]) a,
+  .actions .todayHeaderTrigger { gap: 4px; padding-inline: 5px; }
+  .home svg { width: 24px; height: 24px; }
+  .home [data-header-wordmark] { font-size: 1.25rem; }
 }
-
 @media (min-width: 640px) {
-  .bar .row { --header-gutter: 20px; column-gap: 4px; }
-  .home { gap: 7px; }
-  .home > svg { width: 28px; height: 28px; }
+  .bar { --header-gutter: 20px; }
+  .row { min-height: 68px; gap: 0.75rem; }
+  .home svg { width: 32px; height: 32px; }
+  .actions .todayHeaderTrigger { padding-inline: 0.625rem; }
+  .context {
+    --masthead-location-ink: var(--masthead-type);
+    flex: 0 1 auto;
+    justify-content: flex-start;
+    column-gap: 0.5rem;
+    margin: 0;
+    padding-inline: 0.875rem 0;
+    background: none;
+    border-inline-start: 1px solid var(--masthead-stroke);
+  }
+  .context :global([data-location-scope-label="compact"]),
+  .todayHeaderTrigger [data-today-scope-compact] { display: none; }
+  .context :global([data-location-scope-label="full"]),
+  .todayHeaderTrigger [data-today-scope-full] { display: inline; }
+  .context .todayHeaderTrigger, .context :global([data-pulse-indicator]) > span { color: var(--masthead-type); }
+  .context :global([data-pulse-indicator]) { --pulse-ground: var(--masthead-ground); }
+  .context :is(a, button, summary):focus-visible { outline-color: var(--masthead-type); }
+  .context :is(.todayHeaderPanel, [data-location-scope-menu]) :is(a, button, summary):focus-visible { outline-color: var(--app-focus); }
+  .todayDisclosure { position: relative; }
+  .todayDisclosure > .todayHeaderPanel,
+  .todayDisclosure[data-today-header-disclosure="tools"] > .todayHeaderPanel {
+    inset-inline-end: 0;
+    width: min(17rem, calc(100vw - 2 * var(--header-gutter)));
+  }
+  .context :global([data-location-chip]):hover, .context :global([data-pulse-indicator]):hover,
+  .context .todayHeaderTrigger:hover, .context .todayDisclosure[open] > summary { background: var(--masthead-hover); }
+}
+/* Keep the controls on one line at the narrow end of tablet split view. */
+@media (min-width: 640px) and (max-width: 767.98px) {
+  .bar { --header-gutter: 12px; }
+  .row { gap: 8px; }
+  .home { gap: 5px; }
+  .home svg { width: 28px; height: 28px; }
   .home [data-header-wordmark] { font-size: 1.5rem; }
-  .moreLabel { display: inline; }
-  .todayHeaderTrigger { padding-inline: 8px; }
-  .row :global([data-location-chip]) { max-width: 132px; }
+  .actions { gap: 2px; }
+  .actions .search, .actions :global([data-find-density="header"]) a,
+  .actions .todayHeaderTrigger { gap: 4px; padding-inline: 6px; }
+  .context { column-gap: 2px; padding-inline-start: 8px; }
+  .context :global([data-pulse-indicator]), .context .todayHeaderTrigger { padding-inline: 4px; }
+  /* Keep the words and the area chevron. These two redundant icons would
+     otherwise push the entire context group onto another row in wider fonts. */
+  .actions .todayHeaderTrigger > svg,
+  .context .todayHeaderTrigger[data-today-area-trigger] > svg:first-child,
+  .context :global([data-location-chip]) > svg:first-child { display: none; }
 }
 @media (min-width: 1024px) {
-  .bar .row {
-    padding-left: max(min(6rem, 96px), env(safe-area-inset-left, 0px));
-    column-gap: 10px;
+  .bar { --header-bottom-space: env(safe-area-inset-bottom, 0px); }
+  .row { padding-inline-start: max(min(6rem, 96px), env(safe-area-inset-left, 0px)); gap: 1.25rem; }
+  .home { gap: 0.6rem; }
+  .home svg { width: 36px; height: 36px; }
+  .home [data-header-wordmark] { font-size: 2rem; }
+  .actions kbd {
+    display: inline;
+    margin-inline-start: 0.25rem;
+    color: var(--masthead-type);
+    font: 500 0.6875rem/1.2 var(--font-sans-base), sans-serif;
   }
-  .home > svg { width: 32px; height: 32px; }
-  .home [data-header-wordmark] { font-size: 1.6875rem; }
-  .home [data-product-status] { display: inline-flex; }
-  .bar .search { background: var(--app-bg-sunken); }
-  .todayHeaderTrigger { gap: 6px; }
+  .context { gap: 1rem; padding-inline-start: 1.25rem; }
+}
+@media (forced-colors: active) {
+  .bar, .context, .search { border-block-end: 1px solid CanvasText; }
 }

@@ -53,6 +53,7 @@ export function askScopedSchedule(place: ScopedSchedulePlace, now = new Date()):
     || e.coverage_through !== easternDayKey(new Date(e.expires_at))) return undefined;
   if (e.exceptions.some((item) => !item || !isCalendarDate(item.date) || !plain(item.reason, 160)
     || (item.closed !== undefined && item.closed !== true)
+    || (item.opens_at !== undefined && (!clock(item.opens_at) || !item.closes_at || item.opens_at >= item.closes_at))
     || (item.closed === true) === (item.closes_at !== undefined)
     || (item.closes_at !== undefined && !clock(item.closes_at)))) return undefined;
   // A partial week cannot turn absent weekdays into closed service days.

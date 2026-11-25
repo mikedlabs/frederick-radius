@@ -25,6 +25,7 @@ describe("normalizeStatsApiSchedule", () => {
     expect(out).toHaveLength(2);
     const g = out[0];
     expect(g.id).toBe("keys-800001");
+    expect(g.published_time).toBe("start");
     expect(g.title).toBe("Frederick Keys vs. Hudson Valley Renegades");
     expect(g.source).toBe("frederick-keys");
     expect(g.category).toBe("sports");
@@ -33,6 +34,17 @@ describe("normalizeStatsApiSchedule", () => {
     expect(g.placement).toBe("geocoded");
     expect(g.starts_at).toBe("2026-07-01T23:00:00.000Z"); // real first pitch, not a noon anchor
     expect(g.geom).toEqual({ lng: -77.4179, lat: 39.408 });
+  });
+
+  it("keeps a game with an undetermined first pitch date-only while preserving its expiry window", () => {
+    const tbd = structuredClone(schedule);
+    const game = tbd.dates[0].games[0];
+    game.status = { ...game.status, startTimeTBD: true };
+    const [dateOnly] = normalizeStatsApiSchedule(tbd);
+    const [timed] = normalizeStatsApiSchedule(schedule);
+    expect(dateOnly.published_time).toBe("date");
+    expect(dateOnly.starts_at).toEqual(timed.starts_at);
+    expect(dateOnly.ends_at).toEqual(timed.ends_at);
   });
 
   it("maps a postponed game's status", () => {

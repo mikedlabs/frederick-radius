@@ -15,12 +15,9 @@ const meta = {
       },
     },
   },
-  args: {
-    compact: false,
-  },
-  render: (args) => (
+  render: () => (
     <header className="flex min-h-16 items-center justify-end px-4">
-      <LocationChip {...args} />
+      <LocationChip />
     </header>
   ),
 } satisfies Meta<typeof LocationChip>;
@@ -35,18 +32,15 @@ export const TodayAt390: Story = {
 };
 
 export const MapAt320: Story = {
-  args: {
-    compact: true,
-  },
   globals: {
     viewport: { value: "radiusMobileNarrow", isRotated: false },
   },
-  render: (args) => (
+  render: () => (
     <header
       data-map-header="true"
       className="flex min-h-16 items-center justify-end px-4"
     >
-      <LocationChip {...args} />
+      <LocationChip />
     </header>
   ),
 };
@@ -58,14 +52,12 @@ export const DesktopFullLabel: Story = {
 };
 
 export const ExplicitBrunswick: Story = {
-  args: { compact: true },
   parameters: { nextjs: { navigation: { pathname: "/map", query: { in: "brunswick", q: "coffee" } } } },
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
 };
 
 /** The real native URL/Back contract is covered by the compiled Tools journey. */
 export const CompassWorkspace: Story = {
-  args: { compact: true },
   parameters: { nextjs: { navigation: { pathname: "/compass", query: { in: "thurmont", chapter: "go-out" } } } },
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
 };

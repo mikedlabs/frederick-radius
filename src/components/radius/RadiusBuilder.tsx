@@ -8,7 +8,9 @@ import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
 import MapControlSheet, { SNAP_COLLAPSED, SNAP_HALF } from "./MapControlSheet";
+import { getScope, parseScope, scopeToParam, scopeTownSlug, SCOPE_PARAM } from "@/lib/scope";
 import { resolveMunicipality } from "@/lib/location";
+import { useGeolocation, readCachedPosition } from "@/hooks/useGeolocation";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 // Read the same slim, pre-decorated set the rest of the app uses on
@@ -39,6 +41,7 @@ import {
   haversineMeters,
   isInsideFrederickCounty,
   type TravelMode,
+  type LngLat,
   formatDistance,
 } from "@/lib/geo";
 import { roundCoord } from "@/lib/walkTime";
@@ -132,23 +135,8 @@ const SORT_KEY = "fr:radius:sort:v1";
 const PEEK: Record<ViewMode, number> = { grid: 8, list: 10 };
 const FOOD_GROUP = "food";
 
-// Geolocation cache + dismiss keys, hoisted so they're stable refs
-// across renders (the lint rule wants them out of the effect's
-// dependency array). Cache key matches useGeolocation's so the two
-// share a single sessionStorage entry — they're orthogonal entry
-// points into the same "where am I" state.
-const GEO_CACHE_KEY = "fr_geo_v1";
-const GEO_CACHE_TTL_MS = 1000 * 60 * 30; // 30 min — same as the hook
 const GEO_PROMPT_DISMISS_KEY = "fr:geo-prompt-dismissed:v1";
-const MAX_FINE_TUNE_MINUTES = 30;
-
-type GeoStatus =
-  | "idle"
-  | "loading"
-  | "granted"
-  | "denied"
-  | "unavailable"
-  | "out-of-county";
+const MAX_TRAVEL_MINUTES = 30;
 
 // Local label + glyph table for the curated amenity kinds, in
 // most-asked-for order. Kept here (not imported from the loader) so
@@ -211,7 +199,17 @@ export default function RadiusBuilder({
     () => new Map(places.map((p) => [p.slug, p])),
     [places],
   );
-  const [presetIdx, setPresetIdx] = useState(0);
+  // The radius view mounts only on the client. A selected browsing town wins
+  // over an older home preference and over a previously granted device fix.
+  const [entryScope] = useState(() => parseScope(searchParams.get(SCOPE_PARAM)) ?? getScope());
+  const [browseScope, setBrowseScope] = useState(entryScope);
+  const [presetIdx, setPresetIdx] = useState(() => {
+    let town = scopeTownSlug(entryScope);
+    if (!town && !entryScope) {
+      try { town = localStorage.getItem("fr:home-muni:v1"); } catch { /* Storage is optional. */ }
+    }
+    return Math.max(0, PRESETS.findIndex((preset) => preset.slug === `m-${town}`));
+  });
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(() => {
     const requested = Number(searchParams.get("minutes"));
@@ -219,28 +217,9 @@ export default function RadiusBuilder({
       ? requested
       : 10;
   });
-  // Fine-tune disclosure: the exact mode + minutes controls are folded
-  // away by default so the one-tap presets lead and the card stays calm.
-  // The minority who want an exact reach open it; everyone else never
-  // sees a slider they don't need.
-  const [fineTuneOpen, setFineTuneOpen] = useState(false);
   // Map Control Sheet snap state. Opens collapsed (radar state + count
   // peek); "Adjust" / drag lifts it to the working / browse states.
   const [snap, setSnap] = useState<number | string | null>(SNAP_COLLAPSED);
-  // Onboarding handoff: if the user picked a home municipality on
-  // /welcome, jump to that preset on first paint instead of MUNI_PRESETS[0].
-  // SSR-safe: server renders index 0, client overrides after mount.
-  useEffect(() => {
-    try {
-      const homeMuni = localStorage.getItem("fr:home-muni:v1");
-      if (!homeMuni) return;
-      const idx = PRESETS.findIndex((p) => p.slug === `m-${homeMuni}`);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders preset 0; the stored home-muni overrides after mount
-      if (idx > -1) setPresetIdx(idx);
-    } catch {
-      // localStorage unavailable — keep the default
-    }
-  }, []);
   // Default renders on the server; the stored preference is applied
   // after mount (same SSR-safe pattern the app uses elsewhere). A brief
   // default-then-preferred settle is acceptable for a view toggle.
@@ -316,129 +295,31 @@ export default function RadiusBuilder({
   // session-cached position so returning users skip the prompt, and
   // gracefully handle denied + out-of-county states instead of failing
   // silently.
-  const [myLoc, setMyLoc] = useState<{ lng: number; lat: number } | null>(null);
-  const [myLocLabel, setMyLocLabel] = useState<string>("Your location");
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
+  const { state: location, request, requestIfGranted } = useGeolocation();
+  // A manually selected town or pin stays selected when a device fix expires.
+  const [centerSource, setCenterSource] = useState<"device" | "preset">(entryScope && entryScope !== "nearme" ? "preset" : "device");
+  const [pinnedPoint, setPinnedPoint] = useState<LngLat | null>(null);
+  const deviceLocation = centerSource === "device" && location.status === "granted" ? location.position : null;
+  const myLoc = deviceLocation ?? pinnedPoint;
+  const myLocLabel = deviceLocation ? deviceLocation.label || "Your location" : "Pinned point";
+  const outsideCounty = deviceLocation && !isInsideFrederickCounty(deviceLocation.lat, deviceLocation.lng);
+  const geoStatus = centerSource === "preset" ? "idle" : outsideCounty ? "out-of-county" : location.status;
   const [promptDismissed, setPromptDismissed] = useState(false);
 
-  // Hydrate cached position + dismiss state on mount. SSR-safe: the
-  // server renders the idle state; the client overlays the cache if
-  // it's still fresh. A returning user inside the 30-min TTL skips
-  // the prompt entirely and lands on their own coordinates.
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(GEO_CACHE_KEY);
-      if (raw) {
-        const cached = JSON.parse(raw) as {
-          lng: number;
-          lat: number;
-          label?: string;
-          timestamp: number;
-        };
-        if (Date.now() - cached.timestamp <= GEO_CACHE_TTL_MS) {
-          const inCounty = isInsideFrederickCounty(cached.lat, cached.lng);
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders idle; the client hydrates sessionStorage which is unavailable during SSR
-          setMyLoc({ lng: cached.lng, lat: cached.lat });
-          setMyLocLabel(cached.label || "Your location");
-          setGeoStatus(inCounty ? "granted" : "out-of-county");
-        } else {
-          sessionStorage.removeItem(GEO_CACHE_KEY);
-        }
-      }
-    } catch {
-      // sessionStorage unavailable — fall through to idle
-    }
     try {
       if (localStorage.getItem(GEO_PROMPT_DISMISS_KEY) === "1") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate the device preference after mount
         setPromptDismissed(true);
       }
-    } catch {
-      // ignore
-    }
-  }, []);
+    } catch { /* storage may be disabled */ }
+    if ((!entryScope || entryScope === "nearme") && !readCachedPosition()) void requestIfGranted();
+  }, [entryScope, requestIfGranted]);
 
   const requestMyLocation = () => {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      setGeoStatus("unavailable");
-      return;
-    }
-    setGeoStatus("loading");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lng = pos.coords.longitude;
-        const lat = pos.coords.latitude;
-        const inCounty = isInsideFrederickCounty(lat, lng);
-        const hit = resolveMunicipality({ lng, lat });
-        // Inside a town → "Walkers Wood Park, MD"-style local label.
-        // In-county but not in a town → just "Your location" (the dots
-        // tell the story; we don't need to claim a neighborhood).
-        // Out of county → "Near {nearest town}" so the user knows the
-        // app sees them at the right distance.
-        const label = inCounty
-          ? hit.inside
-            ? `${hit.municipality.name}, MD`
-            : "Your location"
-          : `Near ${hit.municipality.name}`;
-        setMyLoc({ lng, lat });
-        setMyLocLabel(label);
-        setGeoStatus(inCounty ? "granted" : "out-of-county");
-        try {
-          sessionStorage.setItem(
-            GEO_CACHE_KEY,
-            JSON.stringify({
-              lng,
-              lat,
-              accuracy: pos.coords.accuracy,
-              label,
-              timestamp: Date.now(),
-            }),
-          );
-        } catch {
-          // sessionStorage unavailable — non-fatal
-        }
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
-          setGeoStatus("denied");
-        } else {
-          // Timeout / position unavailable — return to idle so the
-          // user can try again. We don't surface a hard error; the
-          // preset dropdown is still the working fallback.
-          setGeoStatus("idle");
-        }
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
-    );
+    setCenterSource("device");
+    request();
   };
-
-  // Answer-first start: if browser geolocation permission is ALREADY
-  // granted (zero prompt risk) and no cached position seeded the center,
-  // locate automatically — /map opens on the user's actual surroundings
-  // with no taps to value. A user who never granted is never prompted;
-  // denied and unavailable states are untouched. The cache-hydration
-  // effect above runs first (same mount pass), so a fresh cache wins and
-  // this effect sees its sessionStorage entry and stands down.
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !("permissions" in navigator)) return;
-    try {
-      // Any cache entry means a position this session already handled.
-      if (sessionStorage.getItem(GEO_CACHE_KEY)) return;
-    } catch {
-      // sessionStorage unavailable — the permissions query still works.
-    }
-    let cancelled = false;
-    navigator.permissions
-      .query({ name: "geolocation" })
-      .then((status) => {
-        if (!cancelled && status.state === "granted") requestMyLocation();
-      })
-      .catch(() => {
-        // Permissions API unsupported — keep the tap-to-locate path.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Snap the center to the nearest municipality for an out-of-county
   // user — surfaces the closest sensible jumping-off point.
@@ -447,10 +328,10 @@ export default function RadiusBuilder({
     const hit = resolveMunicipality(myLoc);
     const idx = PRESETS.findIndex((p) => p.slug === `m-${hit.municipality.slug}`);
     if (idx > -1) {
-      setMyLoc(null);
-      setMyLocLabel("Your location");
-      setGeoStatus("idle");
+      setCenterSource("preset");
+      setPinnedPoint(null);
       setPresetIdx(idx);
+      setBrowseScope(parseScope(hit.municipality.slug));
     }
   };
 
@@ -458,10 +339,12 @@ export default function RadiusBuilder({
   // location yet, the user hasn't dismissed the prompt, and we're not
   // mid-fetch. The control-card button stays available throughout.
   const showGeoPrompt =
-    geoStatus === "idle" && !promptDismissed && !myLoc;
+    centerSource === "device" && geoStatus === "idle" && !promptDismissed && !myLoc;
 
   const presetCenter = PRESETS[presetIdx];
   const center = myLoc ? { ...presetCenter, label: myLocLabel, lng: myLoc.lng, lat: myLoc.lat } : presetCenter;
+  const returnScope = deviceLocation ? "nearme" : browseScope;
+  const browseHref = returnScope ? `/map?mode=browse&in=${scopeToParam(returnScope)}` : "/map?mode=browse";
   const meters = minutesToMeters(mode, minutes);
 
   // Reachable Radius: the real isochrone polygon from Mapbox. Tells us
@@ -487,25 +370,33 @@ export default function RadiusBuilder({
       mode,
       minutes: String(minutes),
     });
-    fetch(`/api/isochrone?${params.toString()}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (cancelled) return;
-        if (
-          d?.ok &&
-          d.geojson &&
-          collectReachPolygons(d.geojson).length > 0
-        ) {
-          setIsochrone(d.geojson);
-          setReachBoundaryStatus("street");
-        } else {
-          setReachBoundaryStatus("distance");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setReachBoundaryStatus("distance");
-      });
-    return () => { cancelled = true; };
+    const controller = new AbortController();
+    // Let a finger or held arrow key settle before requesting a new street boundary.
+    const timer = window.setTimeout(() => {
+      void fetch(`/api/isochrone?${params.toString()}`, { signal: controller.signal })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (cancelled) return;
+          if (
+            d?.ok &&
+            d.geojson &&
+            collectReachPolygons(d.geojson).length > 0
+          ) {
+            setIsochrone(d.geojson);
+            setReachBoundaryStatus("street");
+          } else {
+            setReachBoundaryStatus("distance");
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setReachBoundaryStatus("distance");
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [center.lng, center.lat, mode, minutes]);
 
   // The reachable polygons, derived once from the isochrone and shared
@@ -715,147 +606,111 @@ export default function RadiusBuilder({
   // leads, the results follow. (Was buried below the results; that was
   // the "controls are backwards" problem.)
   const controlCard = (
-    <section className="space-y-2 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-2.5 shadow-[var(--app-shadow-1)]"
-             style={{ borderColor: "var(--app-border)" }}>
-      {/* Center — a dropdown with every municipality + landmarks
-          PLUS a "Use my location" button so the user has a real
-          custom-center path. */}
-      <div className="flex items-center gap-2">
-        <span
-          aria-hidden
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+    <section className="space-y-3 border-b border-[var(--app-border)] pb-3" aria-label="Adjust travel area">
+      <label htmlFor="center-select" className="block text-sm font-semibold">Starting point</label>
+      <div className="relative">
+        <select
+          id="center-select"
+          value={myLoc ? -1 : presetIdx}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (v >= 0) {
+              setCenterSource("preset");
+              setPinnedPoint(null);
+              setPresetIdx(v);
+              setBrowseScope(PRESETS[v].kind === "muni" ? parseScope(PRESETS[v].slug.slice(2)) : null);
+            }
+          }}
+          className="min-h-11 w-full appearance-none rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] py-2 pl-3 pr-9 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
         >
-          <MapPin className="h-4 w-4" strokeWidth={2} aria-hidden />
-        </span>
-        <div className="relative min-w-0 flex-1">
-          <label htmlFor="center-select" className="sr-only">Center point</label>
-          <select
-            id="center-select"
-            value={myLoc ? -1 : presetIdx}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              if (v >= 0) {
-                setMyLoc(null);
-                setPresetIdx(v);
-              }
-            }}
-            className="w-full appearance-none rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] py-2 pl-3 pr-9 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-          >
-            {myLoc && (
-              <option value={-1}>{myLocLabel}</option>
+          {myLoc && (
+            <option value={-1}>{myLocLabel}</option>
+          )}
+          <optgroup label="Municipalities">
+            {PRESETS.map((p, i) =>
+              p.kind === "muni" ? (
+                <option key={p.slug} value={i}>{p.label}</option>
+              ) : null,
             )}
-            <optgroup label="Municipalities">
-              {PRESETS.map((p, i) =>
-                p.kind === "muni" ? (
-                  <option key={p.slug} value={i}>{p.label}</option>
-                ) : null,
-              )}
-            </optgroup>
-            <optgroup label="Landmarks">
-              {PRESETS.map((p, i) =>
-                p.kind === "poi" ? (
-                  <option key={p.slug} value={i}>{p.label}</option>
-                ) : null,
-              )}
-            </optgroup>
-          </select>
-          <ChevronDown
-            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
-            strokeWidth={2.25}
-            style={{ color: "var(--app-ink-3)" }}
-            aria-hidden
-          />
-        </div>
-      </div>
-
-      {/* Quick picks — the PRIMARY radius control. One tap sets both the
-          travel mode and the minutes for the common cases, so most users
-          never touch a mode toggle or a slider. */}
-      <RadiusPresets
-        mode={mode}
-        minutes={minutes}
-        onPick={(m, min) => {
-          setMode(m);
-          setMinutes(min);
-        }}
-      />
-
-      {/* Fine-tune — the exact mode + minutes, folded away by default.
-          The instrument is still here for the user who wants a precise
-          reach; it just stops competing with the presets that cover the
-          common cases. */}
-      <button
-        type="button"
-        onClick={() => setFineTuneOpen((v) => !v)}
-        aria-expanded={fineTuneOpen}
-        className="flex w-full items-center justify-between rounded-[var(--app-radius-md)] px-1 py-1 text-[12px] font-semibold"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        <span>Fine-tune the reach</span>
+          </optgroup>
+          <optgroup label="Landmarks">
+            {PRESETS.map((p, i) =>
+              p.kind === "poi" ? (
+                <option key={p.slug} value={i}>{p.label}</option>
+              ) : null,
+            )}
+          </optgroup>
+        </select>
         <ChevronDown
-          className={`h-4 w-4 transition-transform ${fineTuneOpen ? "rotate-180" : ""}`}
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
           strokeWidth={2.25}
+          style={{ color: "var(--app-ink-3)" }}
           aria-hidden
         />
-      </button>
-      {fineTuneOpen && (
-        <div className="space-y-2">
-          {/* Mode + distance read as one instrument. */}
-          <div
-            role="group"
-            aria-label="Travel mode"
-            className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
-            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-          >
-            {MODES.map(({ mode: m, label, icon: Icon }) => {
-              const active = m === mode;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => {
-                    setMode(m);
-                    setMinutes((current) =>
-                      Math.min(current, MAX_FINE_TUNE_MINUTES),
-                    );
-                  }}
-                  aria-pressed={active}
-                  className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
-                  style={{
-                    background: active ? "var(--app-brand)" : "transparent",
-                    color: active ? "#fff" : "var(--app-ink-2)",
-                  }}
-                >
-                  <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+      </div>
 
-          {/* Slider — single row, inline minute display. */}
-          <div>
-            <input
-              id="minutes-slider"
-              aria-label={`${minutes} minutes`}
-              type="range"
-              min={3}
-              max={MAX_FINE_TUNE_MINUTES}
-              step={1}
-              value={minutes}
-              onChange={(e) => setMinutes(Number(e.target.value))}
-              className="w-full"
-              style={{ accentColor: "var(--app-brand)" }}
-            />
-            <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-              <span>3 min</span>
-              <span>{MAX_FINE_TUNE_MINUTES} min</span>
-            </div>
+      <div className="space-y-2">
+        {/* Mode + distance read as one instrument. */}
+        <div
+          role="group"
+          aria-label="Travel mode"
+          className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+        >
+          {MODES.map(({ mode: m, label, icon: Icon }) => {
+            const active = m === mode;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                aria-pressed={active}
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
+                style={{
+                  background: active ? "var(--app-ink)" : "transparent",
+                  color: active ? "var(--app-bg)" : "var(--app-ink-2)",
+                }}
+              >
+                <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Slider — single row, inline minute display. */}
+        <div>
+          <div className="flex items-baseline justify-between gap-3">
+            <label htmlFor="minutes-slider" className="text-sm font-semibold">Travel time</label>
+            <span aria-hidden className="text-sm tabular-nums">{minutes} {minutes === 1 ? "minute" : "minutes"}</span>
+          </div>
+          <input
+            id="minutes-slider"
+            data-vaul-no-drag
+            aria-valuetext={`${minutes} ${minutes === 1 ? "minute" : "minutes"}`}
+            type="range"
+            min={1}
+            max={MAX_TRAVEL_MINUTES}
+            step={1}
+            value={minutes}
+            onChange={(e) => setMinutes(Number(e.target.value))}
+            className="min-h-11 w-full"
+            style={{ accentColor: "var(--app-brand)" }}
+          />
+          <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+            <span>1 min</span>
+            <span>{MAX_TRAVEL_MINUTES} min</span>
           </div>
         </div>
-      )}
+      </div>
+      <details>
+        <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold">Quick presets</summary>
+        <RadiusPresets mode={mode} minutes={minutes} onPick={(nextMode, nextMinutes) => {
+          setMode(nextMode);
+          setMinutes(nextMinutes);
+        }} />
+      </details>
     </section>
   );
 
@@ -922,7 +777,7 @@ export default function RadiusBuilder({
       {/* Denied banner — quiet, brief, with a clear "how to fix" line.
           Self-dismisses the moment the user successfully grants
           permission (geoStatus moves to granted/out-of-county). */}
-      {geoStatus === "denied" && (
+      {(geoStatus === "denied" || geoStatus === "error" || geoStatus === "unavailable") && (
         <div
           className="flex items-start gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-2.5"
           style={{
@@ -942,7 +797,7 @@ export default function RadiusBuilder({
               Radius could not access your location.
             </p>
             <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
-              Enable it in your browser settings, or pick a center below.
+              {geoStatus === "denied" ? "Choose a starting point, or allow location in your browser settings." : "Choose a starting point, or try using your location again."}
             </p>
           </div>
         </div>
@@ -968,8 +823,9 @@ export default function RadiusBuilder({
           }))}
           reachable={isochrone}
           onCenterChange={(next) => {
-            setMyLoc(next);
-            setMyLocLabel("Pinned point");
+            setPinnedPoint(next);
+            setCenterSource("preset");
+            setBrowseScope(null);
           }}
           onSelectPlace={(slug) => {
             const p = placesBySlug.get(slug);
@@ -977,7 +833,6 @@ export default function RadiusBuilder({
           }}
         />
         <div
-          aria-live="polite"
           className="pointer-events-none absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-[var(--app-shadow-1)]"
           style={{
             zIndex: "var(--z-map-control)",
@@ -987,7 +842,7 @@ export default function RadiusBuilder({
           }}
         >
           {reachBoundaryStatus === "street"
-            ? "Street-aware reach"
+            ? "Area follows mapped streets"
             : reachBoundaryStatus === "loading"
               ? "Checking streets · distance estimate"
               : "Distance estimate · streets unavailable"}
@@ -1015,16 +870,16 @@ export default function RadiusBuilder({
           <button
             type="button"
             onClick={requestMyLocation}
-            aria-label={myLoc ? "Recenter on your location" : "Use my location"}
+            aria-label={deviceLocation ? "Recenter on your location" : "Use my location"}
             className="tactile tap-44 fixed right-4 grid h-11 w-11 place-items-center rounded-full shadow-[var(--app-shadow-2)] transition active:scale-[0.94]"
             style={{
               bottom: `calc(${SNAP_COLLAPSED} + 16px)`,
               zIndex: "var(--z-map-control)",
               background: "var(--app-bg-elevated)",
-              color: myLoc ? "var(--app-brand)" : "var(--app-ink-2)",
+              color: deviceLocation ? "var(--app-brand)" : "var(--app-ink-2)",
             }}
           >
-            <Locate className="h-[18px] w-[18px]" strokeWidth={2.25} fill={myLoc ? "currentColor" : "none"} aria-hidden />
+            <Locate className="h-[18px] w-[18px]" strokeWidth={2.25} fill={deviceLocation ? "currentColor" : "none"} aria-hidden />
           </button>
         )}
 
@@ -1053,18 +908,20 @@ export default function RadiusBuilder({
               onClick={() => setSnap(snap === SNAP_COLLAPSED ? SNAP_HALF : SNAP_COLLAPSED)}
               aria-expanded={snap !== SNAP_COLLAPSED}
               aria-label={snap === SNAP_COLLAPSED ? "Adjust the radius" : "Done adjusting"}
+              aria-describedby="reach-summary-origin reach-summary-results"
               className="tap-44 flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 text-left"
             >
               <div className="min-w-0 leading-tight">
-                <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                <p id="reach-summary-origin" className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                   {minutes}-min {MODE_VERB[mode]} · {center.label}
                 </p>
                 {!placesReady ? (
-                  <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                  <p id="reach-summary-results" className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                     Finding places…
                   </p>
                 ) : (
-                  <p className="truncate text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                  <p id="reach-summary-results" className="truncate text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {reachBoundaryStatus !== "street" && "Estimate · "}
                     {radiusResultLine(
                       inside.length,
                       openNowCount,
@@ -1087,7 +944,7 @@ export default function RadiusBuilder({
               </span>
             </button>
             <Link
-              href="/map?mode=browse" prefetch={false}
+              href={browseHref} prefetch={false}
               aria-label="Back to county map"
               onClick={(event) => {
                 if (
@@ -1100,7 +957,7 @@ export default function RadiusBuilder({
                   return;
                 }
                 event.preventDefault();
-                window.history.pushState(null, "", "/map?mode=browse");
+                window.history.pushState(null, "", browseHref);
                 window.dispatchEvent(new PopStateEvent("popstate"));
               }}
               className="tactile tactile-interactive inline-flex min-h-11 min-w-[52px] shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)] px-1 text-[9px] font-semibold leading-none"
@@ -1122,13 +979,13 @@ export default function RadiusBuilder({
           {center}" heading + a one-line reach summary, then the places you can
           actually get to. No "best" verdict and no single place pre-selected
           for you: the reader sees what's reachable and picks. */}
-      <section aria-label={`Within reach of ${center.label}`} className="space-y-3">
+      <section aria-label={`Places near ${center.label}`} className="space-y-3">
         <div>
           <h2
-            className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+            className="font-sans text-[20px] font-bold leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Within reach of {center.label}
+            Places near {center.label}
           </h2>
           <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {radiusResultLine(
@@ -1139,6 +996,14 @@ export default function RadiusBuilder({
             )}
           </p>
         </div>
+
+        <p className="text-sm text-[var(--app-ink-2)]" role="status">
+          {reachBoundaryStatus === "street"
+            ? "The area follows mapped streets. Travel times can vary."
+            : reachBoundaryStatus === "loading"
+              ? "Checking mapped streets. The area currently uses straight-line distance."
+              : "This area uses straight-line distance. Actual trips can take longer."}
+        </p>
 
         {sourceNotice}
 
@@ -1220,6 +1085,7 @@ export default function RadiusBuilder({
           places={reachInput}
           amenities={insideAmenities}
           mode={mode}
+          budgetMinutes={minutes}
           originLng={center.lng}
           originLat={center.lat}
           boundaryStatus={reachBoundaryStatus}
@@ -1334,7 +1200,7 @@ export default function RadiusBuilder({
                 Inside this radius
               </p>
               <h2
-                className="mt-0.5 font-serif text-[18px] font-semibold leading-snug tracking-tight"
+                className="mt-0.5 font-sans text-[18px] font-semibold leading-snug tracking-tight"
                 style={{ color: "var(--app-ink)" }}
               >
                 {(() => {
@@ -1344,7 +1210,7 @@ export default function RadiusBuilder({
                   if (tops.length === 0) {
                     return `${displayedInside.length} place${displayedInside.length === 1 ? "" : "s"} within this radius.`;
                   }
-                  return `You're within a ${minutes}-minute ${MODE_VERB[mode]} of ${formatList(tops)}.`;
+                  return `Explore ${formatList(tops)} near ${center.label}.`;
                 })()}
               </h2>
               <p

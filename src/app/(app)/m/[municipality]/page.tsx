@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
-import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { BY_TOWN_ENABLED } from "@/lib/loaders/events";
+import { getTownEventPreview } from "@/lib/loaders/townEventPreview";
 import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/loaders/places";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import Image from "next/image";
-import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { getTownPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import PhotoCreditLine from "@/components/place/PhotoCreditLine";
 import { curatedPhotoCredit } from "@/lib/curated-photo-source";
@@ -21,20 +22,18 @@ import LivingHere from "@/components/municipality/LivingHere";
 import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
-export const revalidate = 600;
-
 /**
  * Town page — answer-first, dense, field-guide (redesign).
  *
  * The page answers "what's this town like, and what's worth going for?" —
  * NOT "list every place." Spine, top → bottom:
- *   1. Curated SeasonalPhoto hero with 6px corners and no scrim, then a
+ *   1. A reviewed photograph when one is available for the town, plus a
  *      quiet {type} · Frederick County label, the town name in heavy sans
  *      and ONE short blurb. No pop./est. metadata lead.
  *   2. A town-scoped ask/search pill — the first action.
  *   3. A field-guide locator line (mono caps centroid coordinates).
  *   4. Start here: the lead pick and the next handful as one ruled list of
- *      place rows, then a demoted "All places" link.
+ *      place rows, then a town-scoped place search.
  *   5. Sibling-town nav (TownStrip) as a slim row.
  *   6. Upcoming events (honest empty-state preserved).
  *   7. Living here — civic + town links merged into ONE demoted block.
@@ -43,10 +42,6 @@ export const revalidate = 600;
  * Sections still self-hide when empty (honest empty states). Layout/visual
  * only — the data loaders below are unchanged.
  */
-
-export async function generateStaticParams() {
-  return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
-}
 
 export async function generateMetadata(
   { params }: { params: Promise<{ municipality: string }> }
@@ -73,12 +68,14 @@ export default async function MunicipalityPage(
   const m = MUNICIPALITY_BY_SLUG[municipality];
   if (!m) notFound();
 
-  // A curated CC/PD photo OF this town wins the hero over the generic seasonal
-  // county photography; null until one is approved (then the town shows itself).
   const townPhoto = getTownPhoto(m.slug);
 
+  // Opening labels and rankings depend on the current Frederick time.
+  await connection();
+  const now = new Date();
+  const townEvents = getTownEventPreview(m, now);
   const places = publicPlacesByMunicipality(m.slug)
-    .map((p) => slimForList(decoratePlace(p, m.centroid)))
+    .map((p) => slimForList(decoratePlace(p, m.centroid, now)))
     .sort((a, b) => b.feature_score - a.feature_score);
 
   // "Worth your time" is a destination-led reel that ranks differently
@@ -136,8 +133,7 @@ export default async function MunicipalityPage(
   const lead = worthYourTime[0];
   const grid = worthYourTime.slice(1, 5);
 
-  const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 3);
-  const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
+  const { local: upcomingEvents, nearby, degraded } = await townEvents;
   // Buried-civic answers for this town (trash/recycling, hall, permits…),
   // null until the extraction agent populates it. The block self-hides.
   const civic = municipalCivicFor(m.slug);
@@ -182,40 +178,9 @@ export default async function MunicipalityPage(
         </Link>
       </nav>
 
-      {/* 1. Town hero, PLAIN TOOL. CURATED imagery only (Photo Policy,
-          Phase 3): our own seasonal county photography, never a random
-          place's Google photo. The photograph keeps 6px corners with no
-          scrim, and the town's identity reads below it in heavy sans on the
-          page ground. The coral name plate belongs to Today alone. */}
-      <header className="space-y-3">
-        <figure className="space-y-1.5">
-          <div className="relative h-52 w-full overflow-hidden rounded-[var(--app-radius-md)] sm:h-72" style={{ background: "var(--app-bg-sunken)" }}>
-            {townPhoto ? (
-              <Image
-                src={wikimediaUrl(townPhoto.file, 1200)}
-                alt={townPhoto.alt}
-                fill
-                priority
-                sizes="(max-width: 720px) 100vw, 720px"
-                className="absolute inset-0 object-cover"
-              />
-            ) : (
-              <SeasonalPhoto
-                season="auto"
-                alt={`Frederick County (near ${m.name})`}
-                priority
-                sizes="(max-width: 720px) 100vw, 720px"
-                className="absolute inset-0"
-              />
-            )}
-          </div>
-          {townPhoto && (
-            <figcaption data-town-photo-credit style={{ color: "var(--app-ink-3)" }}>
-              <PhotoCreditLine credit={curatedPhotoCredit(townPhoto)} />
-            </figcaption>
-          )}
-        </figure>
-        <div className="space-y-1.5">
+      {/* Town identity leads the first viewport; keep the image with its attribution. */}
+      <header className={townPhoto ? "grid items-center gap-3 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-8" : undefined}>
+        <div className="min-w-0 space-y-1.5">
           <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-2)" }}>
             {m.type === "city" ? "City" : m.type === "town" ? "Town" : m.type === "village" ? "Village" : "Community"} · Frederick County
           </p>
@@ -226,20 +191,36 @@ export default async function MunicipalityPage(
             {m.hero_blurb}
           </p>
         </div>
+        {townPhoto && (
+          <figure className="min-w-0 space-y-1.5">
+            <div className="relative h-40 w-full overflow-hidden rounded-[var(--app-radius-md)] sm:h-48 lg:h-56" style={{ background: "var(--app-bg-sunken)" }}>
+              <Image
+                src={wikimediaUrl(townPhoto.file, 1200)}
+                alt={townPhoto.alt}
+                fill
+                priority
+                sizes="(min-width: 1024px) 480px, (min-width: 768px) 48vw, 100vw"
+                className="absolute inset-0 object-cover"
+              />
+            </div>
+            <figcaption data-town-photo-credit style={{ color: "var(--app-ink-3)" }}>
+              <PhotoCreditLine credit={curatedPhotoCredit(townPhoto)} />
+            </figcaption>
+          </figure>
+        )}
       </header>
 
       {/* Town switching belongs near the town identity, not near the footer. */}
       <TownStrip activeSlug={m.slug} />
 
       {/* 2 — Town-scoped search bar removed (owner call): it stacked a second
-          search field directly under the global header search. The "All places
-          in {town}" link in Worth-your-time below already pre-fills a
-          town-scoped browse, so the redundant slab came out. */}
+          search field directly under the global header search. The link after the
+          place list opens Find with this town and place type selected. */}
 
       {/* 4. Worth your time: the PLACES lead the page (owner call: open with
           what's actionable, not the town's history). The picks are one ruled
           list of place rows, a photo only where a real one exists, then a
-          demoted "all places" link. */}
+          link to search places in this town. */}
       {lead ? (
         <section className="space-y-3">
           <div className="flex items-baseline gap-2.5">
@@ -266,15 +247,13 @@ export default async function MunicipalityPage(
             ))}
           </ul>
 
-          {/* Demoted directory door, NOT the inline browse chrome. Search
-              is the canonical "see everything" surface; pre-fill the town. */}
           <Link
-            href={`/search?q=${encodeURIComponent(m.name)}`}
+            href={`/search?in=${encodeURIComponent(m.slug)}&kind=place`}
             className="tap-44 inline-flex items-center gap-1 text-[13px] font-semibold"
             style={{ color: "var(--app-link)" }}
           >
-            All places in {m.name}
-            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            Search places in {m.name}
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           </Link>
         </section>
       ) : (
@@ -307,13 +286,16 @@ export default async function MunicipalityPage(
               Upcoming in {m.name}
             </h2>
             <Link
-              href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
+              href={BY_TOWN_ENABLED ? `/events?in=${m.slug}` : "/events?in=county"}
               className="tap-44 inline-flex items-center text-[13px] font-semibold"
               style={{ color: "var(--app-link)" }}
             >
-              All events <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+              {BY_TOWN_ENABLED ? `All events in ${m.name}` : "Countywide events"} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
             </Link>
           </div>
+          {degraded && upcomingEvents.length > 0 && (
+            <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>Some event listings may be missing.</p>
+          )}
           {upcomingEvents.length > 0 ? (
             // One column of ruled rows, as wide as the hero above. Each row
             // draws its own hairline, so the list needs no gap between rows.
@@ -325,7 +307,7 @@ export default async function MunicipalityPage(
           ) : (
             <div className="space-y-2">
               <p className="text-[0.9375rem] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                Nothing is listed for {m.name} yet.{" "}
+                {degraded ? `We couldn’t confirm the current event listings for ${m.name}.` : `Our upcoming calendar has no listings in ${m.name}.`}{" "}
                 <Link
                   href={`/submit/event?m=${m.slug}`}
                   className="font-semibold underline underline-offset-2"
@@ -335,15 +317,15 @@ export default async function MunicipalityPage(
                 </Link>
                 .
               </p>
-              {nearbyEvents.length > 0 && (
+              {nearby && (
                 <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
                   Nearby:{" "}
                   <Link
-                    href="/events"
+                    href={`/events/${nearby.slug}`}
                     className="font-semibold underline-offset-2 hover:underline"
                     style={{ color: "var(--app-ink-2)" }}
                   >
-                    {nearbyEvents[0].title} and more nearby <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
+                    {nearby.title} <ArrowRight aria-hidden className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} />
                   </Link>
                 </p>
               )}

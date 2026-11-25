@@ -59,6 +59,16 @@ describe("live event cache pages", () => {
     expect(inflated).toEqual(original);
   });
 
+  it.each(["date", "start", "range"] as const)("preserves publisher timing precision %s independently of image evidence", (precision) => {
+    const original = event(1, { published_time: precision });
+    const page = buildLiveEventCachePage([original], "ok");
+    const record = page.e[0];
+    const restored = inflateCachedLiveEvent(record, original.source, original.source_label);
+    expect(restored).toEqual(original);
+    record.pop();
+    expect(inflateCachedLiveEvent(record, original.source, original.source_label).published_time).toBeUndefined();
+  });
+
   it("paginates a large source without dropping events or exceeding a shard budget", () => {
     const originals = Array.from({ length: 240 }, (_, index) =>
       event(index, {

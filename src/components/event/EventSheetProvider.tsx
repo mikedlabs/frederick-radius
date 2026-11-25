@@ -165,6 +165,7 @@ export function EventSheetProvider({ children }: { children: ReactNode }) {
           fallback={(
             <LazySheetFallback
               label="Loading event details"
+              fullPageLabel="Event details in Radius"
               onClose={closeEventSheet}
               onOpenFullPage={openFullEventPage}
               returnFocusRef={openerRef}

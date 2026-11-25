@@ -43,11 +43,9 @@ truth is `src/lib/brand.ts`, mirrored by the `--app-*` tokens in
   `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`. This includes
   page titles, text, controls, source notes, and tabular data. Public Sans
   remains the installed print/export text family, with its real variable
-  italic. Libre Caslon Display Regular sets the header wordmark in the top
-  bar and is a rare editorial signature on a few specialty guide pages. No
-  page title or content on Today, Map, Events, Saved, Find, Tools,
-  Settings, Ask, place pages or event pages uses it; every title there is
-  heavy system sans. Do not synthesize bold or italic Caslon, rename
+  italic. Libre Caslon Display Regular sets the wordmark, the single photographic
+  cover story headline on Today, and selected specialty guide headlines.
+  All controls, data and ordinary page titles use the system sans. Do not synthesize bold or italic Caslon, rename
   packaged Public Sans as a system font, or download a new family.
 - **Palette (Brand System 1.4, October 16, 2026, owner-approved):** Always use
   `var(--app-*)` in app UI. White `--app-bg #FFFFFF`, Charcoal `--app-ink #22221F`,

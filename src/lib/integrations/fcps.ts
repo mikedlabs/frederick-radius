@@ -1,3 +1,5 @@
+import { XMLParser, XMLValidator } from "fast-xml-parser";
+
 /**
  * Frederick County Public Schools — closures, delays, dismissals.
  * The district publishes weather + emergency updates via web alerts and
@@ -26,7 +28,9 @@ export type FcpsAlertsResult = {
   data: FcpsAlert[];
   /** True when the official RSS returned a parseable feed, even if no alert matched. */
   available: boolean;
-  /** Source-provided feed timestamp when one is present. */
+  /** HTTP response time retained with the cached body. Missing means freshness is unknown. */
+  checkedAt?: string;
+  /** Channel publication or build time, independent of when FCPS answered. */
   asOf?: string;
 };
 
@@ -61,13 +65,19 @@ export function currentFcpsOperationsNotices(
     : [];
 }
 
-function stripCdata(s: string): string {
-  return s.replace(/<!\[CDATA\[/g, "").replace(/\]\]>/g, "").trim();
+const parser = new XMLParser({
+  parseTagValue: false,
+  isArray: (_name, path) => path === "rss.channel.item",
+});
+
+function text(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
-function pick(tag: string, xml: string): string {
-  const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
-  return m ? stripCdata(m[1]) : "";
+// The district may post tomorrow's operating notice the previous afternoon.
+export function isCurrentFcpsNotice(publishedAt: string, now: number): boolean {
+  const age = now - Date.parse(publishedAt);
+  return age >= -2 * 60 * 60_000 && age <= 30 * 60 * 60_000;
 }
 
 function inferStatus(title: string, description: string): FcpsStatus {
@@ -97,39 +107,37 @@ export async function getFcpsAlertsResult(): Promise<FcpsAlertsResult> {
     });
     if (!res.ok) return { data: [], available: false };
     const xml = await res.text();
-    // A CDN or proxy can answer 200 with an HTML error document. Only a real
-    // RSS/Atom envelope counts as an available feed; zero items is still a
-    // valid successful response.
-    if (!/<(?:rss|feed)\b/i.test(xml)) return { data: [], available: false };
+    if (/<!DOCTYPE|<!ENTITY/i.test(xml) || XMLValidator.validate(xml) !== true) {
+      return { data: [], available: false };
+    }
+    const channel = parser.parse(xml)?.rss?.channel;
+    // An empty RSS channel is valid. HTML, Atom (a different item schema),
+    // and truncated documents cannot clear an existing school notice.
+    if (channel !== "" && (!channel || typeof channel !== "object" || Array.isArray(channel))) {
+      return { data: [], available: false };
+    }
 
     const items: FcpsAlert[] = [];
     const observedAt = Date.now();
-    // Thirty hours covers a next-day notice posted the prior afternoon while
-    // dropping yesterday's same-day closure by the following school day.
-    const MAX_OPERATIONAL_NOTICE_AGE_MS = 30 * 60 * 60 * 1_000;
-    const re = /<item>([\s\S]*?)<\/item>/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(xml)) !== null && items.length < 8) {
-      const block = m[1];
-      const title = pick("title", block);
-      const description = pick("description", block);
-      const link = pick("link", block);
-      const pubDate = pick("pubDate", block);
-      const guid = pick("guid", block);
-      if (!title) continue;
+    for (const row of channel.item ?? []) {
+      if (items.length === 8) break;
+      const title = text(row.title);
+      const description = text(row.description);
+      const link = text(row.link);
+      const guid = text(row.guid);
+      if (!title && !description) return { data: [], available: false };
       // Only surface weather/closure-relevant alerts
       const status = inferStatus(title, description);
       if (status === "unknown") continue;
-      const publishedAt = isoOrUndefined(pubDate);
+      const publishedAt = isoOrUndefined(text(row.pubDate));
       // An operational notice is useful only while it could still apply. The
       // news feed keeps old stories in its latest-eight window, so an older
       // closure must not continue to mark Pulse as if schools are closed now.
-      if (!publishedAt) continue;
-      const ageMs = observedAt - Date.parse(publishedAt);
-      if (ageMs < -2 * 60 * 60 * 1_000 || ageMs > MAX_OPERATIONAL_NOTICE_AGE_MS) continue;
+      if (!publishedAt) return { data: [], available: false };
+      if (!isCurrentFcpsNotice(publishedAt, observedAt)) continue;
       items.push({
-        id: guid || link || title,
-        title,
+        id: guid || link || title || description,
+        title: title || description.replace(/<[^>]+>/g, "").trim().slice(0, 180),
         description: description.replace(/<[^>]+>/g, "").trim().slice(0, 240),
         status,
         published_at: publishedAt,
@@ -139,7 +147,8 @@ export async function getFcpsAlertsResult(): Promise<FcpsAlertsResult> {
     return {
       data: items,
       available: true,
-      asOf: isoOrUndefined(pick("lastBuildDate", xml) || pick("pubDate", xml)),
+      checkedAt: isoOrUndefined(res.headers.get("date") ?? ""),
+      asOf: isoOrUndefined(text(channel.lastBuildDate)) ?? isoOrUndefined(text(channel.pubDate)),
     };
   } catch {
     return { data: [], available: false };

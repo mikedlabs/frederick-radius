@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getScope } from "@/lib/scope";
 import { getWantAnswer, WANT_ANSWER_DEADLINE_MS } from "./want-cache";
 
-vi.mock("@/hooks/useGeolocation", () => ({ readCachedPosition: () => null }));
+const geo = vi.hoisted(() => ({ fix: null as { lng: number; lat: number } | null }));
+vi.mock("@/hooks/useGeolocation", () => ({ readCachedPosition: () => geo.fix }));
 
 const fetcher = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
 function browser(stored: string | null, cookie: string) {
@@ -11,6 +12,7 @@ function browser(stored: string | null, cookie: string) {
 }
 
 beforeEach(() => {
+  geo.fix = null;
   fetcher.mockReset().mockImplementation(async () => new Response("{}", { status: 200 }));
   vi.stubGlobal("fetch", fetcher);
 });
@@ -46,6 +48,16 @@ describe("shared scope and want request continuity", () => {
     expect(getScope()).toBeNull();
     vi.stubGlobal("document", { cookie: "fr_scope=town%3Abrunswick" });
     expect(getScope()).toBe("town:brunswick");
+  });
+
+  it("sends only a coarse fix for nearby requests and no fix for a chosen town or county", async () => {
+    geo.fix = { lng: -77.410692, lat: 39.414378 };
+    browser(null, "");
+    for (const scope of ["nearme", "county", "town:brunswick"] as const) {
+      await getWantAnswer("cat:privacy", null, scope);
+      const sent = new URL(String(fetcher.mock.lastCall![0]), "https://test.local").searchParams;
+      expect([sent.get("lng"), sent.get("lat")]).toEqual(scope === "nearme" ? ["-77.411", "39.414"] : [null, null]);
+    }
   });
 
   it("sends and caches an explicit Today default separately from a saved city", async () => {
