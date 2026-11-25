@@ -359,7 +359,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     for (const subject of geometry.subjects) expect(subject.box.y).toBeGreaterThanOrEqual(outingsBox.y + outingsBox.height - 1);
     if (width < 640) {
       expect(photoBox.width).toBeGreaterThanOrEqual(width - 2);
-      expect(Math.abs(photoBox.width / photoBox.height - 1.34)).toBeLessThan(0.03);
+      expect(Math.abs(photoBox.width / photoBox.height - 16 / 9), "the normal-text phone layout uses the landscape crop").toBeLessThan(0.03);
       expect(captionBox.y).toBeGreaterThanOrEqual(photoBox.y + photoBox.height - 1);
     } else {
       expect(captionBox.x).toBeGreaterThanOrEqual(photoBox.x + photoBox.width - 1);
