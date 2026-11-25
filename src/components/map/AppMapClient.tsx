@@ -10,6 +10,9 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import AmenityFallbackList from "./AmenityFallbackList";
+import CountyLocator from "./CountyLocator";
+import locatorStyles from "./CountyLocator.module.css";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { FoodTruckMapPin, MapPinPlace, MarcStationPin, TransitStopPin } from "./types";
 import { haversineMeters } from "@/lib/geo";
@@ -153,12 +156,33 @@ export function MapLoadFailure({
   places,
   events,
   trailLineOnly = false,
+  groups = [],
+  amenities = [],
+  extraAmenities = [],
+  town,
 }: {
   height: CSSProperties["height"];
   places: MapPinPlace[];
   events: EventPin[];
   trailLineOnly?: boolean;
+  groups?: string[];
+  amenities?: Amenity[];
+  extraAmenities?: OsmPlace[];
+  town?: string | null;
 }) {
+  if (groups.length && !trailLineOnly) {
+    return (
+      <div className="w-full overflow-y-auto bg-[var(--app-bg)]" style={{ height }} data-map-chunk-failure>
+        <AmenityFallbackList
+          groups={groups}
+          amenities={amenities}
+          extraAmenities={extraAmenities}
+          town={town}
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
   const hasRows = places.length > 0 || events.length > 0;
   const title = trailLineOnly
     ? "The interactive trail map did not load."
@@ -171,7 +195,7 @@ export function MapLoadFailure({
 
   return (
     <div
-      className="w-full overflow-y-auto"
+      className={`w-full overflow-y-auto ${locatorStyles.chunkRecovery}`}
       style={{ height, background: "var(--app-bg-sunken)" }}
       data-map-chunk-failure
     >
@@ -198,8 +222,10 @@ export function MapLoadFailure({
           Reload map
         </button>
       </div>
+      {(!hasRows || trailLineOnly) && <div className="mx-auto max-w-xl px-4 pb-3"><CountyLocator town={town} /></div>}
       {hasRows && !trailLineOnly && (
         <MapList
+          locatorArea={{ town }}
           places={places}
           events={events}
           userLoc={null}
@@ -248,6 +274,7 @@ export default function AppMapClient({
   cameraMaxBounds,
   compactSubjectMap = false,
   initialAmenityGroups,
+  fallbackTown,
   dock,
   activeSlugs = null,
   showSearchControls = true,
@@ -343,6 +370,7 @@ export default function AppMapClient({
   /** Amenity-tray group keys to pre-activate (a /map?amenity=restroom
    *  deep-link from /amenities or /today). Forwarded to AppMap. */
   initialAmenityGroups?: string[];
+  fallbackTown?: string | null;
   /** Browse-view state + counts for the map dock (/map browse only).
    *  Forwarded to AppMap; absent on embeds, which stay dock-less. */
   dock?: BrowseDockInfo;
@@ -415,6 +443,10 @@ export default function AppMapClient({
             height="100%"
             places={places}
             events={events}
+            groups={initialAmenityGroups}
+            amenities={amenities}
+            extraAmenities={extraAmenities}
+            town={fallbackTown}
             trailLineOnly={trailLineOnlyFailure}
           />
         ) : (
@@ -425,6 +457,10 @@ export default function AppMapClient({
               height="100%"
               places={places}
               events={events}
+              groups={initialAmenityGroups}
+              amenities={amenities}
+              extraAmenities={extraAmenities}
+              town={fallbackTown}
               trailLineOnly={trailLineOnlyFailure}
             />
           }
@@ -488,6 +524,10 @@ export default function AppMapClient({
           height={EMBEDDED_MAP_HEIGHT}
           places={places}
           events={events}
+          groups={initialAmenityGroups}
+          amenities={amenities}
+          extraAmenities={extraAmenities}
+          town={fallbackTown}
           trailLineOnly={trailLineOnlyFailure}
         />
       ) : (
@@ -498,6 +538,10 @@ export default function AppMapClient({
             height={EMBEDDED_MAP_HEIGHT}
             places={places}
             events={events}
+            groups={initialAmenityGroups}
+            amenities={amenities}
+            extraAmenities={extraAmenities}
+            town={fallbackTown}
             trailLineOnly={trailLineOnlyFailure}
           />
         }

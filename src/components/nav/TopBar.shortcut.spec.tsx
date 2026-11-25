@@ -191,7 +191,11 @@ describe("Find shortcut hint", () => {
 
   it("renders no key on the server, so hydration never corrects a wrong one", () => {
     const html = renderToString(<TopBar />);
-    expect(html).toContain("What do you need?");
+    const serverHeader = new DOMParser().parseFromString(html, "text/html");
+    const launchers = serverHeader.querySelectorAll("button[data-find-interaction-ready]");
+    expect(launchers).toHaveLength(1);
+    expect(launchers[0].textContent?.trim()).toBe("Find");
+    expect(launchers[0].getAttribute("aria-haspopup")).toBe("dialog");
     expect(html).not.toContain("<kbd");
     expect(html).not.toContain("aria-keyshortcuts");
   });

@@ -1,0 +1,55 @@
+.page { margin-inline: auto; max-width: 64rem; }
+.header { padding-block: .5rem 1.3rem; border-bottom: 1px solid var(--app-border); }
+.header h1 { margin: 0 0 .55rem; color: var(--app-ink); font: 750 clamp(1.9rem, 4.5vw, 2.65rem)/1.07 var(--font-sans, system-ui); letter-spacing: -.04em; }
+.header p, .message, .note, .sources p, .links p { color: var(--app-ink-2); line-height: 1.5; max-width: 66ch; }
+.explorer { container-type: inline-size; color: var(--app-ink); min-width: 0; }
+.page .explorer { padding-top: 1.2rem; }
+.selector { display: grid; gap: .4rem; }
+.label, .controls legend { color: var(--app-ink-2); font-size: .85rem; font-weight: 650; }
+/* Keep a real native select while letting long gauge names wrap on phones. */
+.selectWrap { position: relative; display: flex; align-items: center; justify-content: space-between; gap: .7rem; min-height: 46px; min-width: 0; padding: .55rem .7rem; background: var(--app-bg); color: var(--app-ink); border: 1px solid var(--app-control-border); border-radius: var(--app-radius-md); font-weight: 650; line-height: 1.35; }
+.selectWrap svg { flex: none; }
+.selectWrap select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font: inherit; }
+.selectWrap:has(select:focus-visible) { outline: 2px solid var(--app-focus); outline-offset: 2px; }
+.stage { max-width: 28rem; margin: .5rem 0 .8rem; }
+.controls { display: flex; flex-wrap: wrap; gap: .7rem 2rem; margin-block: 1rem; }
+.controls fieldset { border: 0; min-width: 0; margin: 0; padding: 0; }
+.controls legend { padding: 0; margin-bottom: .25rem; }
+.buttons { display: inline-flex; flex-wrap: wrap; gap: .15rem; }
+.buttons button { min-height: 44px; min-width: 44px; padding-inline: .7rem; border-radius: var(--app-radius-md); border: 1px solid var(--app-border); color: var(--app-ink); background: var(--app-bg); font-size: .875rem; font-weight: 600; }
+.buttons button[aria-pressed=true] { border-color: var(--app-cool-text); background: var(--app-cool-tint-14); color: var(--app-cool-text); box-shadow: inset 0 0 0 1px var(--app-cool-text); }
+.readout { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: .5rem 1rem; margin-block: .9rem; }
+.value { font-size: clamp(2rem, 8cqw, 3.6rem); line-height: 1.1; font-weight: 720; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.value span { font-size: .43em; letter-spacing: 0; font-weight: 550; color: var(--app-ink-2); }
+.extent { display: flex; flex-wrap: wrap; gap: .3rem 1.1rem; }
+.extent span, .readout time, .note, .axis, .scale { font-size: .82rem; color: var(--app-ink-2); }
+.extent b { display: block; color: var(--app-ink); font-size: .95rem; }
+.figure { margin: 0; }
+.plot { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: .5rem; }
+.scale { display: flex; flex-direction: column; justify-content: space-between; text-align: right; font-variant-numeric: tabular-nums; }
+.plot svg { width: 100%; height: clamp(6.75rem, 22cqw, 12rem); overflow: visible; }
+.gridLine, .trace, .marker, .dot { vector-effect: non-scaling-stroke; fill: none; }
+.gridLine { stroke: var(--app-border); stroke-width: 1; }
+.trace { stroke: var(--app-cool-text); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.3; }
+.marker { stroke: var(--app-ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.dot { stroke: var(--app-cool-text); stroke-linecap: round; stroke-width: 7; }
+.axis { display: flex; justify-content: space-between; gap: .7rem; flex-wrap: wrap; margin-top: .4rem; }
+.scrub { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem .9rem; margin-top: .65rem; font-size: .875rem; font-weight: 600; }
+.scrub input { flex: 1 1 7rem; min-width: 0; min-height: 44px; accent-color: var(--app-cool-text); }
+.sources { margin-top: .65rem; padding-top: .55rem; border-top: 1px solid var(--app-border); font-size: .9rem; }
+.sources p { margin-block: .2rem; }
+.sources a, .links a, .message button { display: inline-flex; align-items: center; gap: .3rem; min-height: 44px; color: var(--app-link); text-decoration: underline; text-underline-offset: .16em; font-weight: 600; }
+.sources a svg { flex-shrink: 0; }
+.links { padding-top: .85rem; margin-top: 1rem; border-top: 1px solid var(--app-border); display: grid; justify-items: start; font-size: .9rem; }
+.message { padding-block: 1rem; }
+.explorer :is(select,button,a,input):focus-visible, .links a:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 2px; }
+@container (min-width: 40rem) {
+  .selector { max-width: 38rem; }
+  .controls { gap: 3rem; }
+  .readout { margin-block: 1.3rem; }
+}
+
+.sources summary { min-height: 44px; align-content: center; cursor: pointer; width: fit-content; font-weight: 600; }
+.sources summary:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 2px; }
+
+.net { margin: .25rem 0 .9rem; color: var(--app-ink-2); font-size: .9rem; line-height: 1.4; }

@@ -6,6 +6,7 @@ import {
   askFailureForAbortReason,
   askQuestionPath,
   askResultHeading,
+  askSourceDestination,
   askVisibleRecommendationSummary,
   canDisplayAskSourcePhoto,
   explicitAreaInQuery,
@@ -39,6 +40,21 @@ describe("Ask Radius question links", () => {
 });
 
 describe("Ask Radius evidence labels", () => {
+  it.each([
+    ["/places/community-park", "Place details in Radius", false],
+    ["/events/park-day?from=ask", "Event details in Radius", false],
+    ["/m/brunswick", "View Brunswick in Radius", false],
+    ["https://www.frederickcountymd.gov/parks", "View on frederickcountymd.gov", false],
+    ["https://www.google.com/maps/place/Brunswick", "View on google.com", false],
+    ["https://www.google.com/maps/dir/?api=1&destination=Brunswick", "Directions to Brunswick", true],
+    ["https://maps.apple.com/?daddr=Brunswick", "Directions to Brunswick", true],
+    ["https://maps.apple.com/?q=Brunswick", "View on maps.apple.com", false],
+  ])("names the destination of %s", (href, label, directions) => {
+    const destination = askSourceDestination({ href, name: "Brunswick" });
+    expect(destination.label).toBe(label);
+    expect(Boolean(destination.directions)).toBe(directions);
+  });
+
   it("describes ordinary source cards as evidence, not recommendations", () => {
     expect(askEvidenceLabels({})).toEqual({
       sourceLabel: "Source",

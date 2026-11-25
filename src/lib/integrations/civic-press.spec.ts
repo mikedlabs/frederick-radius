@@ -6,6 +6,24 @@ import {
   type CivicPressItem,
 } from "./civic-press";
 
+const cacheState = vi.hoisted(() => ({ retainLastGood: false }));
+vi.mock("next/cache", () => ({
+  unstable_cache: <T,>(read: () => Promise<T>) => {
+    let lastGood: T | undefined;
+    return async () => {
+      try {
+        const result = await read();
+        if (cacheState.retainLastGood) lastGood = result;
+        return result;
+      } catch (error) {
+        if (cacheState.retainLastGood && lastGood !== undefined) return lastGood;
+        throw error;
+      }
+    };
+  },
+}));
+afterEach(() => { cacheState.retainLastGood = false; });
+
 const NOW = Date.parse("2026-07-21T20:00:00.000Z");
 
 function policeItem(title: string, ageHours: number): CivicPressItem {
@@ -292,6 +310,32 @@ describe("official newsroom runtime", () => {
     expect(result.sourceChecks?.filter((source) => source.status === "unavailable")).toHaveLength(2);
   });
 
+  it("retains a publisher's last successful check through a temporary failure, then expires its safety items", async () => {
+    cacheState.retainLastGood = true;
+    const title = "Frederick Police Investigate Shooting";
+    vi.stubGlobal("fetch", officialFetch({ safety: rss(cityRow({ title,
+      url: "https://www.cityoffrederickmd.gov/CivicAlerts.aspx?AID=301", date: CURRENT })) }));
+    const original = await getCivicPressReleasesResult();
+    expect(original.items.some((item) => item.title === title)).toBe(true);
+    const failure = () => officialFetch({ safety: new Response("maintenance", { status: 503 }) });
+    vi.setSystemTime(Date.parse(CURRENT) + 20 * 60_000);
+    vi.stubGlobal("fetch", failure());
+    const retained = await getCivicPressReleasesResult();
+    expect(retained.sourceChecks?.[2]).toMatchObject({ status: "available", checkedAt: CURRENT });
+    expect(retained.items.some((item) => item.title === title)).toBe(true);
+    vi.setSystemTime(Date.parse(CURRENT) + 60 * 60_000);
+    vi.stubGlobal("fetch", failure());
+    const expired = await getCivicPressReleasesResult();
+    expect(expired.items.some((item) => item.title === title)).toBe(false);
+    expect(expired.sourceHealth).toEqual({ degraded: true, unavailable: ["City of Frederick"] });
+    expect(expired.sourceChecks?.[2]).toMatchObject({ status: "unavailable", reason: "stale", checkedAt: CURRENT });
+    expect(expired.sourceChecks?.[1]).toMatchObject({ status: "available", checkedAt: new Date().toISOString() });
+    vi.stubGlobal("fetch", officialFetch({ safety: rss() }));
+    const recovered = await getCivicPressReleasesResult();
+    expect(recovered.sourceChecks?.[2]).toMatchObject({ status: "empty", checkedAt: new Date().toISOString() });
+    expect(recovered.sourceHealth.degraded).toBe(false);
+  });
+
   it("bounds a stalled fetch even when it ignores cancellation, retaining the healthy other newsroom", async () => {
     const fallback = officialFetch();
     const fetch = vi.fn((url: string, options: RequestInit) => {
@@ -300,7 +344,7 @@ describe("official newsroom runtime", () => {
     });
     vi.stubGlobal("fetch", fetch);
     const pending = getCivicPressReleasesResult();
-    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(4_500);
     const result = await pending;
     expect(officialCivicNews(result).status).toBe("partial");
     expect(result.items[0].source).toBe("Frederick County");
@@ -314,7 +358,7 @@ describe("official newsroom runtime", () => {
     const body = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(new TextEncoder().encode("<rss>")); }, cancel });
     vi.stubGlobal("fetch", officialFetch({ city: new Response(body) }));
     const pending = getCivicPressReleasesResult();
-    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(4_500);
     const result = await pending;
     expect(result.sourceChecks?.[0].status).toBe("unavailable");
     expect(result.items[0].source).toBe("Frederick County");

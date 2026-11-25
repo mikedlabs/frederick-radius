@@ -10,6 +10,7 @@ import {
 } from "@/lib/integrations/airnow";
 import {
   getFcpsAlertsResult,
+  isCurrentFcpsNotice,
   type FcpsAlertsResult,
 } from "@/lib/integrations/fcps";
 import {
@@ -32,12 +33,14 @@ import {
   getGeocodedScannerIncidentsResult,
   type GeocodedScannerIncidentsResult,
 } from "@/lib/integrations/scannerIncidents";
+import { withDeadlineFallback } from "@/lib/promise-deadline";
+import { createVerifiedSourceReader } from "./verifiedSourceReader";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import {
   buildCurrentSituationSnapshot,
+  FCPS_CHECK_MAX_AGE_SECONDS,
   sourceEnvelope,
   type CurrentSituationSnapshot,
-  type SourceAsOfBasis,
 } from "@/lib/live/currentSituationModel";
 import { fuseScannerWithChartIncidents } from "@/lib/live/incidentFusion";
 import { SCANNER_SOURCE_CHECK_MAX_AGE_MS } from "@/lib/live/incidentFreshness";
@@ -45,10 +48,34 @@ import { NWS_ALERTS_FUTURE_TOLERANCE_MS, NWS_ALERTS_MAX_CHECK_AGE_MS } from "@/l
 
 const EMPTY_OUTAGES = { total_out: 0, total_served: 0, munis: [] };
 const LIVE_SOURCE_DEADLINE_MS = 1_700;
+const PULSE_DETAIL_SOURCE_DEADLINE_MS = 4_500;
+const SCHOOL_CHECK_MAX_AGE_MS = FCPS_CHECK_MAX_AGE_SECONDS * 1_000;
+const TRAFFIC_CHECK_MAX_AGE_MS = 5 * 60_000;
+const POWER_REPORT_MAX_AGE_MS = 15 * 60_000;
+
+const readWeather = createVerifiedSourceReader<NwsAlertsResult>(
+  "nws", getNwsAlertsResult, { alerts: [], available: false }, (result) => result.checkedAt, NWS_ALERTS_MAX_CHECK_AGE_MS,
+);
+const readSchools = createVerifiedSourceReader<FcpsAlertsResult>(
+  "fcps", getFcpsAlertsResult, { data: [], available: false }, (result) => result.checkedAt, SCHOOL_CHECK_MAX_AGE_MS,
+);
+const readTraffic = createVerifiedSourceReader<ChartIncidentsResult>(
+  "mdot-chart", () => getChartIncidentsFrederickResult({ deadlineMs: PULSE_DETAIL_SOURCE_DEADLINE_MS }),
+  { data: [], available: false }, (result) => result.asOf, TRAFFIC_CHECK_MAX_AGE_MS,
+);
+const readScanner = createVerifiedSourceReader<GeocodedScannerIncidentsResult>(
+  "scanner", getGeocodedScannerIncidentsResult, { data: [], available: false, rawCount: 0, geocodedCount: 0 },
+  (result) => result.asOfBasis === "retrieval" ? result.asOf : undefined, SCANNER_SOURCE_CHECK_MAX_AGE_MS,
+);
+const readPower = createVerifiedSourceReader<FrederickOutagesResult>(
+  "firstenergy", getFrederickOutagesResult, { data: EMPTY_OUTAGES, available: false }, (result) => result.asOf, POWER_REPORT_MAX_AGE_MS,
+);
 
 export type GetCurrentSituationOptions = {
   /** Explicit clocks bypass cross-request caching and are intended for tests. */
   now?: string | number | Date;
+  /** Full Pulse can wait for a cold provider longer than the header or Ask. */
+  waitForSources?: boolean;
 };
 
 function clock(value?: string | number | Date): Date {
@@ -57,16 +84,6 @@ function clock(value?: string | number | Date): Date {
     throw new RangeError("Current situation snapshots require a valid clock.");
   }
   return date;
-}
-
-function asOf(
-  providerValue: string | undefined,
-  capturedAt: string,
-  providerBasis: SourceAsOfBasis,
-): { asOf: string; asOfBasis: SourceAsOfBasis } {
-  return providerValue
-    ? { asOf: providerValue, asOfBasis: providerBasis }
-    : { asOf: capturedAt, asOfBasis: "retrieval" };
 }
 
 function newestAirObservation(
@@ -79,37 +96,21 @@ function newestAirObservation(
   return newest === undefined ? undefined : new Date(newest).toISOString();
 }
 
-/**
- * A slow optional source must not hold every live surface hostage.
- *
- * The snapshot keeps unavailable distinct from quiet, so timing a source out
- * is honest: the page becomes partial rather than falsely clear. Individual
- * integrations still own their provider-specific aborts and caches; this is
- * the shared user-facing ceiling around each independent read.
- */
-async function settleWithin<T>(
-  work: Promise<T>,
-  fallback: T,
-  deadlineMs = LIVE_SOURCE_DEADLINE_MS,
-): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      work.catch(() => fallback),
-      new Promise<T>((resolve) => {
-        timer = setTimeout(() => resolve(fallback), deadlineMs);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
+// Preserve the short cache for the two optional services, including their
+// genuine unconfigured or empty states. Their presence is independent of the
+// five live checks whose last successful result is retained separately.
+const optionalSourceCache = { revalidate: 60, tags: ["current-situation"] };
+const release = process.env.VERCEL_GIT_COMMIT_SHA ?? "dev";
+const readFire = unstable_cache(getPulsePointIncidentsResult, ["county-fire-rescue-v1", release], optionalSourceCache);
+const loadAir = () => getAirQuality(FREDERICK_CENTER, { deadlineMs: LIVE_SOURCE_DEADLINE_MS - 200 });
+const readAir = unstable_cache(loadAir, ["county-air-observations-v1", release], optionalSourceCache);
 
 async function loadCurrentSituation(
   nowValue?: string | number | Date,
+  waitForSources = false,
 ): Promise<CurrentSituationSnapshot> {
-  const now = clock(nowValue);
-  const capturedAt = now.toISOString();
+  const deadlineMs = waitForSources ? PULSE_DETAIL_SOURCE_DEADLINE_MS : LIVE_SOURCE_DEADLINE_MS;
+  const uncached = nowValue !== undefined;
   const [
     nws,
     schools,
@@ -119,52 +120,25 @@ async function loadCurrentSituation(
     fireRescue,
     rawAir,
   ] = await Promise.all([
-    settleWithin<NwsAlertsResult>(
-      getNwsAlertsResult(),
-      { alerts: [], available: false },
-    ),
-    settleWithin<FcpsAlertsResult>(
-      getFcpsAlertsResult(),
-      { data: [], available: false },
-    ),
-    settleWithin<ChartIncidentsResult>(
-      getChartIncidentsFrederickResult({
-        deadlineMs: LIVE_SOURCE_DEADLINE_MS - 200,
-      }),
-      { data: [], available: false },
-    ),
-    settleWithin<GeocodedScannerIncidentsResult>(
-      getGeocodedScannerIncidentsResult(),
-      {
-        data: [],
-        available: false,
-        rawCount: 0,
-        geocodedCount: 0,
-      },
-    ),
-    settleWithin<FrederickOutagesResult>(
-      getFrederickOutagesResult(),
-      {
-        data: EMPTY_OUTAGES,
-        available: false,
-      },
-    ),
-    settleWithin<PulsePointIncidentsResult>(
-      getPulsePointIncidentsResult(),
+    readWeather(deadlineMs, uncached),
+    readSchools(deadlineMs, uncached),
+    readTraffic(deadlineMs, uncached),
+    readScanner(deadlineMs, uncached),
+    readPower(deadlineMs, uncached),
+    withDeadlineFallback<PulsePointIncidentsResult>(
+      uncached ? getPulsePointIncidentsResult() : readFire(),
+      LIVE_SOURCE_DEADLINE_MS,
       {
         data: [],
         available: false,
         configured: true,
       },
     ),
-    settleWithin(
-      getAirQuality(FREDERICK_CENTER, {
-        deadlineMs: LIVE_SOURCE_DEADLINE_MS - 200,
-      }),
-      null,
-    ),
+    withDeadlineFallback(uncached ? loadAir() : readAir(), LIVE_SOURCE_DEADLINE_MS, null),
   ]);
 
+  const now = clock(nowValue);
+  const capturedAt = now.toISOString();
   const freshAir = (rawAir ?? []).filter((observation) =>
     isFreshAqiObservation(observation, now),
   );
@@ -183,15 +157,16 @@ async function loadCurrentSituation(
     }),
     schools: sourceEnvelope({
       source: "fcps",
-      data: schools.data,
+      data: schools.data.filter((notice) => isCurrentFcpsNotice(notice.published_at, now.getTime())),
       availability: schools.available ? "available" : "unavailable",
       requiredForQuiet: true,
       capturedAt,
-      staleAfterSeconds: 20 * 60,
+      staleAfterSeconds: SCHOOL_CHECK_MAX_AGE_MS / 1_000,
       // FCPS may publish no new item for days while the successfully fetched
       // feed is still current. Use this read's retrieval time for feed health;
       // each notice retains its provider publication time in `published_at`.
-      ...(schools.available ? asOf(undefined, capturedAt, "retrieval") : {}),
+      asOf: schools.checkedAt ?? null,
+      asOfBasis: schools.checkedAt ? "retrieval" : null,
     }),
     traffic: sourceEnvelope({
       source: "mdot-chart",
@@ -199,8 +174,9 @@ async function loadCurrentSituation(
       availability: traffic.available ? "available" : "unavailable",
       requiredForQuiet: true,
       capturedAt,
-      staleAfterSeconds: 5 * 60,
-      ...(traffic.available ? asOf(traffic.asOf, capturedAt, "retrieval") : {}),
+      staleAfterSeconds: TRAFFIC_CHECK_MAX_AGE_MS / 1_000,
+      asOf: traffic.asOf ?? null,
+      asOfBasis: traffic.asOf ? "retrieval" : null,
     }),
     scanner: sourceEnvelope({
       source: "frederick-scanner",
@@ -221,8 +197,9 @@ async function loadCurrentSituation(
       availability: power.available ? "available" : "unavailable",
       requiredForQuiet: true,
       capturedAt,
-      staleAfterSeconds: 15 * 60,
-      ...(power.available ? asOf(power.asOf, capturedAt, "provider") : {}),
+      staleAfterSeconds: POWER_REPORT_MAX_AGE_MS / 1_000,
+      asOf: power.asOf ?? null,
+      asOfBasis: power.asOf ? "provider" : null,
       itemCount: power.data.total_out > 0 ? 1 : 0,
     }),
     fireRescue: sourceEnvelope({
@@ -236,7 +213,8 @@ async function loadCurrentSituation(
       requiredForQuiet: fireRescue.configured,
       capturedAt,
       staleAfterSeconds: 3 * 60,
-      ...(fireRescue.available ? asOf(undefined, capturedAt, "retrieval") : {}),
+      asOf: fireRescue.asOfBasis === "retrieval" ? fireRescue.asOf ?? null : null,
+      asOfBasis: fireRescue.asOfBasis === "retrieval" ? "retrieval" : null,
     }),
     air: sourceEnvelope({
       source: "airnow",
@@ -259,21 +237,12 @@ async function loadCurrentSituation(
   return buildCurrentSituationSnapshot({ sources, roadFusion, now });
 }
 
-const getCachedCurrentSituation = unstable_cache(
-  () => loadCurrentSituation(),
-  [
-    "current-situation-v2",
-    process.env.VERCEL_GIT_COMMIT_SHA ?? "dev",
-  ],
-  { revalidate: 60, tags: ["current-situation"] },
-);
-
-const getCurrentSituationForRequest = cache(getCachedCurrentSituation);
+const getCurrentSituationForRequest = cache((waitForSources: boolean) => loadCurrentSituation(undefined, waitForSources));
 
 export function getCurrentSituationSnapshot(
-  { now }: GetCurrentSituationOptions = {},
+  { now, waitForSources = false }: GetCurrentSituationOptions = {},
 ): Promise<CurrentSituationSnapshot> {
   return now === undefined
-    ? getCurrentSituationForRequest()
-    : loadCurrentSituation(now);
+    ? getCurrentSituationForRequest(waitForSources)
+    : loadCurrentSituation(now, waitForSources);
 }

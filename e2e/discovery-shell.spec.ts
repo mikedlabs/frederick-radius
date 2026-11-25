@@ -325,7 +325,7 @@ test.describe("mobile discovery shell", () => {
     });
     await withinReach.click();
     await expect(placesPane).toBeHidden();
-    await expect(page).toHaveURL(/\/map\?mode=radius(?:&c=[^&]+)?$/);
+    await expect.poll(() => new URL(page.url()).searchParams.get("mode")).toBe("radius");
     const countyMap = page.getByRole("link", { name: "Back to county map" });
     await expect(countyMap).toBeVisible();
     await countyMap.click();
@@ -693,7 +693,7 @@ test.describe("mobile discovery shell", () => {
     await page.goto("/compass", { waitUntil: "domcontentloaded" });
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "What do you need?" }),
+      page.getByRole("heading", { level: 1, name: "Local tools" }),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "Find a place, service, event, or answer" })).toHaveAttribute("href", "/search");
     await expect(page.getByRole("searchbox")).toHaveCount(0);
@@ -707,7 +707,7 @@ test.describe("mobile discovery shell", () => {
     for (const label of [
       "Ask Radius",
       "Near me",
-      "Live conditions",
+      "County status",
       "Nearby essentials",
     ]) {
       await expect(
@@ -733,7 +733,7 @@ test.describe("mobile discovery shell", () => {
     await expect(index.getByRole("link", { name: /^Ask Radius\b/ })).toHaveCount(1);
     await expect(index.getByRole("link", { name: /^Ask Radius\b/ })).toHaveAttribute("href", "/ask?q=ask");
     await toolSearch.fill("weather");
-    await expect(index.getByRole("link", { name: /Live conditions/ })).toHaveAttribute("href", "/pulse");
+    await expect(index.getByRole("link", { name: /County status/ })).toHaveAttribute("href", "/pulse");
     await toolSearch.fill("");
     await page.goBack();
     await expect(index).toBeHidden();

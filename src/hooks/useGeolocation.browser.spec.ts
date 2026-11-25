@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import LocationCacheExpiry from "@/components/privacy/LocationCacheExpiry";
+import { clearGeoPosition } from "@/lib/device-location-cache";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,6 +35,7 @@ describe("shared browser geolocation state", () => {
   let container: HTMLDivElement;
 
   beforeEach(() => {
+    clearGeoPosition();
     window.sessionStorage.clear();
     resetLocationRefusalForTests();
     container = document.createElement("div");
@@ -43,6 +46,8 @@ describe("shared browser geolocation state", () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    clearGeoPosition();
+    vi.useRealTimers();
     vi.restoreAllMocks();
     window.sessionStorage.clear();
   });
@@ -88,6 +93,44 @@ describe("shared browser geolocation state", () => {
       cacheGeolocationPosition({ lng: -77.4105, lat: 39.4143, accuracy: 18, timestamp: Date.now() });
     });
     expect(container.querySelector("#two")?.getAttribute("data-status")).toBe("granted");
+  });
+
+  it("deletes the idle fix at its deadline, even after the requesting screen unmounts", async () => {
+    vi.useFakeTimers();
+    const fix = { lat: 39.414378, lng: -77.410692, accuracy: 10, timestamp: Date.now() };
+    await act(async () => root.render(createElement(Probe, { id: "one" })));
+    await act(async () => cacheGeolocationPosition(fix));
+    await act(async () => root.render(createElement(LocationCacheExpiry)));
+    await act(async () => vi.advanceTimersByTime(30 * 60_000 - 1));
+    expect(window.sessionStorage.getItem("fr_geo_v1")).not.toBeNull();
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(window.sessionStorage.getItem("fr_geo_v1")).toBeNull();
+  });
+
+  it.each(["pageshow", "visibilitychange"])("discards a legacy fix on %s after the browser suspended timers", async event => {
+    vi.useFakeTimers();
+    const start = Date.now();
+    window.sessionStorage.setItem("fr_geo_v1", JSON.stringify({ lat: 39.4, lng: -77.4, accuracy: 15, timestamp: start }));
+    await act(async () => root.render(createElement("div", null, createElement(LocationCacheExpiry), createElement(Probe, { id: "one" }))));
+    expect(container.querySelector("#one")?.textContent).toBe("granted");
+    vi.setSystemTime(start + 31 * 60_000);
+    await act(async () => { (event === "pageshow" ? window : document).dispatchEvent(new Event(event)); });
+    expect(window.sessionStorage.getItem("fr_geo_v1")).toBeNull();
+    expect(container.querySelector("#one")?.textContent).toBe("idle");
+  });
+
+  it("does not let an older timer remove a newer fix or retain a late device callback", async () => {
+    vi.useFakeTimers();
+    const first = { lat: 39.4, lng: -77.4, accuracy: 15, timestamp: Date.now() };
+    cacheGeolocationPosition(first);
+    vi.advanceTimersByTime(20 * 60_000);
+    cacheGeolocationPosition({ ...first, timestamp: Date.now(), lat: 39.5 });
+    vi.advanceTimersByTime(10 * 60_000);
+    expect(readCachedPosition()?.lat).toBe(39.5);
+    vi.advanceTimersByTime(20 * 60_000);
+    expect(window.sessionStorage.getItem("fr_geo_v1")).toBeNull();
+    cacheGeolocationPosition(first);
+    expect(window.sessionStorage.getItem("fr_geo_v1")).toBeNull();
   });
 
   it("lets a refusal win over a cached fix without announcing a new fix", async () => {

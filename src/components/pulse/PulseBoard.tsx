@@ -192,7 +192,7 @@ function PulseSourceChecks({ summary }: { summary: CountyStatusSummary }) {
   return (
     <details data-pulse-source-checks className="mt-3 text-[12px]">
       <summary className="min-h-11 cursor-pointer content-center font-semibold">Source checks</summary>
-      <p>Source times describe feed checks, publications or observations. They are separate from incident times.</p>
+      <p>These checks cover weather, schools, roads, outages, fire and rescue, air quality and civic notices. Times below show when a source was checked, a notice was published or a reading was taken.</p>
       <dl className="mt-2 space-y-2">
         {summary.checks.map((check, index) => {
           const time = formatPulseSourceTime(check.asOf);
@@ -761,6 +761,9 @@ function SecondarySignalRow({
     state === "Feed unavailable" ||
     state === "Not connected";
   const color = needsContext ? "var(--app-warning)" : "var(--app-ink-3)";
+  const description = needsContext
+    ? (tile.countLabel === state ? tile.peek : tile.countLabel)
+    : `${tile.countLabel} · ${tile.sourceLabel}`;
 
   return (
     <li>
@@ -801,9 +804,9 @@ function SecondarySignalRow({
               </span>
             ) : null}
           </span>
-          <span className={styles.sourceDescription}>
-            {needsContext ? tile.countLabel : `${tile.countLabel} · ${tile.sourceLabel}`}
-          </span>
+          {description && description !== state && (
+            <span className={styles.sourceDescription}>{description}</span>
+          )}
           {needsContext ? (
             <span className={styles.rowSource}>
               Source · {tile.sourceLabel}
@@ -1088,6 +1091,10 @@ export default function PulseBoard({
     tone: heroTone,
   });
 
+  const alertFallback = !lead && tiles.find(tile => tile.key === "alerts" &&
+    (pulseTileState(tile) === "Feed unavailable" || pulseTileState(tile) === "Partial data"));
+  const primaryAction = lead || alertFallback;
+
   const earlierRoadLead = hero.leadKey === "traffic" && hero.leadIsEarlier === true;
   const earlierRoadCount = hero.countyStatus?.roadCheck?.earlierCount ?? 0;
   const currentRoadCount = hero.countyStatus?.roadCheck?.currentCount ?? 0;
@@ -1124,17 +1131,10 @@ export default function PulseBoard({
         </div>
         <h1 className={styles.headline}>{earlierRoadLead ? `Earlier MDOT report: ${hero.line}` : hero.line}</h1>
         <p className={styles.summary}>{earlierRoadLead ? `Current road conditions are unverified. Earlier report guidance: ${hero.sub}` : hero.sub}</p>
-        {hero.countyStatus && (
-          <p className="mt-3 text-[12px]">
-            County status summarizes available shared weather, school, road, outage, fire and rescue, air-quality, and civic checks.
-            {hero.countyStatus.ok ? " Other conditions keep their own source checks below." : " Some shared checks could not be verified. Other conditions keep their own source checks below."}
-          </p>
-        )}
         {earlierRoadCount > 0 && (
           <p className="mt-3 text-[12px]">Earlier road checks listed {earlierRoadCount} {earlierRoadCount === 1 ? "update" : "updates"}. {currentRoadCount > 0 ? "Some road sources remain unverified." : "Current road conditions are unverified."}</p>
         )}
-        {hero.countyStatus && <PulseSourceChecks summary={hero.countyStatus} />}
-        {(hero.leadMeta || lead) && (
+        {(hero.leadMeta || primaryAction) && (
           <div className={styles.briefingAction}>
             {hero.leadMeta && (
               <p className={styles.leadMeta}>
@@ -1142,20 +1142,28 @@ export default function PulseBoard({
                 {earlierRoadLead ? `Earlier report details: ${hero.leadMeta}` : hero.leadMeta}
               </p>
             )}
-            {lead && (
+            {primaryAction && (
               <Button
                 variant="secondary"
                 disabled={!interactionReady}
                 data-decision-action="open-status-details"
-                onClick={event => openTile(lead.key, event.currentTarget)}
+                onClick={event => openTile(primaryAction.key, event.currentTarget)}
                 className={styles.leadButton}
                 style={{ backgroundColor: "var(--app-bg-elevated-solid)", color: "var(--app-ink)" }}
                 iconRight={<ArrowRight aria-hidden className="h-4 w-4" />}
               >
-                {hero.actionLabel ?? "See what this means"}
+                {lead ? (hero.actionLabel ?? "See what this means") : "Check official alerts"}
               </Button>
             )}
           </div>
+        )}
+        {hero.countyStatus && (
+          <>
+            {!hero.countyStatus.ok && (lead || !hero.degraded || hero.operational) && (
+              <p className="mt-3 text-[12px]">Some county conditions could not be verified.</p>
+            )}
+            <PulseSourceChecks summary={hero.countyStatus} />
+          </>
         )}
       </header>
 

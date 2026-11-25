@@ -55,11 +55,19 @@ const TRANSIT_ACT: TransitIntent[] = [
 
 const TRANSIT_REFERENCE: TransitIntent[] = [
   {
-    label: "TransIT-plus (paratransit)",
-    hint: "Door-to-door rides for disabled riders, book 1+ business days ahead",
+    label: "Transit-plus curb-to-curb rides",
+    hint: "For registered riders age 60+ or with a qualifying disability. Request at least 2 business days ahead. Later requests depend on space.",
     icon: Accessibility,
     accent: "var(--app-positive)",
-    href: "https://frederickcountymd.gov/108/TransIT-Plus",
+    href: "https://frederickcountymd.gov/221/Transit-plus",
+    external: true,
+  },
+  {
+    label: "ADA route deviations",
+    hint: "Call 301-600-2065 by close of business the day before your trip. Phone hours are Monday–Friday, 8 a.m. to 4 p.m.",
+    icon: Accessibility,
+    accent: "var(--app-positive)",
+    href: "https://frederickcountymd.gov/220/Transit-plus-Demand-Response-and-ADA-Par",
     external: true,
   },
   {
@@ -103,6 +111,7 @@ import NextStopsBoard from "@/components/transit/NextStopsBoard";
 import RoutePearls from "@/components/transit/RoutePearls";
 import TransitRouteFinder from "@/components/transit/TransitRouteFinder";
 import TransitStopFinder from "@/components/transit/TransitStopFinder";
+import TransitHolidayNotice from "@/components/transit/TransitHolidayNotice";
 import TransitServiceAlerts from "@/components/transit/TransitServiceAlerts";
 import styles from "@/components/transit/TransitExperience.module.css";
 import TRANSIT_RAW from "@/data/transit.json" with { type: "json" };
@@ -194,7 +203,8 @@ export default async function TransitPage() {
   // The stop finder and route catalog use the committed official network.
   // Slow secondary train data must not hold the rider's first useful screen.
   // Share one board request between its two consumers instead of refetching.
-  const board = getMarcBoard(new Date());
+  const now = new Date();
+  const board = getMarcBoard(now);
   const alerts = getMarcAlerts();
   const shapes = officialTransitRouteShapesFC();
   const staticRoutes = (
@@ -240,6 +250,7 @@ export default async function TransitPage() {
         </svg>
       </header>
 
+      <TransitHolidayNotice now={now} />
       <TransitServiceAlerts />
 
       {/* The primary rider decision: choose a stop, compare the walk with live

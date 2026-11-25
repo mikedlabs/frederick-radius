@@ -8,7 +8,8 @@ import { isPromotedDataBuild } from "@/lib/data-release-mode";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { archivedEventFromSnapshot } from "@/lib/events/event-identity";
 import { isPublicEvent } from "@/lib/events/classify";
-import { applyEventNotices } from "@/lib/events/notices";
+import { FROSTY_FRIDAY, TENTH_WARD_CONCERT, type HolidayGuideStatus } from "@/data/thanksgiving-events";
+import { activeEventNotices, applyEventNotices } from "@/lib/events/notices";
 import { dedupeCrossSourceShows } from "@/lib/events/normalize";
 import {
   allUpcoming,
@@ -405,6 +406,67 @@ export async function loadTodayEventSnapshot(
     limit: TODAY_EVENT_SNAPSHOT_LIMIT,
     timeoutMs: TODAY_EVENT_SNAPSHOT_TIMEOUT_MS,
   });
+}
+
+type HolidayArchiveStatus = {
+  url: string;
+  withdrawn: boolean | null;
+  recent: boolean | null;
+  slugs: string[] | null;
+};
+
+/**
+ * Read both editorial occurrences independently of the board's scheduled-only,
+ * Friday-evening window. Keep withdrawn rows, old aliases and owner notices.
+ * The evergreen festival URL is scoped to this season.
+ */
+export async function loadHolidayGuideStatus(now: Date): Promise<HolidayGuideStatus> {
+  const at = now.getTime();
+  if (at < Date.parse("2026-11-23T05:00:00Z") || at >= Date.parse(TENTH_WARD_CONCERT.endsAt)) return {};
+  const picks = [FROSTY_FRIDAY, TENTH_WARD_CONCERT];
+  let rows: HolidayArchiveStatus[] = [];
+  try {
+    const sql = isPromotedDataBuild() ? null : getSql();
+    if (sql) {
+      const pending = sql<HolidayArchiveStatus[]>`
+        with picks (slug, url, syndicated, starts_at) as (values
+          (${FROSTY_FRIDAY.slug}::text, ${FROSTY_FRIDAY.url}::text, null::text, ${FROSTY_FRIDAY.startsAt}::timestamptz),
+          (${TENTH_WARD_CONCERT.slug}::text, ${TENTH_WARD_CONCERT.url}::text, ${TENTH_WARD_CONCERT.syndicatedUrl}::text, ${TENTH_WARD_CONCERT.startsAt}::timestamptz)
+        )
+        select p.url, array_agg(distinct c.canonical_slug) filter (where c.id is not null) as slugs,
+          bool_or(c.event_status in ('cancelled','postponed') or t.reason = 'cancelled'
+            or (t.canonical_event_id is null and c.starts_at <> p.starts_at)) as withdrawn,
+          bool_or(c.event_status = 'scheduled' and t.canonical_event_id is null and c.starts_at = p.starts_at
+            and c.last_seen_at between ${new Date(at - TODAY_EVENT_SNAPSHOT_MAX_AGE_MS).toISOString()}::timestamptz
+            and ${now.toISOString()}::timestamptz) as recent
+        from picks p
+        left join public.event_slug_aliases a on a.slug = p.slug
+        left join public.event_canonical_records c on c.id = a.canonical_event_id or c.canonical_slug = p.slug
+          or (c.source_url in (p.url, p.syndicated)
+              and c.starts_at >= '2026-11-01'::date and c.starts_at < '2026-12-01'::date)
+          or (p.slug = ${FROSTY_FRIDAY.slug} and c.starts_at = p.starts_at
+              and c.snapshot->>'source' in ('dfp', 'visit-frederick')
+              and lower(trim(c.snapshot->>'title')) = ${FROSTY_FRIDAY.title.toLowerCase()})
+        left join public.event_tombstones t on t.canonical_event_id = c.id
+        group by p.url
+      `;
+      const result = await beforeDeadline(pending, TODAY_EVENT_SNAPSHOT_TIMEOUT_MS);
+      if (result.ok) rows = result.value;
+    }
+  } catch {
+    // Direct organizer links and dated editorial evidence remain usable.
+  }
+
+  const notices = activeEventNotices(now).filter((notice) => notice.status !== "advisory");
+  const status: HolidayGuideStatus = {};
+  for (const pick of picks) {
+    const row = rows.find((item) => item.url === pick.url);
+    const notice = notices.some((item) => item.slug === pick.slug || row?.slugs?.includes(item.slug)
+      || item.source_url === pick.url
+      || (pick.url === TENTH_WARD_CONCERT.url && item.source_url === TENTH_WARD_CONCERT.syndicatedUrl));
+    status[pick.url] = notice || row?.withdrawn ? "withdrawn" : row?.recent ? "scheduled" : "unconfirmed";
+  }
+  return status;
 }
 
 /** The weekend guide features scheduled occurrences beginning Friday evening through Sunday. */

@@ -341,8 +341,8 @@ async function eventFilters(page: Page) {
   await filters.getByRole("tab", { name: "What", exact: true }).tap();
   await filters.getByRole("button", { name: "Free", exact: true }).tap();
   await expect(filters.getByRole("button", { name: "Free", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await target(filters.getByRole("button", { name: "Done", exact: true }));
-  await filters.getByRole("button", { name: "Done", exact: true }).tap();
+  await target(filters.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }));
+  await filters.getByRole("button", { name: /^Show (?:results|\d+ events?)$/ }).tap();
   await expect(filters).toHaveCount(0);
   await expect(trigger).toBeFocused();
   await expect.poll(() => new URL(page.url()).searchParams.get("free")).toBe("true");
@@ -453,7 +453,7 @@ for (const width of [390, 320]) {
     await expect(mapLink).toHaveAttribute("href", mapEvidence.expectedHref);
     markMapPhase("around-venue-cta-exposed");
     mapEvidence.exposure.mapCTA = await target(mapLink);
-    const fullLink = dialog.getByRole("link", { name: "See full page", exact: true });
+    const fullLink = dialog.getByRole("link", { name: "Event details in Radius", exact: true });
     mapEvidence.exposure.fullPageFooter = await target(fullLink);
     // Observe actual paints with the Around-the-venue/footer region exposed;
     // absence is tested against real Next scheduling, not a source-attribute mock.
@@ -612,7 +612,7 @@ for (const width of [390, 320]) {
     await expect(page).toHaveURL(before.url);
     await expect.poll(async () => Math.abs(await page.evaluate(() => scrollY) - before.scrollY)).toBeLessThan(80);
     await open.tap();
-    const full = dialog.getByRole("link", { name: "See full page", exact: true });
+    const full = dialog.getByRole("link", { name: "Place details in Radius", exact: true });
     await expect(full).toBeVisible();
     const fullURL = new URL((await full.getAttribute("href"))!, page.url());
     expect(fullURL.pathname).toBe(`/places/${CREEK}`);
@@ -836,7 +836,7 @@ test("native Event full-document Back restores its actual opener after a BFCache
   expect({ slug: summary.slug, title: summary.title, starts: summary.starts_at, ends: summary.ends_at })
     .toEqual({ slug: seed.slug, title: seed.title, starts: seed.starts_at, ends: seed.ends_at });
   const authRead = detailAuthRead(page, appOrigin);
-  const full = dialog.getByRole("link", { name: "See full page", exact: true }); await full.tap();
+  const full = dialog.getByRole("link", { name: "Event details in Radius", exact: true }); await full.tap();
   await expect.poll(() => new URL(page.url()).pathname).toBe(`/events/${seed.slug}`);
   await expect(page.getByRole("heading", { level: 1, name: seed.title, exact: true })).toBeVisible();
   await expect(page.getByText("This event has already happened.", { exact: true })).toBeVisible();
@@ -930,7 +930,7 @@ test("native Nearby full-document Back restores its exact place opener after a B
   await open.tap(); const dialog = page.getByRole("dialog"); await expect(dialog.getByRole("heading", { name: CREEK_NAME, exact: true })).toBeVisible();
   const authRead = detailAuthRead(page, appOrigin);
   detailPhase = "canonical-place-open";
-  await dialog.getByRole("link", { name: "See full page", exact: true }).tap();
+  await dialog.getByRole("link", { name: "Place details in Radius", exact: true }).tap();
   await expect(page.getByRole("heading", { level: 1, name: CREEK_NAME, exact: true })).toBeVisible();
   const breadcrumbs = page.getByRole("navigation", { name: "Breadcrumb", exact: true });
   await expect(breadcrumbs.getByRole("link", { name: "Places", exact: true })).toHaveAttribute("href", "/places");

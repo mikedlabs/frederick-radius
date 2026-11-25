@@ -9,22 +9,20 @@ const sample: EventsBoardDockProps = {
   nowISO: "2026-10-09T16:00:00Z", dayCounts: {}, filteredCount: 2, resultTownCount: 1, countComplete: true,
   categories: [{ slug: "arts", name: "Arts & culture" }, { slug: "music", name: "Live music" }],
   towns: [{ slug: "thurmont", name: "Thurmont" }],
-  intent: null, setIntent: noop, sub: null, setSub: noop, cat: null, setCat: noop,
-  lens: "weekend", setLens: noop, tod: null, setTod: noop, day: null, setDay: noop,
-  town: "thurmont", setTown: noop, q: "a very long local music search phrase with additional words", setQ: noop,
-  freeOnly: false, setFreeOnly: noop, happyOnly: false, setHappyOnly: noop, kidsOnly: false, setKidsOnly: noop,
-  lgbtqOnly: false, setLgbtqOnly: noop, communicationAccessOnly: false, setCommunicationAccessOnly: noop,
-  recurringOnly: false, setRecurringOnly: noop, anyFilter: true, clear: noop,
+  filters: {
+    intent: null, sub: null, cat: null, lens: "weekend", tod: null, day: null, town: "thurmont",
+    q: "a very long local music search phrase with additional words", freeOnly: false, happyOnly: false,
+    kidsOnly: false, lgbtqOnly: false, communicationAccessOnly: false, recurringOnly: false,
+  },
+  applyFilters: noop, previewCount: () => 2, onOpenFilters: noop, anyFilter: true, clear: noop,
   view: "list", setView: noop, sort: "recommended", setSort: noop,
 };
 function Workshop({ countComplete = sample.countComplete }: { countComplete?: boolean }) {
-  const [query, setQuery] = useState(sample.q);
-  const [lens, setLens] = useState(sample.lens);
-  const [town, setTown] = useState(sample.town);
+  const [filters, setFilters] = useState(sample.filters);
   return <>
     <TopBar />
     <main data-app-primary-tab="/events" className="mx-auto max-w-screen-md px-4">
-      <EventsBoardDock {...sample} countComplete={countComplete} q={query} setQ={setQuery} lens={lens} setLens={setLens} town={town} setTown={setTown} />
+      <EventsBoardDock {...sample} countComplete={countComplete} filters={filters} applyFilters={setFilters} previewCount={() => countComplete ? 2 : null} />
       <section className="py-6" data-sample-event-results>
         <h2 className="text-xl font-semibold">Sample event results</h2>
         <p className="mt-2 text-sm">You can review the filter controls here. The event counts are sample data.</p>
@@ -56,13 +54,21 @@ async function ownFilter({ canvasElement }: { canvasElement: HTMLElement }) {
   display.open = true;
   await userEvent.click(filters);
   const dialog = await canvas.findByRole("dialog", { name: "Event filters" });
-  await waitFor(() => expect(within(dialog).getByRole("button", { name: "Done" })).toBeVisible());
+  await waitFor(() => expect(within(dialog).getByRole("button", { name: "Show 2 events" })).toBeVisible());
   expect(display.open).toBe(false);
   expect(dialog).toHaveAttribute("aria-modal", "true");
   expect(canvasElement.querySelector("[data-sample-event-results]")).toHaveAttribute("inert");
+  const what = within(dialog).getByRole("tab", { name: "What" });
+  what.focus();
+  await userEvent.keyboard("{ArrowRight}");
+  await expect(within(dialog).getByRole("tab", { name: "When" })).toHaveFocus();
+  await userEvent.keyboard("{End}");
+  await expect(within(dialog).getByRole("tabpanel", { name: "Where" })).toBeVisible();
+  await userEvent.keyboard("{Home}");
+  await expect(what).toHaveFocus();
   await userEvent.keyboard("/");
   expect(canvas.queryByRole("dialog", { name: "What do you need?" })).toBeNull();
-  await userEvent.click(within(dialog).getByRole("button", { name: "Done" }));
+  await userEvent.click(within(dialog).getByRole("button", { name: "Show 2 events" }));
   await waitFor(() => expect(filters).toHaveFocus());
   expect(canvasElement.querySelector("[data-sample-event-results]")).not.toHaveAttribute("inert");
 }

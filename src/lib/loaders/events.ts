@@ -1,5 +1,6 @@
 import { areDistinctVenuePerformances } from "@/lib/events/venue-occurrence";
 import { EVENTS as RAW_EVENTS, EVENT_BY_SLUG, type Event } from "@/data/events";
+import type { OperationalStatus } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/municipalities";
 // Client-safe: this loader is imported by "use client" event
@@ -127,6 +128,8 @@ const NEAR_TOWN_RADIUS_M = 16_000;
 
 export type EventWithMeta = Omit<Event, "source_url" | "last_verified_at"> &
   EventProvenance & {
+  /** The summary route resolves a linked venue without sending its catalog to the browser. */
+  sheet_venue?: { name: string; operational?: OperationalStatus } | null;
   /** Publisher record edit time; unlike a fetch time, this can settle copy. */
   publisher_updated_at?: string | null;
   distance_m?: number;

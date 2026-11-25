@@ -35,7 +35,7 @@ for (const { width, originPath, label } of [
     await expect(page).toHaveURL(/\/compass$/);
     const drawer = page.getByRole("dialog");
     await expect(drawer).toHaveCount(1);
-    await expect(drawer.getByRole("heading", { name: "What do you need?", exact: true })).toBeVisible();
+    await expect(drawer.getByRole("heading", { name: "Local tools", exact: true })).toBeVisible();
     await expect(drawer.getByRole("link", { name: "Find a place, service, event, or answer", exact: true })).toHaveAttribute("href", "/search");
     await expect(drawer.getByRole("searchbox")).toHaveCount(0);
     await page.keyboard.press("Escape");

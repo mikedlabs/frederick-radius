@@ -9,6 +9,7 @@ type GtfsTranslatedString = {
 type GtfsTripDescriptor = {
   routeId?: string | null;
   tripId?: string | null;
+  startDate?: string | null;
   directionId?: number | null;
   scheduleRelationship?: number | string | null;
 };
@@ -103,6 +104,7 @@ type RawFeedEntity = {
     trip?: {
       route_id?: string | null;
       trip_id?: string | null;
+      start_date?: string | null;
       direction_id?: number | null;
       schedule_relationship?: number | string | null;
     } | null;
@@ -121,6 +123,7 @@ type RawFeedEntity = {
     trip?: {
       route_id?: string | null;
       trip_id?: string | null;
+      start_date?: string | null;
       direction_id?: number | null;
       schedule_relationship?: number | string | null;
     } | null;
@@ -171,6 +174,7 @@ function normalizeEntity(entity: RawFeedEntity): GtfsFeedEntity {
             ? {
               routeId: entity.vehicle.trip.route_id,
               tripId: entity.vehicle.trip.trip_id,
+              startDate: entity.vehicle.trip.start_date,
               directionId: entity.vehicle.trip.direction_id,
               scheduleRelationship: entity.vehicle.trip.schedule_relationship,
             }
@@ -189,6 +193,7 @@ function normalizeEntity(entity: RawFeedEntity): GtfsFeedEntity {
             ? {
                 routeId: entity.trip_update.trip.route_id,
                 tripId: entity.trip_update.trip.trip_id,
+                startDate: entity.trip_update.trip.start_date,
                 directionId: entity.trip_update.trip.direction_id,
                 scheduleRelationship: entity.trip_update.trip.schedule_relationship,
               }
@@ -229,6 +234,7 @@ function encodeEntity(entity: GtfsFeedEntity): RawFeedEntity {
             ? {
                 route_id: entity.vehicle.trip.routeId,
                 trip_id: entity.vehicle.trip.tripId,
+                start_date: entity.vehicle.trip.startDate,
                 direction_id: entity.vehicle.trip.directionId,
                 schedule_relationship: entity.vehicle.trip.scheduleRelationship,
               }
@@ -247,6 +253,7 @@ function encodeEntity(entity: GtfsFeedEntity): RawFeedEntity {
             ? {
                 route_id: entity.tripUpdate.trip.routeId,
                 trip_id: entity.tripUpdate.trip.tripId,
+                start_date: entity.tripUpdate.trip.startDate,
                 direction_id: entity.tripUpdate.trip.directionId,
                 schedule_relationship: entity.tripUpdate.trip.scheduleRelationship,
               }

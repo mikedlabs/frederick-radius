@@ -25,8 +25,11 @@ import {
 } from "@/lib/quality/search-index-health";
 
 const DATABASE_DEADLINE_MS = 1_000;
-const SOURCE_LEDGER_DEADLINE_MS = 1_000;
-const OPERATIONAL_READINESS_DEADLINE_MS = 2_000;
+// The runtime role shares one pooled connection across its evidence reads.
+// Include queueing as well as SQL time; the ingest ledger alone can take
+// more than 1.8s. These are bounded monitor reads, outside visitor pages.
+const SOURCE_LEDGER_DEADLINE_MS = 4_000;
+const OPERATIONAL_READINESS_DEADLINE_MS = 5_000;
 // Public readiness follows the actual two-hour worker schedules, not the
 // nightly reporter's narrow handoff window. These budgets allow one delayed
 // invocation without letting a dead cron look current indefinitely.

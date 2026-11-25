@@ -41,7 +41,7 @@ describe("place card photo source contract", () => {
     let state = recordPlaceCardPhotoResult(plan, null, google.src, "failed");
     const curated = selectedPlaceCardPhoto(plan, state)!;
     expect(curated.kind).toBe("curated");
-    expect(curated.src).toContain("Roddy%20Road%20covered%20bridge");
+    expect(curated.src).toBe("/history-photos/roddy-road-covered-bridge.jpg");
     state = recordPlaceCardPhotoResult(plan, state, google.src, "loaded");
     expect(state.loadedSrc).toBeNull();
     state = recordPlaceCardPhotoResult(plan, state, curated.src, "failed");

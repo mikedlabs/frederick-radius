@@ -206,7 +206,7 @@ export function TodayEventsRecoveryView({
             href={eventsHref}
             prefetch={false}
             aria-label="Open the full events board"
-            className="tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold"
+            className={`tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold ${choiceStyles.boardLink}`}
             style={{ color: "var(--app-link)" }}
           >
             Full board

@@ -1,181 +1,159 @@
-import { afterEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  getFrederickWaterSites,
+  getGaugeHistory,
   getFrederickWaterSitesWithHistoryResult,
-  normalizeWaterSites,
 } from "@/lib/integrations/usgsWater";
+import { HIGH_VALUE_SOURCE_ENDPOINTS } from "@/lib/quality/feed-health";
 
-// Real USGS Instantaneous Values JSON shape (confirmed live against
-// countyCd=24021). Each site appears once per parameter; coords for
-// Frederick County are ~39.3-39.7 / -77.7--77.15.
-function ts(opts: {
-  code: string;
-  name: string;
-  lat: number;
-  lng: number;
-  param: string;
-  values: Array<[string, string]>; // [value, dateTime]
-  noData?: number;
-}) {
-  return {
-    sourceInfo: {
-      siteName: opts.name,
-      siteCode: [{ value: opts.code }],
-      geoLocation: { geogLocation: { latitude: opts.lat, longitude: opts.lng } },
-    },
-    variable: {
-      variableCode: [{ value: opts.param }],
-      noDataValue: opts.noData ?? -999999,
-    },
-    values: [{ value: opts.values.map(([value, dateTime]) => ({ value, dateTime })) }],
-  };
+// Official OGC features from Nov 24, 2026. The station ID, parameter,
+// statistic, unit and observation time are separate provider fields.
+const NOW = new Date("2026-11-24T15:55:00Z");
+const JUG = "USGS-01643000";
+const DICKERSON = "USGS-01643580";
+const stations = [
+  { id: JUG, geometry: { type: "Point", coordinates: [-77.3660833, 39.4028333] },
+    properties: { monitoring_location_name: "MONOCACY RIVER AT JUG BRIDGE NEAR FREDERICK, MD", state_code: "24", county_code: "021" } },
+  { id: DICKERSON, geometry: { type: "Point", coordinates: [-77.4357417, 39.2633972] },
+    properties: { monitoring_location_name: "MONOCACY RIVER NEAR DICKERSON, MD", state_code: "24", county_code: "021" } },
+];
+function observation(overrides: Record<string, unknown> = {}) {
+  return { type: "Feature", geometry: null, properties: {
+    monitoring_location_id: JUG, parameter_code: "00065", statistic_id: "00011",
+    unit_of_measure: "ft", time: "2026-11-24T15:30:00+00:00", value: "1.50", ...overrides,
+  } };
 }
+function collection(features: unknown[], next?: string) {
+  return Response.json({ type: "FeatureCollection", features, links: next ? [{ rel: "next", href: next }] : [] });
+}
+function mockFeed(handler: (url: URL) => Response) {
+  const fetchMock = vi.fn((input: string) => Promise.resolve(handler(new URL(input))));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+const isMetadata = (url: URL) => url.pathname.endsWith("monitoring-locations/items");
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
-const raw = {
-  value: {
-    timeSeries: [
-      // Catoctin Creek — two parameters, two readings each. Must merge
-      // into ONE site, taking the newest reading per parameter.
-      ts({
-        code: "01637500",
-        name: "CATOCTIN CREEK NEAR MIDDLETOWN, MD",
-        lat: 39.42725,
-        lng: -77.55616667,
-        param: "00060",
-        values: [
-          ["14.0", "2026-05-17T23:30:00.000-04:00"],
-          ["16.0", "2026-05-17T23:45:00.000-04:00"],
-        ],
-      }),
-      ts({
-        code: "01637500",
-        name: "CATOCTIN CREEK NEAR MIDDLETOWN, MD",
-        lat: 39.42725,
-        lng: -77.55616667,
-        param: "00065",
-        values: [
-          ["1.50", "2026-05-17T23:30:00.000-04:00"],
-          ["1.66", "2026-05-17T23:45:00.000-04:00"],
-        ],
-      }),
-      // Monocacy — the most-recent gage-height reading is the USGS
-      // no-data sentinel; must fall back to the prior valid reading,
-      // and observedAt must be that valid reading's time.
-      ts({
-        code: "01643000",
-        name: "MONOCACY RIVER AT BRIDGEPORT, MD",
-        lat: 39.6,
-        lng: -77.23,
-        param: "00065",
-        values: [
-          ["3.20", "2026-05-17T23:30:00.000-04:00"],
-          ["-999999", "2026-05-17T23:45:00.000-04:00"],
-        ],
-      }),
-      // Out of county (Washington DC) -> dropped
-      ts({
-        code: "01646500",
-        name: "POTOMAC RIVER NEAR WASH, DC",
-        lat: 38.95,
-        lng: -77.12,
-        param: "00065",
-        values: [["4.0", "2026-05-17T23:45:00.000-04:00"]],
-      }),
-      // Only no-data readings -> site has no usable value -> dropped
-      ts({
-        code: "01999999",
-        name: "GHOST RUN NEAR NOWHERE, MD",
-        lat: 39.5,
-        lng: -77.4,
-        param: "00060",
-        values: [["-999999", "2026-05-17T23:45:00.000-04:00"]],
-      }),
-      // Nameless / codeless -> dropped
-      ts({
-        code: "",
-        name: "",
-        lat: 39.4,
-        lng: -77.4,
-        param: "00065",
-        values: [["2.0", "2026-05-17T23:45:00.000-04:00"]],
-      }),
-    ],
-  },
-};
-
-describe("normalizeWaterSites", () => {
-  it("groups per-parameter series into one site with the newest readings", () => {
-    const out = normalizeWaterSites(raw);
-    const cat = out.find((x) => x.id === "01637500");
-    expect(cat).toBeTruthy();
-    expect(cat!.streamflowCfs).toBe(16);
-    expect(cat!.gageHeightFt).toBe(1.66);
-    expect(cat!.observedAt).toBe("2026-05-17T23:45:00.000-04:00");
-    expect(cat!.river).toBe("CATOCTIN CREEK");
-    expect(cat!.municipality).toBeTruthy();
+describe("USGS Frederick County observations", () => {
+  it("follows the county cursor, joins official names, validates units, and sorts and deduplicates each series", async () => {
+    const fetchMock = mockFeed((url) => {
+      expect(url.origin).toBe("https://api.waterdata.usgs.gov");
+      expect(url.searchParams.get("state_code")).toBe("24");
+      expect(url.searchParams.get("county_code")).toBe("021");
+      if (isMetadata(url)) {
+        expect(url.searchParams.get("monitoring_location_number")).toBe("01643000,01643580");
+        return collection(stations);
+      }
+      expect(url.pathname).toBe("/ogcapi/v1/collections/continuous/items");
+      expect(url.searchParams.get("parameter_code")).toBe("00065,00060");
+      if (url.searchParams.has("cursor")) return collection([
+        observation({ monitoring_location_id: DICKERSON, value: "1.18" }),
+        observation({ parameter_code: "00060", unit_of_measure: "ft^3/s", value: "172" }),
+        observation(),
+        observation({ time: "2026-11-24T14:00:00Z", value: "2.40" }),
+      ]);
+      const next = new URL(url); next.searchParams.set("cursor", "second");
+      return collection([observation()], next.toString());
+    });
+    const { available, data } = await getFrederickWaterSitesWithHistoryResult("PT6H");
+    expect(available).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(data.map(s => s.id)).toEqual(["01643000", "01643580"]);
+    expect(data[0]).toMatchObject({
+      name: stations[0].properties.monitoring_location_name, river: "MONOCACY RIVER",
+      lat: 39.4028333, gageHeightFt: 1.5, streamflowCfs: 172,
+      observedAt: "2026-11-24T15:30:00.000Z",
+      gageHistory: [{ value: 2.4, at: "2026-11-24T14:00:00.000Z" }, { value: 1.5, at: "2026-11-24T15:30:00.000Z" }],
+    });
+    expect(data[0].municipality).toBeTruthy();
+    expect(data[0].floodStages).toBeDefined();
   });
 
-  it("skips USGS no-data sentinels and uses the latest VALID reading", () => {
-    const mono = normalizeWaterSites(raw).find((x) => x.id === "01643000");
-    expect(mono).toBeTruthy();
-    expect(mono!.gageHeightFt).toBe(3.2);
-    expect(mono!.observedAt).toBe("2026-05-17T23:30:00.000-04:00");
-    expect(mono!.river).toBe("MONOCACY RIVER");
+  it("uses the agency's latest readings collection without attaching history", async () => {
+    mockFeed(url => {
+      if (isMetadata(url)) return collection(stations);
+      expect(url.pathname).toContain("/latest-continuous/items");
+      return collection([observation()]);
+    });
+    const [site] = await getFrederickWaterSites();
+    expect(site.gageHeightFt).toBe(1.5);
+    expect(site.gageHistory).toBeUndefined();
   });
 
-  it("drops out-of-county, reading-less, and nameless sites", () => {
-    const ids = normalizeWaterSites(raw).map((x) => x.id);
-    expect(ids).toEqual(["01637500", "01643000"]); // sorted by name, only these
-    expect(ids).not.toContain("01646500"); // DC
-    expect(ids).not.toContain("01999999"); // no valid reading
+  it.each([["PT6H", false], ["P1D", false], ["P7D", true]] as const)(
+    "keeps observations within %s, including older valid history only when requested", async (period, includeOlder) => {
+      mockFeed(url => isMetadata(url) ? collection(stations) : collection([
+        observation(), observation({ time: "2026-11-22T15:30:00Z", value: "1.9" }),
+        observation({ time: "1990-01-01T00:00:00Z" }), observation({ time: "2026-11-24T16:00:00Z" }),
+      ]));
+      const { data } = await getFrederickWaterSitesWithHistoryResult(period);
+      expect(data[0].gageHistory?.map(r => r.value)).toEqual(includeOlder ? [1.9, 1.5] : [1.5]);
+    },
+  );
+
+  it("requests only the selected gauge for longer historical ranges and keeps old readings out of current conditions", async () => {
+    const fetch = mockFeed((url) => {
+      expect(url.searchParams.get("monitoring_location_id")).toBe(JUG);
+      expect(url.searchParams.get("county_code")).toBe("021");
+      return collection([observation({ value: "7.2", time: "2026-11-21T15:30:00Z" }),
+        observation({ monitoring_location_id: DICKERSON, value: "9" })]);
+    });
+    const history = await getGaugeHistory("01643000", "P7D");
+    expect(history).toEqual({ end: NOW.toISOString(), flow: [], height: [{ value: 7.2, at: "2026-11-21T15:30:00.000Z" }] });
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("sorts by site name", () => {
-    const names = normalizeWaterSites(raw).map((x) => x.name);
-    expect(names).toEqual([
-      "CATOCTIN CREEK NEAR MIDDLETOWN, MD",
-      "MONOCACY RIVER AT BRIDGEPORT, MD",
-    ]);
+  it("never revives an old height or flood category with a recent flow measurement", async () => {
+    mockFeed(url => isMetadata(url) ? collection(stations) : collection([
+      observation({ value: "25", time: "2026-11-24T12:00:00Z" }),
+      observation({ parameter_code: "00060", unit_of_measure: "ft^3/s", value: "0" }),
+      observation({ value: null }), observation({ value: " " }), observation({ value: "Ice" }),
+      observation({ value: "-999999" }), observation({ unit_of_measure: "m" }),
+      observation({ parameter_code: "00060", unit_of_measure: "m^3/s" }),
+      observation({ statistic_id: "00003" }), observation({ time: "invalid" }),
+    ]));
+    const { data: [site] } = await getFrederickWaterSitesWithHistoryResult("PT6H");
+    expect(site.streamflowCfs).toBe(0);
+    expect(site.gageHeightFt).toBeUndefined();
+    expect(site.gageHistory).toBeUndefined();
+    expect(site.floodStages).toBeUndefined();
   });
 
-  it("returns [] for junk input", () => {
-    expect(normalizeWaterSites(null)).toEqual([]);
-    expect(normalizeWaterSites({})).toEqual([]);
-    expect(normalizeWaterSites({ value: { timeSeries: "nope" } })).toEqual([]);
-  });
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe("getFrederickWaterSitesWithHistoryResult", () => {
-  it("preserves a successful empty USGS response as available", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ value: { timeSeries: [] } }), {
-        status: 200,
-      }),
-    ));
-
-    await expect(
-      getFrederickWaterSitesWithHistoryResult("PT6H"),
-    ).resolves.toEqual({ data: [], available: true });
+  it("requires a real county station with a name and coordinates", async () => {
+    mockFeed(url => isMetadata(url) ? collection([
+      { ...stations[0], properties: { ...stations[0].properties, county_code: "031" } },
+      { ...stations[1], geometry: null },
+    ]) : collection([observation(), observation({ monitoring_location_id: DICKERSON })]));
+    expect((await getFrederickWaterSitesWithHistoryResult()).data).toEqual([]);
   });
 
-  it("marks a failed USGS response unavailable instead of returning a quiet zero", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
-      new Response("upstream error", { status: 503 }),
-    ));
-
-    await expect(
-      getFrederickWaterSitesWithHistoryResult("PT6H"),
-    ).resolves.toEqual({ data: [], available: false });
+  it("distinguishes a successful empty observation window from a provider failure", async () => {
+    const fetchMock = mockFeed(() => collection([]));
+    expect(await getFrederickWaterSitesWithHistoryResult()).toEqual({ available: true, data: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("marks a rejected USGS request unavailable", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network")));
+  it.each(["invalid payload", "failed next page", "invalid cursor", "failed metadata", "network failure"])(
+    "returns an unavailable result after %s instead of publishing partial readings", async failure => {
+      mockFeed(url => {
+        if (failure === "invalid payload") return Response.json({ error: "service unavailable" });
+        if (failure === "network failure") throw new Error("network");
+        if (failure === "failed metadata") return isMetadata(url) ? new Response(null, { status: 503 }) : collection([observation()]);
+        if (url.searchParams.has("cursor")) return new Response(null, { status: 429 });
+        const next = new URL(url);
+        if (failure === "invalid cursor") next.host = "example.com";
+        next.searchParams.set("cursor", "second");
+        return collection([observation()], next.toString());
+      });
+      expect(await getFrederickWaterSitesWithHistoryResult()).toEqual({ available: false, data: [] });
+    },
+  );
 
-    await expect(
-      getFrederickWaterSitesWithHistoryResult("PT6H"),
-    ).resolves.toEqual({ data: [], available: false });
+  it("probes the current USGS county gauge observation format", () => {
+    const probe = HIGH_VALUE_SOURCE_ENDPOINTS.find(endpoint => endpoint.sourceId === "usgs_water");
+    expect(probe?.url).toContain("/ogcapi/v1/collections/latest-continuous/items");
+    expect(probe?.bodyPattern?.test(JSON.stringify({ type: "FeatureCollection", features: [observation()] }))).toBe(true);
+    expect(probe?.bodyPattern?.test('{"error":"upstream unavailable"}')).toBe(false);
   });
 });

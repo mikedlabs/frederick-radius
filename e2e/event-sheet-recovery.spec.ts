@@ -27,7 +27,7 @@ for (const width of [390, 1366]) {
     await link.click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toHaveCount(1);
-    const escape = dialog.getByRole("button", { name: "Open full page", exact: true });
+    const escape = dialog.getByRole("button", { name: "Event details in Radius", exact: true });
     await expect(escape).toBeVisible();
     expect((await escape.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     await page.screenshot({ path: `output/playwright/event-sheet-pending-${width}.png` });

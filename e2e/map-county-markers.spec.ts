@@ -15,6 +15,7 @@ const places: MapPinPlace[] = [baker, creek, falls].map((place) => ({
   open_status: { state: "unknown" },
 }));
 const countyCamera = { lng: -77.42, lat: 39.515, zoom: 9 };
+const bridge = { name: "Utica Covered Bridge", lng: -77.395705682, lat: 39.524638113 };
 const mapPath = `/map?c=${countyCamera.lng},${countyCamera.lat},${countyCamera.zoom}`;
 const time = new Date("2026-11-16T17:00:00Z");
 const event: EventPin = {
@@ -113,12 +114,18 @@ async function installMapBoundary(page: Page, baseURL: string | undefined) {
       places,
     } });
     if (path === "/api/map/layers") {
-      const requestedEvents = url.searchParams.get("groups")?.split(",").includes("events");
+      const groups = url.searchParams.get("groups")?.split(",");
       return route.fulfill({ json: {
         ...EMPTY_DEFERRED_BROWSE_LAYERS,
-        ...(requestedEvents && {
+        ...(groups?.includes("events") && {
           weekEvents: [event],
           sourceHealth: { events: { status: "current", unavailable: [], asOf: time.toISOString() } },
+        }),
+        ...(groups?.includes("outdoors") && {
+          coveredBridges: { type: "FeatureCollection", features: [{
+            type: "Feature", properties: { name: bridge.name },
+            geometry: { type: "Point", coordinates: [bridge.lng, bridge.lat] },
+          }] },
         }),
       } });
     }
@@ -256,4 +263,28 @@ test("county markers open places and events at 390px", async ({ page, baseURL },
   const result = host.getByRole("region", { name: event.title, exact: true });
   await expect(result.getByRole("link", { name: "Event details" })).toHaveAttribute("href", /\/events\/county-map-fixture-event/);
   await capture(page, info, "county-event-390");
+});
+
+test("covered bridge directions work from the map with touch and keyboard", async ({ page, context, baseURL }) => {
+  await installMapBoundary(page, baseURL);
+  await page.goto(`${mapPath}&show=bridges`, { waitUntil: "domcontentloaded" });
+  const link = page.getByRole("link", { name: `Directions to ${bridge.name}`, exact: true });
+  await expectUsableTarget(link);
+  await expect(link).toHaveAttribute("tabindex", "0");
+  const href = await link.getAttribute("href");
+  const point = `${bridge.lat},${bridge.lng}`;
+  expect([
+    `https://maps.apple.com/?daddr=${point}`,
+    `https://www.google.com/maps/dir/?api=1&destination=${point}`,
+  ]).toContain(href);
+  await context.route(href!, route => route.fulfill({ contentType: "text/plain", body: "Local directions handoff" }));
+  for (const activate of [() => link.tap(), () => link.press("Enter")]) {
+    const popupPromise = page.waitForEvent("popup");
+    await activate();
+    const popup = await popupPromise;
+    await expect(popup.locator("body")).toHaveText("Local directions handoff");
+    expect(popup.url()).toBe(href);
+    await popup.close();
+    await expect(link).toBeVisible();
+  }
 });

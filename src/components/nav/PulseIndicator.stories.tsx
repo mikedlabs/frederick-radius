@@ -71,8 +71,15 @@ export const QuietInCheckedFeeds: Story = {
   beforeEach: () => sampleStatus("quiet"),
   play: async ({ canvasElement }) => {
     const status = await within(canvasElement).findByRole("link", { name: "County status: Clear in checked feeds; no active alerts" });
+    await expect(status).toBeVisible();
+    await expect(status).toHaveTextContent("County status");
     await expect(status.querySelector("[data-pulse-desktop-state]")).toHaveTextContent("Clear in checked feeds");
+    await expect(status.querySelector("[data-pulse-mobile-state]")).toHaveTextContent("Clear in checked feeds");
   },
+};
+export const QuietInCheckedFeedsOnPhone: Story = {
+  ...QuietInCheckedFeeds,
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
 };
 export const QuietWithPartialCoverage: Story = {
   globals: { viewport: { value: "radiusMobile", isRotated: false } },

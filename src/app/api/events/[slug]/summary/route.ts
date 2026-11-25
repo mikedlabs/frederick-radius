@@ -37,6 +37,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     const notice = noticeForEvent(sourceEvent.slug, new Date());
     const event = {
       ...sourceEvent,
+      ...(sourceEvent.venue_place_slug ? {
+        sheet_venue: venue ? { name: venue.name, operational: venue.is_operational } : null,
+      } : {}),
       ...(venue ? { geom: venue.geom, geo_confidence: "venue_match" as const } : {}),
       ...(notice && notice.status !== "advisory" ? { status: notice.status } : {}),
     };

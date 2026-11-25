@@ -11,6 +11,7 @@ import Plausible from "@/components/analytics/Plausible";
 import DecisionTelemetryObserver from "@/components/analytics/DecisionTelemetry";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
+import LocationCacheExpiry from "@/components/privacy/LocationCacheExpiry";
 import SavedAppearanceRestore from "@/components/util/SavedAppearanceRestore";
 import { PLATFORM_BRAND } from "@/lib/platform-brand";
 import { APPEARANCE_BOOTSTRAP } from "@/lib/appearance";
@@ -230,6 +231,7 @@ export default function RootLayout({
             global-error fallback replaces this layout and keeps its own
             small palette that follows the device setting. */}
         <SavedAppearanceRestore />
+        <LocationCacheExpiry />
         {/* NuqsAdapter — App Router edition. Wraps the tree so any
             client component can call useQueryState to read/write URL
             search params with a typed API. Master UI brief §16 + §20:

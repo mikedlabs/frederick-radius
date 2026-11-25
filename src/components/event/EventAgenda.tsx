@@ -1,10 +1,13 @@
 import Link from "next/link";
+import EventTimeRail from "./EventTimeRail";
+import { buildDaySchedule } from "@/lib/events/day-schedule";
 import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDecisionLocation } from "@/lib/events/decision-facts";
 import { eventDateBlock, formatEventWhen } from "@/lib/events/format";
-import { isDateOnlyEventAnchor, isEventEnded } from "@/lib/eventWhenLabel";
+import { publishedEventTime } from "@/lib/events/published-time";
+import { isEventEnded } from "@/lib/eventWhenLabel";
 import { isRangeListing, RANGE_LISTING_STALE_AFTER_MS } from "@/lib/eventHorizon";
 import { easternDayKey } from "@/lib/tz";
 
@@ -98,6 +101,9 @@ export default function EventAgenda({
   maxDays?: number;
 }) {
   const days = eventAgendaGroups(events, nowMs, maxDays);
+  const today = easternDayKey(new Date(nowMs));
+  const todayGroup = days.find(day => !day.ongoing && easternDayKey(new Date(day.events[0].starts_at)) === today);
+  const schedule = buildDaySchedule(todayGroup?.events ?? [], today);
 
   if (days.length === 0) {
     return (
@@ -159,6 +165,8 @@ export default function EventAgenda({
           >
             {d.events.map((e, i) => {
               const cat = CATEGORY_BY_SLUG[e.category];
+              const mark = schedule.get(e);
+              const scheduleId = `agenda-time-${e.slug}-${Date.parse(e.starts_at)}`;
               return (
                 <li
                   key={`${e.slug}-${e.starts_at}`}
@@ -167,38 +175,42 @@ export default function EventAgenda({
                 >
                   <Link
                     href={`/events/${e.slug}`}
-                    className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--app-bg-sunken)]"
+                    aria-describedby={mark ? scheduleId : undefined}
+                    className="block px-3 py-2.5 transition-colors hover:bg-[var(--app-bg-sunken)]"
                   >
-                    <span
-                      className="w-14 shrink-0 text-[12px] font-semibold tabular-nums"
-                      style={{ color: "var(--app-link)" }}
-                    >
-                      {d.ongoing
-                        ? "Date range"
-                        : e.is_all_day || isDateOnlyEventAnchor(e) || isRangeListing(e)
-                          ? eventDateBlock(e).time
-                          : nyTime(e.starts_at)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block line-clamp-2 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                        {e.title}
-                      </span>
-                      <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                        {eventDecisionLocation(e)}
-                      </span>
-                      {d.ongoing ? (
-                        <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                          {formatEventWhen(e)}
-                        </span>
-                      ) : null}
-                    </span>
-                    {cat && (
+                    <div className="flex items-center gap-3">
                       <span
-                        aria-hidden
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: cat.color }}
-                      />
-                    )}
+                        className="w-14 shrink-0 text-[12px] font-semibold tabular-nums"
+                        style={{ color: "var(--app-link)" }}
+                      >
+                        {d.ongoing
+                          ? "Date range"
+                          : publishedEventTime(e) === "date" || isRangeListing(e)
+                            ? eventDateBlock(e).time
+                            : nyTime(e.starts_at)}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block line-clamp-2 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                          {e.title}
+                        </span>
+                        <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                          {eventDecisionLocation(e)}
+                        </span>
+                        {d.ongoing ? (
+                          <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                            {formatEventWhen(e)}
+                          </span>
+                        ) : null}
+                      </span>
+                      {cat && (
+                        <span
+                          aria-hidden
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: cat.color }}
+                        />
+                      )}
+                    </div>
+                    {mark && <EventTimeRail mark={mark} id={scheduleId} />}
                   </Link>
                 </li>
               );

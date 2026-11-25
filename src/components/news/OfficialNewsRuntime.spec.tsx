@@ -6,8 +6,9 @@ import { getCivicPressReleasesResult, officialCivicNews } from "@/lib/integratio
 import LocalNewsBrief from "./LocalNewsBrief";
 import LocalNewsBriefView from "./LocalNewsBriefView";
 
-// Only the independent Google headline family is stubbed. The official RSS
-// adapter, bounded reader, source projection and mounted Today view are real.
+// Run the official RSS adapter without a Next render cache in the DOM test.
+vi.mock("next/cache", () => ({ unstable_cache: <T,>(read: () => Promise<T>) => read }));
+// The independent Google headline family is stubbed.
 vi.mock("@/lib/integrations/news", () => ({ getLocalHeadlinesResult: async () => ({ items: [], status: "unavailable" }) }));
 const NOW = "2026-10-12T12:00:00.000Z";
 const rss = (host: string, title: string, id: number, date = "Wed, 07 Oct 2026 14:23:00 -0500") =>

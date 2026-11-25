@@ -7,7 +7,7 @@ import { isHoursFresh } from "../../src/lib/hours-freshness";
 import { easternDayKey } from "../../src/lib/tz";
 import type { OfficialPageReceipt } from "./fcpl-official-hours";
 import { merchantHoursCohort } from "./merchant-hours-cohorts";
-import { parseOfficialHoursCohort } from "./official-hours-cohort";
+import { parseOfficialHoursCohortSchedule } from "./official-hours-cohort";
 import { parseQualifiedMerchantHours } from "./qualified-merchant-hours";
 const { JSDOM } = createRequire(import.meta.url)("jsdom") as { JSDOM: new (html: string) => { window: { document: Document } } };
 const CLOCK = "(\\d{1,2}(?::\\d{2})?\\s*[ap]m)";
@@ -177,23 +177,28 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
   if (!MERCHANT_HOURS_SOURCES.some((item) => item.slug === source.slug && item.url === source.url) || page.url !== source.url || !isHoursFresh(page.observedAt, now)) throw new Error("Unapproved merchant source or observation.");
   const { text, document, body } = textPage(page.html);
   const defaultWindow = source.kind === "weekly" ? merchantWeeklyHoursWindow(source.slug, page.observedAt) : undefined;
+  const observedDay = easternDayKey(new Date(page.observedAt));
+  const cohortWindow = { coverage_from: observedDay, coverage_through: defaultWindow?.coverage_through ?? observedDay, expires_at: defaultWindow?.expires_at };
   const cohort = merchantHoursCohort(source);
   const cohortQualification = cohort && "qualification" in source ? source.qualification : undefined;
   const qualified = cohort && cohortQualification
-    ? { hours: parseOfficialHoursCohort(document, text, cohort.cohort, cohort.binding, { coverage_from: easternDayKey(new Date(page.observedAt)), coverage_through: defaultWindow!.coverage_through }), qualification: cohortQualification, exceptions: undefined }
-    : parseQualifiedMerchantHours(source, page, document, text, easternDayKey(new Date(page.observedAt)), defaultWindow?.coverage_through ?? easternDayKey(new Date(page.observedAt)));
+    ? { ...parseOfficialHoursCohortSchedule(document, text, cohort.cohort, cohort.binding, cohortWindow), qualification: cohortQualification }
+    : parseQualifiedMerchantHours(source, page, document, text, observedDay, cohortWindow.coverage_through);
   const contactCohort = cohort?.cohort.shape === "visible_weekly_contact_card";
   // Reviewed contact cohorts own their scoped notice/structured checks, including
   // original dated archives. Other adapters retain the existing whole-page gate.
   if (!qualified && !contactCohort && /temporarily closed|closed (?:today|tomorrow|for)|closing early|special hours|holiday hours|until sold out|drinks only|kitchen hours/i.test(text)) throw new Error("Unresolved merchant notice or service qualifier.");
   const structured = qualified || cohort?.cohort.shape === "jsonld_weekly_location_cards" || contactCohort ? [] : structuredOpeningHours(document, source);
   const hours: Hours = {};
-  let from = easternDayKey(new Date(page.observedAt));
+  let exceptions = qualified?.exceptions;
+  let from = observedDay;
   let through: string | undefined;
   if (qualified) {
     Object.assign(hours, qualified.hours);
   } else if (cohort) {
-    Object.assign(hours, parseOfficialHoursCohort(document, text, cohort.cohort, cohort.binding, { coverage_from: from, coverage_through: defaultWindow?.coverage_through ?? from }));
+    const schedule = parseOfficialHoursCohortSchedule(document, text, cohort.cohort, cohort.binding, cohortWindow);
+    Object.assign(hours, schedule.hours);
+    exceptions = schedule.exceptions;
   } else if (source.kind === "dated_week") {
     if (!/Brewer[’']?s Alley/i.test(text)) throw new Error("Missing Brewer's Alley identity.");
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -367,7 +372,7 @@ export function parseMerchantOfficialHours(source: MerchantHoursSource, page: Of
   const observedAt = new Date(page.observedAt).toISOString();
   const window = source.kind === "weekly" ? merchantWeeklyHoursWindow(source.slug, observedAt) : undefined;
   const expires = window?.expires_at ?? merchantHoursExpiry(observedAt, through);
-  const record: MerchantHoursRecord = { slug: source.slug, source_url: source.url, source_name: source.name, source_sha256: createHash("sha256").update(page.html).digest("hex"), observed_at: observedAt, expires_at: expires, coverage_from: from, coverage_through: through ?? window!.coverage_through, kind: source.kind, hours, ...(qualified ? { qualification: qualified.qualification, ...(qualified.exceptions ? { exceptions: qualified.exceptions } : {}) } : {}) };
+  const record: MerchantHoursRecord = { slug: source.slug, source_url: source.url, source_name: source.name, source_sha256: createHash("sha256").update(page.html).digest("hex"), observed_at: observedAt, expires_at: expires, coverage_from: from, coverage_through: through ?? window!.coverage_through, kind: source.kind, hours, ...(qualified ? { qualification: qualified.qualification } : {}), ...(exceptions ? { exceptions } : {}) };
   validateMerchantHoursArtifact({ schema_version: 1, places: [record], review: [] });
   return record;
 }

@@ -125,7 +125,16 @@ for (const width of [320, 390, 430, 1440]) {
     await expect(page.getByRole("heading", { name: "Plan an outing.", exact: true })).toBeVisible();
     const photo = page.getByRole("img", { name: "Carroll Creek in Frederick." });
     await expect.poll(() => photo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 1)).toBe(true);
-    await expect(page.getByRole("combobox", { name: "Planning area" })).toHaveValue("county");
+    const area = page.getByRole("combobox", { name: "Planning area" });
+    await expect(area).toHaveValue("county");
+    await expect(page.getByText("Carroll Creek in summer · Frederick Radius photo archive")).toBeVisible();
+    if (width === 390) {
+      await area.selectOption("brunswick");
+      await expect(photo).toHaveCount(0);
+      await expect(page.getByText("3 hours to explore")).toBeVisible();
+      await area.selectOption("county");
+      await expect(photo).toBeVisible();
+    }
     const build = page.getByRole("button", { name: "Build my plan", exact: true });
     expect((await build.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -362,21 +371,27 @@ test("a visual outing keeps choices through a pre-trip check and map fallback", 
   await page.goto(beansPlanUrl(), { waitUntil: "domcontentloaded" });
   const stops = page.getByRole("list", { name: "Plan stops, in order" });
   await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
-  await expect(page.getByRole("img", { name: "Carroll Creek in Frederick." })).toBeVisible();
+  // This is a Brunswick plan. A Frederick City scene would misidentify its setting.
+  await expect(page.getByRole("img", { name: "Carroll Creek in Frederick." })).toHaveCount(0);
   await expectFirstStopClearOfNavigation(page);
   const before = new URL(page.url()).searchParams.get("p");
-  await page.getByRole("button", { name: "Check this plan", exact: true }).click();
-  await expect(page.getByText("These records do not confirm live venue availability.", { exact: false })).toBeVisible();
+  const check = page.getByRole("region", { name: "Check before you go", exact: true });
+  await check.getByRole("button", { name: "Check this plan", exact: true }).click();
+  // The server allows one second for the event archive and five for NWS.
+  // Wait for the real briefing, then verify its disclosure and source link.
+  const briefing = check.locator('[aria-live="polite"]');
+  await expect(briefing).toBeVisible({ timeout: 10_000 });
+  await expect(briefing.getByText("These records do not confirm live venue availability.", { exact: false })).toBeVisible();
   await expect(stops.getByRole("heading", { name: "Beans in the Belfry", exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.get("p")).toBe(before);
-  await expect(page.getByRole("link", { name: "National Weather Service", exact: true })).toBeVisible();
+  await expect(briefing.getByRole("link", { name: "National Weather Service", exact: true })).toBeVisible();
   await page.screenshot({ path: "output/playwright/plan-itinerary-mobile.png", fullPage: true });
   await page.getByRole("button", { name: "Show stops on map", exact: true }).click();
   await expect(page.getByRole("region", { name: "Stops on the map", exact: true })).toBeVisible();
   await expect(page.getByText("Loading your stops map…", { exact: true })).toHaveCount(0, { timeout: 30_000 });
   const mapView = page.getByRole("region", { name: "Map of planned stop locations", exact: true });
   await expect.poll(async () => await mapView.locator("canvas").first().isVisible()
-    || await mapView.getByRole("heading", { name: /^(Map view unavailable|This browser cannot draw the map|The map is temporarily unavailable)$/ }).isVisible()
+    || await mapView.getByRole("heading", { name: "Frederick County map", exact: true }).isVisible()
     || await mapView.getByText("The map could not load. Your stops and their detail links are still here.", { exact: true }).isVisible(), { timeout: 30_000 }).toBe(true);
   await expect(page.getByRole("list", { name: "Stops shown on the map", exact: true }).getByRole("link", { name: /Beans in the Belfry/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -401,7 +416,7 @@ test("planner motion finishes quickly and reduced motion shows the same choices"
   await page.emulateMedia({ reducedMotion: "reduce" });
   expect(await stop.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
   await expect(stop.getByRole("button", { name: /^(Pin|Pinned)$/ })).toBeEnabled();
-  expect(await page.getByRole("img", { name: "Carroll Creek in Frederick." }).evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+  await expect(page.locator("[data-plan-scene]")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
@@ -455,7 +470,7 @@ test("ordinary builder creates an honest real-catalog draft and preserves its ho
   await expect(adjust.getByRole("checkbox", { name: "Only include stops with confirmed hours", exact: true })).not.toBeChecked();
 });
 
-test("confirmed-hours opt-in stays strict and Adjust can recover a real-catalog draft", async ({ page }) => {
+test("confirmed-hours opt-in stays strict until the visitor chooses the one-step draft recovery", async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/plan", { waitUntil: "domcontentloaded" });
@@ -466,7 +481,7 @@ test("confirmed-hours opt-in stays strict and Adjust can recover a real-catalog 
   await page.getByRole("button", { name: "Build my plan", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Nothing reliable fits yet.", exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("Radius could not confirm venue hours for this outing. Choose Adjust, open Fine-tune the outing, and turn off confirmed hours only to build a draft. Check venue hours before setting out.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Radius could not confirm hours for these stops. You can build a draft and check venue hours before leaving.", { exact: true })).toBeVisible();
   await expect(page.getByRole("list", { name: "Plan stops, in order", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Open full route", exact: true })).toHaveCount(0);
   await expect.poll(() => new URL(page.url()).searchParams.get("p")).toBeTruthy();
@@ -476,14 +491,11 @@ test("confirmed-hours opt-in stays strict and Adjust can recover a real-catalog 
   expect(strictSpec.s).toEqual([]);
   await page.screenshot({ path: "output/playwright/plan-confirmed-hours-empty-mobile.png", fullPage: true });
 
-  await page.getByRole("button", { name: "Adjust", exact: true }).click();
-  const adjust = page.getByRole("dialog", { name: "Adjust the plan", exact: true });
-  await adjust.getByText("Fine-tune the outing", { exact: true }).click();
-  const confirmedHours = adjust.getByRole("checkbox", { name: "Only include stops with confirmed hours", exact: true });
-  await expect(confirmedHours).toBeChecked();
-  await confirmedHours.uncheck();
-  await adjust.getByRole("button", { name: "Update this plan", exact: true }).click();
-  await expect(adjust).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Save outing", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Share this plan" })).toHaveCount(0);
+  const recovery = page.getByRole("button", { name: "Include stops with unconfirmed hours" });
+  await expect(recovery).toBeInViewport();
+  await recovery.click();
   const stops = page.getByRole("list", { name: "Plan stops, in order", exact: true });
   await expect(stops).toBeVisible();
   await expect(stops.getByText("Hours unconfirmed", { exact: true }).first()).toBeVisible();

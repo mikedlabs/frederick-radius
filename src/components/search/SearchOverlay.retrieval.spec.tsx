@@ -11,7 +11,7 @@ vi.mock("@/hooks/useReversibleHistoryLayer", () => ({
 }));
 vi.mock("@/lib/track", () => ({ track: vi.fn() }));
 const geo = vi.hoisted(() => ({ cached: null as { lat: number; lng: number } | null }));
-vi.mock("@/hooks/useGeolocation", () => ({ readCachedPosition: () => geo.cached }));
+vi.mock("@/hooks/useGeolocation", () => ({ GEOLOCATION_CHANGE_EVENT: "fr:geolocation-change", readCachedPosition: () => geo.cached }));
 vi.mock("@/hooks/useRecentSearches", () => ({
   useRecentSearches: () => [], useRecentSearchStatus: () => ({ available: true, clearFailed: false }),
   usePushRecentSearch: () => navigation.recent, useClearRecentSearches: () => vi.fn(),
@@ -64,6 +64,28 @@ describe("Find retrieval-first interactions", () => {
     expect(navigation.leaveTo).toHaveBeenCalledWith("/search?q=Gravel%20%26%20Grind%3F");
     expect(navigation.recent).toHaveBeenCalledWith("Gravel & Grind?");
     await respond(0, [gravel]); await enter();
+    expect(navigation.leaveTo).toHaveBeenLastCalledWith(gravel.href);
+  });
+
+  it("opens a named place from its identifying facts and distinguishes the map and same-name branches", async () => {
+    await render("Gravel & Grind"); await tick();
+    const street = "15 E 6th St";
+    const branch = { ...gravel, id: "place:second", href: "/places/second", address: "2 Example St",
+      trust: { level: "unconfirmed" as const, label: "Needs a new check", basis: "This posted schedule needs a new source check." } };
+    await respond(0, [{ ...gravel, address: street, lat: 39.42, lng: -77.4 }, branch]);
+    const first = host.querySelector<HTMLAnchorElement>(`#search-results a[href="${gravel.href}"]`)!;
+    const second = host.querySelector<HTMLAnchorElement>('a[href="/places/second"]')!;
+    const accessibleName = (link: HTMLAnchorElement) => link.getAttribute("aria-labelledby")?.split(" ")
+      .map(id => document.getElementById(id)?.textContent).join(" ");
+    expect(accessibleName(first)).toBe(`${gravel.title} ${street}`);
+    expect(accessibleName(second)).toBe(`${gravel.title} ${branch.address}`);
+    expect(second.textContent).toContain("Needs a new check");
+    expect(first.contains(host.querySelector("#search-opt-0 h3"))).toBe(true);
+    const map = host.querySelector<HTMLAnchorElement>('#search-opt-0 a[href^="/map?"]')!;
+    expect(first.contains(map)).toBe(false);
+    await act(async () => map.click());
+    expect(navigation.leaveTo).toHaveBeenLastCalledWith("/map?at=39.42000,-77.40000&place=gravel-and-grind-frederick");
+    await act(async () => first.click());
     expect(navigation.leaveTo).toHaveBeenLastCalledWith(gravel.href);
   });
 
@@ -197,6 +219,21 @@ describe("Find states the shared area", () => {
     expect(field().getAttribute("aria-label")).toBe("Ask or find near you");
     await respond(0, [gravel], { qualifiers: { constrained: false }, contextLabel: null });
     expect(areaLine()).toBe("Near me");
+  });
+
+  it("rounds inside the browser and drops the fix when the chosen area changes", async () => {
+    geo.cached = { lat: 39.414378, lng: -77.410692 };
+    await render("coffee"); await tick();
+    const sent = () => new URL(requests.at(-1)!.url, "https://test.local").searchParams;
+    expect([sent().get("lat"), sent().get("lng")]).toEqual(["39.414", "-77.411"]);
+    for (const scope of ["county", "town:brunswick"] as const) {
+      await act(async () => setScope(scope)); await tick();
+      expect(sent().has("lat") || sent().has("lng")).toBe(false);
+    }
+    await act(async () => setScope("nearme"));
+    geo.cached = null; // The fix expires during the debounce.
+    await tick();
+    expect(sent().has("lat") || sent().has("lng")).toBe(false);
   });
 
   it("names the area a near-me question fell back to when no location is usable", async () => {

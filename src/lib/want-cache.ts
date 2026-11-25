@@ -1,6 +1,5 @@
 import { readCachedPosition } from "@/hooks/useGeolocation";
-import { roundCoord } from "@/lib/walkTime";
-import { getScope, scopeToParam, type Scope } from "@/lib/scope";
+import { deviceOriginForScope, getScope, scopeToParam, type Scope } from "@/lib/scope";
 import { startBoundedJsonRequest } from "@/lib/bounded-json-request";
 
 /**
@@ -33,14 +32,11 @@ type Entry = { at: number; promise: Promise<unknown> };
 const cache = new Map<string, Entry>();
 
 function buildUrl(cKey: string, facet: string | null, scopeOverride?: Scope): { url: string; key: string } {
-  const fix = readCachedPosition();
   const scope = scopeOverride ?? getScope();
   // Never put an exact device fix into a URL, CDN key, access log, or error
   // trace. A ~100m snap preserves useful neighborhood ranking while keeping
   // the browser request itself coarse (the server rounds again defensively).
-  const approximateFix = fix
-    ? { lat: roundCoord(fix.lat), lng: roundCoord(fix.lng) }
-    : null;
+  const approximateFix = deviceOriginForScope(scope, readCachedPosition());
   const geo = approximateFix
     ? `&lat=${approximateFix.lat}&lng=${approximateFix.lng}`
     : "";

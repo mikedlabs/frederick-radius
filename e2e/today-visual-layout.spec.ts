@@ -23,7 +23,7 @@ const townSubjects = {
   thurmont: ["historic-utica-covered-bridge-thurmont", "catoctin-mountain-park"],
 } as const;
 const geographicPhotoPaths = new Set<string>([
-  ...diningSubjects.map(subject => subject.src), ...businessPhotoPaths,
+  "/images/seasons/summer/SUMMER CARROL CREEK.jpg", ...diningSubjects.map(subject => subject.src), ...businessPhotoPaths,
   ...Object.values(townSubjects).flat().map(slug => CREDITED_LOCAL_PLACE_PHOTOS[slug].image.src),
 ]);
 
@@ -136,7 +136,7 @@ async function scrollQuickNeedsWithNativeKeys(
   const startY = await page.evaluate(() => window.scrollY);
   const receipt = { mechanism: "native ArrowDown", budget: 844, maxKeyPresses: 32,
     startY, keyPresses: 0, samples: [] as Array<{ scrollY: number; distance: number; actionsBottom: number; navTop: number }>,
-    precondition: "More ways to explore heading aligned to the viewport before measuring this section",
+    precondition: "Practical information heading aligned to the viewport before measuring this section",
     targetFocusOrScriptedScrollUsedWithinSection: false };
   const read = async () => {
     const [actions, nav, scrollY] = await Promise.all([
@@ -268,12 +268,12 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(diningGrid.getByRole("link", { name: /^View .* in / })).toHaveCount(2);
     const outings = diningGrid.getByRole("navigation", { name: "Local outings" });
     await expect(outings.getByRole("link")).toHaveCount(2);
-    for (const link of await outings.getByRole("link").all()) {
-      await link.scrollIntoViewIfNeeded();
-      await expect.poll(() => link.locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
-    }
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await expect(diningGrid.getByRole("img")).toHaveCount(2);
+    const cover = outings.locator("[data-today-feature-photo] img");
+    await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    await expect(cover).toHaveAttribute("alt", /Carroll Creek/);
+    await expect(outings).toContainText("Frederick Radius summer archive");
+    await expect(diningGrid.locator("img")).toHaveCount(3);
+    await expect(outings.getByRole("img", { name: /Suggested time, (60|120) minutes total/ })).toBeVisible();
     for (const subject of diningSubjects) {
       const link = diningGrid.locator(`[data-today-geographic-place="${subject.slug}"]`);
       const href = new URL((await link.getAttribute("href"))!, page.url());
@@ -322,18 +322,11 @@ for (const width of [320, 375, 390, 430, 1366]) {
         findBox: bounds('header a[aria-label="Find a place, service, event, or answer"]'),
         headerBox: bounds("header:has([data-today-area-trigger])"),
         weatherBox: bounds("[data-today-weather]"),
-        photoBox: bounds("[data-today-photo-lead] [data-place-card-photo]"),
+        photoBox: bounds("[data-today-feature-photo]"),
         doorwayBox: bounds("[data-today-geographic-place]"),
         mosaicBox: bounds("[data-today-discovery-grid]"),
         outingsBox: bounds("#local-outings"),
-        captionBox: bounds("[data-today-geographic-caption]"),
-        brandPress: (() => {
-          const probe = document.body.appendChild(document.createElement("span"));
-          probe.style.backgroundColor = "var(--app-brand-press)";
-          const value = getComputedStyle(probe).backgroundColor;
-          probe.remove();
-          return value;
-        })(),
+        captionBox: bounds("[data-featured] h3"),
         subjects: Array.from(document.querySelectorAll("[data-today-geographic-place]")).map(link => {
           const box = link.getBoundingClientRect(), caption = link.querySelector("[data-today-geographic-caption]")!.getBoundingClientRect();
           const range = document.createRange(); range.selectNodeContents(link.querySelector("h2, h3")!);
@@ -360,46 +353,16 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(findBox.y).toBeGreaterThanOrEqual(headerBox.y);
     expect(findBox.y + findBox.height).toBeLessThanOrEqual(headerBox.y + headerBox.height + 1);
     expect(doorwayBox.y).toBeGreaterThanOrEqual(mastheadBox.y + mastheadBox.height - 1);
-    // The name plate must straddle its own photo, remain readable and leave
-    // a separate Save target. Text resizing can change its exact height.
-    const photoBottom = photoBox.y + photoBox.height;
-    expect(captionBox.x - photoBox.x).toBeGreaterThanOrEqual(12);
-    expect(captionBox.x - photoBox.x).toBeLessThanOrEqual(16);
-    expect(captionBox.x + captionBox.width).toBeLessThanOrEqual(photoBox.x + photoBox.width - 32 + 1);
-    expect(captionBox.y).toBeLessThan(photoBottom);
-    expect(captionBox.y).toBeGreaterThanOrEqual(photoBox.y - 1);
-    expect(captionBox.y + captionBox.height).toBeGreaterThan(photoBottom);
-    expect(doorwayBox.y + doorwayBox.height - photoBottom).toBeGreaterThanOrEqual(44);
     expect(geometry.subjects).toHaveLength(2);
-    expect(geometry.subjects.map(subject => subject.role)).toEqual(["lead", "secondary"]);
-    expect(geometry.subjects[0].captionInk).toBe("rgb(255, 255, 255)");
-    expect(geometry.subjects[0].captionBackground).toBe(geometry.brandPress);
-    const leadSave = geometry.subjects[0].save;
-    const saveMeetsPlate = leadSave.x < captionBox.x + captionBox.width && leadSave.x + leadSave.width > captionBox.x
-      && leadSave.y < captionBox.y + captionBox.height && leadSave.y + leadSave.height > captionBox.y;
-    expect(saveMeetsPlate, "the lead Save never touches the coral plate").toBe(false);
-    expect(leadSave.y).toBeGreaterThanOrEqual(photoBottom - 1);
-    // A wider or wrapping title can increase the caption height. Its own
-    // card edge must contain the separate, full-size bookmark target.
-    expect(leadSave.y + leadSave.height).toBeLessThanOrEqual(doorwayBox.y + doorwayBox.height + 1);
-    expect(Math.abs(leadSave.y + leadSave.height - (captionBox.y + captionBox.height))).toBeLessThanOrEqual(1);
-    const asymmetricDesktop = mosaicBox.width >= 36 * 16;
-    const [lead, secondary] = geometry.subjects;
-    expect(secondary.box.y).toBeGreaterThanOrEqual(outingsBox.y + outingsBox.height);
-    if (asymmetricDesktop) {
-      expect(outingsBox.y).toBeCloseTo(lead.box.y, 0);
-      expect(outingsBox.x).toBeCloseTo(secondary.box.x, 0);
-      expect(lead.box.width).toBeGreaterThan(secondary.box.width * 1.4);
-      expect(lead.box.x + lead.box.width).toBeLessThanOrEqual(outingsBox.x);
-    } else {
-      expect(outingsBox.y).toBeGreaterThanOrEqual(lead.box.y + lead.box.height);
-      expect(outingsBox.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
-      expect(lead.box.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
-      expect(lead.box.height).toBeGreaterThan(secondary.box.height * 1.1);
-    }
+    expect(geometry.subjects.map(subject => subject.role)).toEqual(["secondary", "secondary"]);
+    expect(outingsBox.width).toBeGreaterThanOrEqual(mosaicBox.width * 0.99);
+    for (const subject of geometry.subjects) expect(subject.box.y).toBeGreaterThanOrEqual(outingsBox.y + outingsBox.height - 1);
     if (width < 640) {
       expect(photoBox.width).toBeGreaterThanOrEqual(width - 2);
-      expect(Math.abs(photoBox.width / photoBox.height - 1.43)).toBeLessThan(0.03);
+      expect(Math.abs(photoBox.width / photoBox.height - 16 / 9), "the normal-text phone layout uses the landscape crop").toBeLessThan(0.03);
+      expect(captionBox.y).toBeGreaterThanOrEqual(photoBox.y + photoBox.height - 1);
+    } else {
+      expect(captionBox.x).toBeGreaterThanOrEqual(photoBox.x + photoBox.width - 1);
     }
     for (const subject of geometry.subjects) {
       expect(subject.box.width).toBeGreaterThanOrEqual(44);
@@ -413,17 +376,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(subject.caption.y + subject.caption.height).toBeLessThanOrEqual(subject.box.y + subject.box.height + 1);
       for (const line of subject.lines) {
         expect(line.x).toBeGreaterThanOrEqual(subject.caption.x);
-        expect(line.y).toBeGreaterThanOrEqual(subject.caption.y);
+        // A Range includes the font's ascent, which can sit 1px above
+        // the line box even when the visible letters are inside the caption.
+        expect(line.y).toBeGreaterThanOrEqual(subject.caption.y - 1);
         expect(line.x + line.width).toBeLessThanOrEqual(subject.caption.x + subject.caption.width + 1);
         expect(line.y + line.height).toBeLessThanOrEqual(subject.caption.y + subject.caption.height + 1);
       }
     }
-    expect(photoBox.width).toBeGreaterThanOrEqual(doorwayBox.width * 0.95);
-    expect(photoBox.height).toBeGreaterThan(90);
-    // The lead photograph's prominence. At 16:10 it is 62.5% of its column's
-    // width tall; it never drops below 55% of that column (the full content
-    // width on a phone), and never below 170px, even on a 320px phone.
-    expect(photoBox.height).toBeGreaterThanOrEqual(geometry.subjects[0].box.width * 0.55);
     expect(photoBox.height).toBeGreaterThanOrEqual(170);
     await expect(doorway.locator("img")).toHaveAttribute("alt", diningSubjects[0].alt);
     await expect(doorway.getByRole("heading", { name: diningSubjects[0].title, exact: true })).toBeVisible();
@@ -432,7 +391,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await expect(mosaic).not.toContainText(/best|open now|safe now|current conditions|recommended|made in Frederick|Mike D|June 2023/i);
     await expect(doorway.locator("a, button, input, select")).toHaveCount(0);
     const quickNeeds = page.getByRole("group", { name: "Quick needs", exact: true });
-    const explore = page.getByRole("region", { name: "More ways to explore", exact: true });
+    const explore = page.getByRole("region", { name: "Practical information", exact: true });
     await expect(explore).toHaveCount(1);
     await expect(quickNeeds).toHaveCount(1);
     await expect(explore.getByRole("group", { name: "Quick needs", exact: true })).toHaveCount(1);
@@ -455,7 +414,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
           // Utilities follow the first answers. Their own section is the
           // explicit start for this reachability proof; the first event keeps
           // the separate one-viewport native budget from arrival below.
-          await explore.getByRole("heading", { name: "More ways to explore", exact: true })
+          await explore.getByRole("heading", { name: "Practical information", exact: true })
             .evaluate((node) => node.scrollIntoView({ block: "start", behavior: "instant" }));
           const sectionActions = (await quickNeeds.boundingBox())!;
           const scrollForActions = Math.max(0, sectionActions.y + sectionActions.height - primaryNavBox.y + 16);
@@ -533,7 +492,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       const news = document.querySelector('section[aria-label="Local news"]')?.getBoundingClientRect();
       const explore = document.querySelector('section[aria-labelledby="today-explore-heading"]')?.getBoundingClientRect();
       return Boolean(entry && photo && quick && events && places && news && explore && photo.y >= entry.bottom
-        && places.y >= photo.bottom && events.y >= places.bottom && news.y >= events.bottom
+        && places.y >= photo.bottom && events.y >= photo.bottom && news.y >= Math.max(places.bottom, events.bottom)
         && explore.y >= news.bottom && quick.y >= explore.y);
     })).toBe(true);
     const currentLayout = await page.evaluate(() => {
@@ -550,8 +509,11 @@ for (const width of [320, 375, 390, 430, 1366]) {
       const entry = document.querySelector("header:has([data-today-area-trigger])")!;
       const news = document.querySelector('section[aria-label="Local news"]')!;
       const explore = document.querySelector('section[aria-labelledby="today-explore-heading"]')!;
+      const grid = document.querySelector("[data-today-current-content]")!;
+      const wideGrid = grid.clientWidth >= 48 * parseFloat(getComputedStyle(document.documentElement).fontSize);
       const precedes = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
       return { places: read(places), events: read(events), decision: read(decision), photo: read(photo), quick: read(quick), news: read(news), explore: read(explore),
+        sideBySide: wideGrid && events.childElementCount > 0,
         entryBeforePhoto: precedes(entry, photo), photoBeforeQuick: precedes(photo, quick),
         photoOutsidePlaces: !places.contains(photo), photoBeforeEvents: precedes(photo, events),
         photoBeforePlaces: precedes(photo, places), placesBeforeEvents: precedes(places, events),
@@ -576,7 +538,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
       expect(currentLayout.saved.afterRecommendation).toBe(true);
       expect(currentLayout.saved.outsideDisclosure).toBe(true);
       expect(currentLayout.saved.cards).toBeLessThanOrEqual(2);
-      expect(currentLayout.saved.box.y + currentLayout.saved.box.height).toBeLessThanOrEqual(eventsBox.y);
+      expect(currentLayout.saved.box.y + currentLayout.saved.box.height).toBeLessThanOrEqual(placesBox.y + placesBox.height);
     }
     expect(currentLayout.placesBeforeNews).toBe(true);
     expect(currentLayout.newsBeforeExplore).toBe(true);
@@ -584,7 +546,13 @@ for (const width of [320, 375, 390, 430, 1366]) {
     expect(currentDoorwayBox.y + currentDoorwayBox.height).toBeLessThanOrEqual(placesBox.y);
     expect(weatherBox.y + weatherBox.height).toBeLessThanOrEqual(currentQuickNeedsBox.y);
     expect(findBox.y + findBox.height).toBeLessThanOrEqual(currentQuickNeedsBox.y);
-    expect(placesBox.y + placesBox.height).toBeLessThanOrEqual(eventsBox.y);
+    if (currentLayout.sideBySide) {
+      expect(placesBox.x + placesBox.width).toBeLessThanOrEqual(eventsBox.x);
+      expect(Math.abs(placesBox.y - eventsBox.y)).toBeLessThanOrEqual(1);
+    } else {
+      expect(placesBox.y + placesBox.height).toBeLessThanOrEqual(eventsBox.y);
+    }
+    expect(placesBox.y + placesBox.height).toBeLessThanOrEqual(currentLayout.news.y);
     expect(eventsBox.y + eventsBox.height).toBeLessThanOrEqual(currentLayout.news.y);
     expect(currentLayout.news.y + currentLayout.news.height).toBeLessThanOrEqual(currentLayout.explore.y);
     expect(currentQuickNeedsBox.y).toBeGreaterThanOrEqual(currentLayout.explore.y);
@@ -631,7 +599,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
     await testInfo.attach("today-arrival-geometry", {
       contentType: "application/json",
       body: JSON.stringify({ width, mastheadBox, weatherBox, findBox, headerBox, captionBox, photoBox, doorwayBox, mosaicBox, subjects: geometry.subjects, quickNeedsBox, decisionBox, primaryNavBox, currentLayout, heldPhotoRequests, photoMetadataRequests,
-        note: "Header Find and area, followed by the weather masthead, lead two exact local photographs, one scoped recommendation and any saved previews in the same place group, then the single Events today section and news. Historical and undated business images stay held. More ways to explore owns the single four-shortcut deck afterward. DOM and vertical visual order match at phone and desktop widths. Event facts retain the existing bounded native-scroll requirement; utility reachability is measured from its own heading." }),
+        note: "Header Find and area, followed by the weather masthead, lead two exact local photographs, one scoped recommendation and any saved previews in the same place group, then the single Events today section and news. Historical and undated business images stay held. Practical information owns the single four-shortcut deck afterward. DOM and vertical visual order match at phone and desktop widths. Event facts retain the existing bounded native-scroll requirement; utility reachability is measured from its own heading." }),
     });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}.png`), fullPage: true });
     await page.screenshot({ path: testInfo.outputPath(`today-${width}-viewport.png`), fullPage: false });
@@ -667,7 +635,7 @@ for (const width of [320, 375, 390, 430, 1366]) {
 }
 
 for (const town of ["brunswick", "thurmont"]) {
-  test(`Today keeps the first ${town} paint neutral and hydrates only exact local photography`, async ({ page }, testInfo) => {
+  test(`Today paints the selected ${town} photograph before bootstrap and keeps it through hydration`, async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     await page.setViewportSize({ width: 375, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -703,22 +671,26 @@ for (const town of ["brunswick", "thurmont"]) {
       const response = await page.goto(`/today?in=${town}`, { waitUntil: "commit" });
       expect(response?.status()).toBe(200);
       try {
-        const pending = page.locator("[data-today-geographic-pending]");
-        await expect(pending).toBeAttached();
-        await expect(pending).toHaveAttribute("aria-hidden", "true");
-        await expect(pending.locator("a, img, h2, h3, button")).toHaveCount(0);
-        await expect(page.locator("[data-today-geographic-place]")).toHaveCount(0);
+        const expectedSlugs = townSubjects[town as keyof typeof townSubjects];
+        const expected = CREDITED_LOCAL_PLACE_PHOTOS[expectedSlugs[0]].image;
+        const lead = page.locator(`[data-today-geographic-place="${expectedSlugs[0]}"]`);
+        await expect(lead).toBeVisible();
+        await expect(lead.locator("img")).toHaveAttribute("alt", expected.alt);
+        await expect.poll(() => lead.locator("img").evaluate(async (img: HTMLImageElement, src) => {
+          await img.decode().catch(() => undefined);
+          return img.naturalWidth > 1 && getComputedStyle(img).opacity === "1"
+            && decodeURIComponent(img.currentSrc || img.src).includes(src);
+        }, expected.src)).toBe(true);
+        const credit = page.locator(`[data-today-discovery-credit="${expectedSlugs[0]}"]`);
+        await expect(credit.locator("a").first()).toBeVisible();
         await expect.poll(() => heldBootstrapRequests.length).toBeGreaterThan(0);
-        expect(geographicPhotoRequests).toEqual([]);
+        expect(geographicPhotoRequests.length).toBeGreaterThan(0);
         initialTimeOrigin = await page.evaluate(() => performance.timeOrigin);
-        // WebKit screenshot capture waits for font readiness, which cannot
-        // settle while bootstrap is deliberately held. Preserve the actual
-        // pre-bootstrap DOM/layout here, then photograph the hydrated page.
         await testInfo.attach("town-before-bootstrap", {
           contentType: "application/json",
-          body: JSON.stringify(await pending.evaluate((element) => {
+          body: JSON.stringify(await lead.evaluate((element) => {
             const rect = element.getBoundingClientRect();
-            return { markup: element.outerHTML, x: rect.x, y: rect.y,
+            return { subject: element.getAttribute("data-today-geographic-place"),
               width: rect.width, height: rect.height, timeOrigin: performance.timeOrigin };
           })),
         });
@@ -756,10 +728,11 @@ for (const town of ["brunswick", "thurmont"]) {
       await expect(page.getByTestId("today-scope-status")).toContainText(`${town === "brunswick" ? "Brunswick" : "Thurmont"} picks · Weather for the whole county`);
       await expect(page.locator('[aria-label="Places for your area"] > section:not([data-today-saved])')).toHaveCount(1);
       expect(geographicPhotoRequests.length).toBeGreaterThan(0);
-      expect(geographicPhotoRequests.some(request => {
+      const allowed = expectedSlugs.map(slug => CREDITED_LOCAL_PLACE_PHOTOS[slug].image.src);
+      for (const request of geographicPhotoRequests) {
         const url = new URL(request);
-        return businessPhotoPaths.has(decodeURIComponent(url.pathname === "/_next/image" ? url.searchParams.get("url")! : url.pathname));
-      })).toBe(false);
+        expect(allowed).toContain(decodeURIComponent(url.pathname === "/_next/image" ? url.searchParams.get("url")! : url.pathname));
+      }
       expect(await page.evaluate(() => performance.timeOrigin)).toBe(initialTimeOrigin);
       await page.screenshot({ path: testInfo.outputPath(`today-${town}-hydrated-viewport.png`), fullPage: false });
     } finally {
@@ -769,11 +742,43 @@ for (const town of ["brunswick", "thurmont"]) {
         contentType: "application/json", body: JSON.stringify({ town, geographicPhotoRequests, guardedPhotoPaths: [...geographicPhotoPaths], heldBootstrapRequests,
           scriptFailures, pageErrors, initialTimeOrigin,
           finalTimeOrigin: await page.evaluate(() => performance.timeOrigin).catch(() => null),
-          serverPaint: "Bootstrap scripts gated; actual scope-neutral paint and same-document hydration checked." }),
+          serverPaint: "Bootstrap scripts gated; selected local image and attribution visible before hydration in the same document." }),
       });
     }
   });
 }
+
+test.describe("Today without client scripts", () => {
+  test.use({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+
+  test("renders the first-visit creek, a saved town and the explicit area directly in the document", async ({ page, context, baseURL }) => {
+    test.setTimeout(90_000);
+    await page.goto("/today", { waitUntil: "commit" });
+    const hero = page.locator("[data-today-feature-photo]");
+    await expect(hero).toContainText("Frederick Radius summer archive");
+    await expect(hero.locator("img")).toBeVisible();
+
+    await expect.poll(() => hero.locator("img").evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(1);
+
+    await context.addCookies([{ name: "fr_scope", value: encodeURIComponent("town:brunswick"), url: baseURL! }]);
+    await page.reload({ waitUntil: "commit" });
+    await expect(page.locator('[data-today-geographic-place="co-canal-lock-30-brunswick"] img')).toBeVisible();
+    await expect(hero).toHaveCount(0);
+
+    for (const area of ["mount-airy", "nearme", "county"]) {
+      await page.goto(`/today?in=${area}`, { waitUntil: "commit" });
+      if (area === "county") {
+        await expect(hero.locator("img")).toBeVisible();
+      } else {
+        const link = page.locator("[data-today-map-link]");
+        await expect(link.getByRole("img", { name: /Frederick County reference map/ })).toBeVisible();
+        await expect(link.locator("[data-locator-selection]")).toHaveCount(area === "nearme" ? 0 : 1);
+        await expect(link).toHaveAttribute("href", `/map?in=${area}&returnTo=${encodeURIComponent(`/today?in=${area}`)}`);
+        await expect(hero).toHaveCount(0);
+      }
+    }
+  });
+});
 
 test.describe("Today compiled event heading and compact weather at enlarged root text", () => {
   test.use({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true, permissions: [] });
@@ -931,7 +936,7 @@ test.describe("Today compiled event heading and compact weather at enlarged root
     } else {
       await expect(enlargedSummary).toHaveCount(0);
       await expect(enlargedForecast).toHaveAttribute("href", "/pulse?open=weather");
-      await expect(enlargedWeather.getByText("The NWS forecast is briefly unavailable.", { exact: true })).toBeVisible();
+      await expect(enlargedWeather.getByText("Forecast unavailable", { exact: true })).toBeVisible();
       testInfo.annotations.push({ type: "coverage", description: "Real forecast unavailable: enlarged direct-route coverage only. Available-summary acceptance is still required in a separate actual-source run." });
     }
     // A missing air-quality reading is routine evidence inside the closed

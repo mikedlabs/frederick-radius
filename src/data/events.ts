@@ -53,7 +53,11 @@ export type Event = {
    * not the org. Absent on titles with no org prefix.
    */
   presenter?: string;
+  /** Precision supported by the publisher, separate from the internal expiry timestamp. */
+  published_time?: "date" | "start" | "range";
   hero_image?: string;
+  /** Listing URL whose dedicated event-image field supplied these bytes. */
+  hero_image_record?: string;
   /**
    * Provenance for a venue photograph borrowed from the canonical place.
    * Event-specific provider images are governed by their source adapter;

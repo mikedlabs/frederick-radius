@@ -203,20 +203,9 @@
   --app-space-5: calc(var(--spacing) * 5);
   --app-space-6: calc(var(--spacing) * 6);
 
-  /* Chrome heights — ONE source of truth so the magic numbers (56/48/84) can't
-     drift between the map, its loading skeleton, the aerial view, and the
-     floating controls (they did, causing a tab-in jump + a nav/toggle overlap).
-     --app-topbar-h = the h-14 TopBar; --app-bottomnav-reserve = clearance for the
-     floating bottom nav on viewport-filled surfaces. --app-browse-map-height is
-     the exact map canvas height, consumed by both the map page and its skeleton. */
-  --app-topbar-h: 56px;
-  /* Where the TopBar's bottom edge actually is RIGHT NOW. The TopBar
-     auto-hides on scroll-down (translateY(-100%)); while hidden it sets
-     this to 0px on <html> so sticky bars pinned beneath it (RightNow's
-     filter bar, the /events .eb-dock) collapse up in sync instead of
-     leaving a see-through seam of raw list above themselves. Pin sticky
-     chrome to THIS var, not --app-topbar-h, and transition `top` with
-     the TopBar's own 240ms ease so the two move as one piece of chrome. */
+  /* Reserve the two phone bands before hydration. TopBar publishes its actual
+     row height when the browser lays out wrapping text or a safe area. */
+  --app-topbar-h: 100px;
   --app-topbar-offset: var(--app-topbar-h);
   --app-bottomnav-reserve: 57px;
   --app-browse-map-height: calc(
@@ -267,6 +256,10 @@
   :root {
     --app-bottomnav-reserve: 0px;
   }
+}
+
+@media (min-width: 640px) {
+  :root { --app-topbar-h: 68px; }
 }
 
 /* A deliberate dark choice uses Charcoal grounds. Filled actions keep Deep Coral and white;
@@ -8711,59 +8704,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    shelf, one contextual action, and one thumb command instead of stacking
    several equally heavy paper cards over the geography.
    ======================================================================== */
-header[data-map-header="true"] {
-  border-bottom-color: color-mix(in srgb, var(--app-ink) 10%, transparent) !important;
-  background: color-mix(in srgb, var(--app-bg-elevated-solid) 88%, transparent) !important;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset;
-  backdrop-filter: blur(18px) saturate(1.08);
-  -webkit-backdrop-filter: blur(18px) saturate(1.08);
-}
-header[data-map-header="true"] [data-location-chip][data-compact="true"] {
-  max-width: min(46vw, 176px);
-  border: 0 !important;
-  border-radius: 8px;
-  background: transparent !important;
-  padding-inline: 7px;
-  color: var(--app-ink-2) !important;
-}
-header[data-map-header="true"] [data-location-chip][data-compact="true"] > svg:last-child {
-  display: block !important;
-}
-header[data-map-header="true"] [data-location-chip][data-compact="true"] > span {
-  max-width: 108px;
-}
-header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-location-scope-label="compact"] {
-  display: none;
-}
-@media (max-width: 359px) {
-  header[data-map-header="true"] [data-location-chip][data-compact="true"] {
-    max-width: 92px;
-    min-width: 0;
-    padding-inline: 5px;
-  }
-  header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-location-scope-label="compact"] {
-    display: block;
-    max-width: 58px;
-    font-size: 10.5px;
-  }
-  header[data-map-header="true"] [data-location-chip][data-compact="true"] [data-location-scope-label="full"] {
-    display: none;
-  }
-}
-header[data-map-header="true"] [data-location-chip][data-compact="true"]:hover,
-header[data-map-header="true"] [data-location-chip][data-compact="true"]:focus-visible {
-  background: color-mix(in srgb, var(--app-ink) 5%, transparent) !important;
-}
-header[data-map-header="true"] [data-pulse-indicator] {
-  border-color: transparent !important;
-  background: transparent !important;
-  padding-inline: 0;
-}
-header[data-map-header="true"] [data-pulse-indicator]:hover,
-header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
-  background: color-mix(in srgb, var(--app-ink) 5%, transparent) !important;
-}
-
 @media (max-width: 1023.98px) {
   [data-map-bottom-nav="true"] {
     padding-right: 0 !important;
@@ -9600,32 +9540,6 @@ header[data-map-header="true"] [data-pulse-indicator]:focus-visible {
   box-shadow: none;
 }
 
-/* The map header and the tab bar beneath the map are the same flat chrome
-   as every other page: a solid ground and one hairline, no frosted glass. */
-header[data-map-header="true"] {
-  border-bottom-color: var(--app-border) !important;
-  background: var(--app-bg) !important;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-header[data-map-header="true"] [data-location-chip][data-compact="true"] {
-  border-radius: var(--app-radius-sm);
-  color: var(--app-ink) !important;
-}
-/* The flat header's larger 20px glyphs and 13px label leave no room for a
-   wide town name beside five tools below 390px. Cap the chip there so the
-   full name truncates and the header stays one row. */
-@media (min-width: 360px) and (max-width: 389.98px) {
-  header[data-map-header="true"] [data-location-chip][data-compact="true"] {
-    max-width: 104px;
-    min-width: 0;
-    padding-inline: 5px;
-  }
-  header[data-map-header="true"] [data-location-chip][data-compact="true"] > span {
-    max-width: 64px;
-  }
-}
 @media (max-width: 1023.98px) {
   [data-map-bottom-nav="true"] {
     background: var(--app-bg);

@@ -2,7 +2,7 @@ import ItineraryClient from "./ItineraryClient";
 
 export const metadata = {
   title: "Day Plan | Frederick Radius",
-  description: "Your planned itinerary for today.",
+  description: "Events kept in your Day Plan on this device.",
 };
 
 export default async function ItineraryPage() {

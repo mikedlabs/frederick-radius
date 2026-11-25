@@ -76,7 +76,7 @@ describe("partial map place metadata", () => {
     expect(container.textContent).not.toContain("Loading place details…");
     expect(fetchMock).not.toHaveBeenCalled();
     expect(liveContext).not.toHaveBeenCalled();
-    const fullPage = [...container.querySelectorAll("a")].find(link => link.textContent?.includes("See full page"));
+    const fullPage = [...container.querySelectorAll("a")].find(link => link.textContent?.includes("Place details in Radius"));
     expect(fullPage?.getAttribute("href")).toContain("/places/pending-place?returnTo=");
     expect(container.querySelector('a[href^="https://maps.apple.com/"]')).not.toBeNull();
   });

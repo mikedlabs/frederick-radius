@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Phone, ExternalLink } from "lucide-react";
+import { telHref } from "@/lib/format/usPhone";
 import { PET_CARE_FACILITIES, PET_POISON_LINES, type PetCareFacility } from "@/data/pet-emergency";
 
 /**
@@ -27,43 +28,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "/emergency-vet" },
 };
 
-const telHref = (phone: string) => `tel:+1${phone.replace(/\D/g, "")}`;
+const verificationDate = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
 
 function FacilityCard({ f, big }: { f: PetCareFacility; big?: boolean }) {
   return (
-    <div
-      className="rounded-[var(--app-radius-lg)] border p-4"
-      style={{
-        borderColor: big ? "color-mix(in srgb, var(--app-brand) 40%, var(--app-border))" : "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          {big ? (
-            <h2 className="font-serif text-[19px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-              {f.name}
-            </h2>
-          ) : (
-            <h3 className="font-serif text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-              {f.name}
-            </h3>
-          )}
-          <p className="mt-1 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-            {f.hours}
-          </p>
-          <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            {f.address}, {f.town}
-            {f.areaNote ? ` · ${f.areaNote}` : ""}
-          </p>
-          {f.policy && (
-            <p className="mt-1 text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>
-              {f.policy}
-            </p>
-          )}
-        </div>
-      </div>
+    <div className="border-b pb-4" style={{ borderColor: "var(--app-border)" }}>
+      <h3 className="text-[18px] font-bold leading-tight" style={{ color: "var(--app-ink)" }}>{f.name}</h3>
+      <p className="mt-1 text-[16px] font-semibold" style={{ color: "var(--app-ink)" }}>{f.hours}</p>
+      {f.policy && <p className="mt-1 text-[14px]" style={{ color: "var(--app-ink-2)" }}>{f.policy}</p>}
       <div className="mt-3 flex items-center gap-2">
         <a
           href={telHref(f.phone)}
@@ -85,6 +57,12 @@ function FacilityCard({ f, big }: { f: PetCareFacility; big?: boolean }) {
           <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
         </a>
       </div>
+      <p className="mt-2 text-[14px]" style={{ color: "var(--app-ink-2)" }}>
+        {f.address}, {f.town}{f.areaNote ? ` · ${f.areaNote}` : ""}
+      </p>
+      <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+        Provider information checked <time dateTime={f.verified}>{verificationDate.format(new Date(f.verified))}</time>
+      </p>
     </div>
   );
 }
@@ -93,7 +71,6 @@ export default function EmergencyVetPage() {
   const er24 = PET_CARE_FACILITIES.filter((f) => f.tier === "er24");
   const erHours = PET_CARE_FACILITIES.filter((f) => f.tier === "erHours");
   const urgent = PET_CARE_FACILITIES.filter((f) => f.tier === "urgent");
-  const verified = PET_CARE_FACILITIES.map((f) => f.verified).sort().at(-1);
 
   return (
     <div className="relative mx-auto max-w-md space-y-6 py-6">
@@ -109,25 +86,17 @@ export default function EmergencyVetPage() {
       </nav>
 
       <header>
-        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Verified {verified}
+        <h1 className="text-[30px] font-bold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>Emergency vet care</h1>
+        <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Call ahead to confirm the ER can see your pet. If someone else is driving, call on the way.
         </p>
-        <h1
-          className="mt-1 font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Pet emergency?{" "}
-          <span className="font-serif italic font-normal" style={{ color: "var(--app-ink-3)" }}>
-            Call while someone drives.
-          </span>
-        </h1>
-        <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          These are the only two animal ERs around Frederick open around the
-          clock. Calling ahead lets them prep for your arrival.
-        </p>
+        <a href="#pet-poison" className="tap-44-y inline-flex items-center text-[14px] font-semibold underline" style={{ color: "var(--app-link)" }}>
+          Pet poison hotlines
+        </a>
       </header>
 
       <section aria-label="Open 24 hours" className="space-y-3">
+        <h2 className="text-[20px] font-bold" style={{ color: "var(--app-ink)" }}>24-hour emergency vets in Frederick</h2>
         {er24.map((f) => (
           <FacilityCard key={f.name} f={f} big />
         ))}
@@ -135,8 +104,8 @@ export default function EmergencyVetPage() {
 
       {erHours.length > 0 && (
         <section aria-label="Emergency rooms with limited hours" className="space-y-3">
-          <h2 className="font-serif text-[19px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            ER until midnight
+          <h2 className="text-[20px] font-bold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Emergency rooms with limited hours
           </h2>
           {erHours.map((f) => (
             <FacilityCard key={f.name} f={f} />
@@ -144,14 +113,12 @@ export default function EmergencyVetPage() {
         </section>
       )}
 
-      <section aria-label="Poisoning" className="space-y-2">
-        <h2 className="font-serif text-[19px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Swallowed something?
+      <section id="pet-poison" aria-label="Poisoning" className="scroll-mt-24 space-y-2">
+        <h2 className="text-[20px] font-bold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          Pet poison hotlines
         </h2>
         <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Call a poison line first, even before driving. Both are staffed
-          around the clock by veterinary toxicologists; both charge a
-          consultation fee, and the case number they open speeds up the ER.
+          If your pet may have been poisoned, call a pet poison hotline before you drive.
         </p>
         <div className="flex flex-col gap-2">
           {PET_POISON_LINES.map((l) => (
@@ -162,19 +129,23 @@ export default function EmergencyVetPage() {
               style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink)" }}
             >
               {l.name}
-              <span className="inline-flex items-center gap-1.5 font-mono text-[13px]" style={{ color: "var(--app-brand-press)" }}>
+              <span className="inline-flex items-center gap-1.5 font-mono text-[13px]" style={{ color: "var(--app-link)" }}>
                 <Phone className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
                 {l.phone}
               </span>
             </a>
           ))}
         </div>
+        <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Both lines have veterinary toxicologists available 24 hours a day and charge a consultation fee.
+          Give the case number to the ER so it can coordinate care.
+        </p>
       </section>
 
       {urgent.length > 0 && (
         <section aria-label="Urgent care" className="space-y-3">
-          <h2 className="font-serif text-[19px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Sick, but stable
+          <h2 className="text-[20px] font-bold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Urgent care for stable pets
           </h2>
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             Urgent care handles the in-between: vomiting, limping, wounds
@@ -207,13 +178,11 @@ export default function EmergencyVetPage() {
       </section>
 
       <p className="text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Numbers and hours verified against each facility&rsquo;s own site on
-        the date above. Hours change; in a true crisis, calling en route is
-        always right.{" "}
+        Hours and availability can change. Call the facility to confirm it can see your pet.{" "}
         <a
           href="mailto:hello@frederickradius.app?subject=Emergency%20vet%20page%20correction"
           className="underline"
-          style={{ color: "var(--app-cool)" }}
+          style={{ color: "var(--app-link)" }}
         >
           Spot an error? Tell us immediately.
         </a>

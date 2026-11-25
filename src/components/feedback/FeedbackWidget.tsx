@@ -7,16 +7,18 @@ import Sheet from "@/components/ui/Sheet";
 import { track } from "@/lib/track";
 import { FEEDBACK_MAX_MESSAGE } from "@/lib/feedback";
 import {
+  feedbackInMoreMenu,
   OPEN_FEEDBACK_EVENT,
   PENDING_FEEDBACK_KEY,
 } from "@/lib/feedback-ui";
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
 /**
- * FeedbackWidget is the always-available "Send feedback" affordance on every
+ * FeedbackWidget — the always-available "Send feedback" affordance on every
  * app page.
  *
- * A small floating trigger (bottom-left, lifted clear of the bottom-nav pill and
+ * Today and Parking offer feedback in More tools to keep reading controls clear.
+ * Elsewhere, a floating trigger (bottom-left, lifted clear of the bottom-nav pill and
  * the map's bottom-right controls) opens the canonical bottom Sheet, which
  * already carries the a11y contract: role=dialog + aria-modal, focus trap, ESC,
  * and focus restore to the trigger on close.
@@ -88,18 +90,20 @@ export default function FeedbackWidget() {
   const resetTimer = useRef<number | null>(null);
   // The floating trigger steps aside for its own sheet, so it is already gone
   // when the sheet looks for the focused control. Remember it at the click so
-  // closing returns focus to it. Event-driven opens clear this and keep the
-  // control that actually opened the sheet.
+  // closing returns focus to it. Other openers can supply their own visible
+  // return target, including the header menu summary.
   const openerRef = useRef<HTMLElement | null>(null);
 
   const publicSurface = publicFeedbackSurface(pathname);
   const isPublicFoodTruckBoard = publicSurface === "food-trucks";
 
+
   useEffect(() => {
-    const openFeedback = () => {
-      // The request came from elsewhere on the page, so there is no trigger
-      // here to hand focus back to.
-      openerRef.current = null;
+    const openFeedback = (event?: Event) => {
+      // An item inside a closing menu returns to its still-visible summary.
+      // Older inline events can rely on the sheet’s active-element fallback.
+      const requested = event instanceof CustomEvent ? event.detail?.returnFocusTo : null;
+      openerRef.current = requested instanceof HTMLElement && requested.isConnected ? requested : null;
       try {
         window.sessionStorage.removeItem(PENDING_FEEDBACK_KEY);
       } catch {
@@ -177,6 +181,7 @@ export default function FeedbackWidget() {
     }
   }
 
+
   const sending = phase === "sending";
   const succeeded = phase === "ok";
 
@@ -185,9 +190,9 @@ export default function FeedbackWidget() {
       {/* A compact icon-only tab, not a full text pill (beta review, Jul 2026:
           the pill overlapped content and fought the bottom controls). 44px so
           the tap target stays comfortable. The owner wants feedback reachable on
-          every screen (owner call, 2026-07-20), so the tab stays up
+          every screen. On routes that use the tab, it stays up
           over other bottom sheets and only steps aside for its OWN open sheet. */}
-      {!open && (
+      {!open && !feedbackInMoreMenu(pathname) && (
         <button
           type="button"
           onClick={(event) => {

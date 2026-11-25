@@ -84,7 +84,7 @@ for (const width of [320, 375, 390, 430]) {
       return route.continue();
     });
     await page.goto(originPath, { waitUntil: "domcontentloaded" });
-    const photoCard = page.locator("article[data-today-discovery-role=lead]");
+    const photoCard = page.locator("article[data-today-discovery-role]").filter({ has: page.locator(`[data-today-geographic-place="${scenic}"]`) });
     const photoSave = photoCard.locator(`button[data-save-ref="place:${scenic}"]`);
     await expect(photoSave).toBeEnabled({ timeout: 30_000 });
     await expect(page.locator("[data-today-saved-place]")).toHaveCount(2);
@@ -131,7 +131,7 @@ for (const width of [320, 375, 390, 430]) {
     await touch(view);
     const details = page.getByRole("dialog");
     await expect(details.getByRole("heading", { name: "Ibiza Cafe", exact: true })).toBeVisible({ timeout: 30_000 });
-    const fullPage = details.getByRole("link", { name: "See full page", exact: true });
+    const fullPage = details.getByRole("link", { name: "Place details in Radius", exact: true });
     expect(new URL((await fullPage.getAttribute("href"))!, page.url()).searchParams.get("returnTo")).toBe(originPath);
     await page.goBack();
     await expect(details).toHaveCount(0);

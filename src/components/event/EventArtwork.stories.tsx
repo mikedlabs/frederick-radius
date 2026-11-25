@@ -74,6 +74,8 @@ export const PosterPortraitAt320: Story = {
   play: async context => {
     await assertContained(context);
     const image = context.canvasElement.querySelector<HTMLImageElement>("img")!;
+    await waitFor(() => expect(image.parentElement!.hasAttribute("data-upright-poster"))
+      .toBe(image.naturalWidth / image.naturalHeight < 1.25));
     expect(getComputedStyle(image).padding).toBe("0px");
     // The lead frame sits on the page ground (no soft gray tile) and the art
     // starts at the row's left edge so it lines up with the facts below.

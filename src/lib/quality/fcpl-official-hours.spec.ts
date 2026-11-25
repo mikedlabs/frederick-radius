@@ -69,6 +69,21 @@ describe("bounded first-party source adapter", () => {
       expect(weekly.html).toContain(staffDay); expect(closures.html).toContain(staffDay);
       return [{ ...weekly, html: weekly.html.replace(staffDay, paragraph) }, { ...closures, html: closures.html.replace(staffDay, paragraph) }] as const;
     };
+    const thanksgiving = "<p>Frederick County Public Libraries will close at 5pm on Wednesday, November 25 and will remain closed on Thursday November 26, and Friday November 27, 2026 in observance of Thanksgiving.</p>";
+    it("accepts the Thanksgiving banner when the calendar confirms all three transitions", () => {
+      const [w, c] = withBanner(thanksgiving);
+      expect(parseFcplOfficialHours(w, c, now).closures.exceptions).toEqual(parseFcplOfficialHours(weekly, closures, now).closures.exceptions);
+    });
+    it.each([
+      thanksgiving.replace("5pm", "4pm"),
+      thanksgiving.replace("November 25", "November 24"),
+      thanksgiving.replace("November 26", "November 27"),
+      thanksgiving.replace("November 27", "November 28"),
+      thanksgiving.replace("Thanksgiving.", "Thanksgiving. Saturday service is delayed."),
+    ])("refuses an unconfirmed Thanksgiving transition", (paragraph) => {
+      const [w, c] = withBanner(paragraph);
+      expect(() => parseFcplOfficialHours(w, c, now)).toThrow(/FCPL/);
+    });
     it.each([
       ["the live straight apostrophe", live],
       ["a right single quotation mark", live.replace("Veteran's", "Veteran’s")],

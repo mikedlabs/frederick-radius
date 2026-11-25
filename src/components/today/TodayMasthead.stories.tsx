@@ -63,7 +63,7 @@ export const ForecastUnavailable: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(canvas.getByText("The NWS forecast is briefly unavailable.")).toBeVisible();
+    await expect(canvas.getByText("Forecast unavailable")).toBeVisible();
     await expect(canvas.queryByText("70 degrees Fahrenheit forecast")).not.toBeInTheDocument();
     await expect(canvas.getByRole("link", { name: /Full forecast.*Frederick/ })).toBeVisible();
   },
@@ -99,7 +99,7 @@ export const ActiveWarningWithoutForecast: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("heading", { name: "Flash Flood Warning is active." })).toBeVisible();
-    await expect(canvas.getByText("The NWS forecast is briefly unavailable.")).toBeVisible();
+    await expect(canvas.getByText("Forecast unavailable")).toBeVisible();
     await expect(canvasElement.querySelector("summary[data-today-weather-summary]")).toBeNull();
     await expect(canvas.getByRole("link", { name: /Full forecast.*Frederick/ })).toHaveAttribute("href", "/pulse?open=weather");
   },
@@ -112,7 +112,7 @@ export const PendingForecast: Story = {
     await expect(canvas.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(canvas.getByRole("region", { name: "Loading Frederick forecast" })).toBeVisible();
     await expect(canvas.getByRole("link", { name: /Full forecast.*Frederick/ })).toBeVisible();
-    await expect(canvas.queryByText("The NWS forecast is briefly unavailable.")).not.toBeInTheDocument();
+    await expect(canvas.queryByText("Forecast unavailable")).not.toBeInTheDocument();
     await expect(canvasElement.querySelector("summary")).toBeNull();
   },
 };

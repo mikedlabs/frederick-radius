@@ -59,6 +59,8 @@ export type BottomDrawerProps = {
   open?: boolean;
   /** Open-state callback for controlled mode. */
   onOpenChange?: (open: boolean) => void;
+  /** A completed action can return focus to its new result instead of its opener. */
+  getReturnFocusTarget?: () => HTMLElement | null;
   /** Hide the visible title/subtitle header (kept for screen readers)
    *  so content can render flush under the drag handle — e.g. a
    *  full-bleed photo cover. Default false. */
@@ -90,6 +92,7 @@ export default function BottomDrawer({
   subtitle,
   open,
   onOpenChange,
+  getReturnFocusTarget,
   bareHeader = false,
   onEscapeKeyDown,
   surface = "solid",
@@ -135,7 +138,7 @@ export default function BottomDrawer({
     const restoreWhenSafe = () => {
       restoreFrameRef.current = null;
       if (drawerOpenRef.current) return;
-      const returnTarget = returnFocusRef.current;
+      const returnTarget = getReturnFocusTarget?.() ?? returnFocusRef.current;
       if (!returnTarget?.isConnected) return;
       const focusIsSafe = () => {
         const activeModals = document.querySelectorAll(
@@ -164,7 +167,7 @@ export default function BottomDrawer({
       }
     };
     restoreFrameRef.current = window.requestAnimationFrame(restoreWhenSafe);
-  }, []);
+  }, [getReturnFocusTarget]);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -308,7 +311,7 @@ export default function BottomDrawer({
           data-drawer-width={width}
           {...(subtitle ? {} : { "aria-describedby": undefined })}
           onCloseAutoFocus={(event) => {
-            if (!returnFocusRef.current?.isConnected) return;
+            if (!(getReturnFocusTarget?.() ?? returnFocusRef.current)?.isConnected) return;
             event.preventDefault();
             if (
               drawerOpenRef.current

@@ -12,7 +12,9 @@ import {
   isCommerceSearchLink,
   resolveCommerceLinks,
 } from "@/lib/commerce/links";
-import { parkMobileWebUrl, parkMobileFindUrl } from "@/lib/integrations/deeplinks";
+import { isCityGarage } from "@/data/parking-garages";
+import { directionsHref } from "@/lib/map/directionsHref";
+import { parkMobileWebUrl } from "@/lib/integrations/deeplinks";
 import { BRAND } from "@/lib/brand";
 
 export type PlaceAction = {
@@ -44,6 +46,7 @@ function q(s: string): string {
 
 export function placeActions(p: Place): PlaceAction[] {
   const actions: PlaceAction[] = [];
+  const cityGarage = isCityGarage(p.slug);
   const nameCity = `${p.name} ${p.city ?? "Frederick"} MD`;
   const directCommerce = resolveCommerceLinks(p).filter(
     (link) => !isCommerceSearchLink(link),
@@ -60,7 +63,7 @@ export function placeActions(p: Place): PlaceAction[] {
   actions.push({
     key: "directions",
     label: "Directions",
-    href: `https://maps.apple.com/?q=${q(p.name)}&ll=${p.geom.lat},${p.geom.lng}`,
+    href: cityGarage ? directionsHref(p.geom.lat, p.geom.lng, "driving") : `https://maps.apple.com/?q=${q(p.name)}&ll=${p.geom.lat},${p.geom.lng}`,
     external: true,
     icon: "directions",
     accent: "var(--app-cool)",
@@ -144,27 +147,34 @@ export function placeActions(p: Place): PlaceAction[] {
     });
   }
 
-  // Parking. Verified zone → that ParkMobile session. A parking place
-  // without a verified zone → ParkMobile to enter the zone off the sign
-  // (never a fabricated zone). Any other destination → find parking
-  // near it on the map. Shared helpers keep this in sync with deeplinks.
-  const hasZone = Boolean(p.parkmobile_zone && p.parkmobile_zone !== "needs_verification");
-  actions.push({
-    key: "parking",
-    label: hasZone
-      ? `Park · Zone ${p.parkmobile_zone}`
-      : p.category === "parking"
-        ? "Park · ParkMobile"
-        : "Park nearby",
-    href: hasZone
-      ? parkMobileWebUrl(p.parkmobile_zone as string)
-      : p.category === "parking"
-        ? parkMobileFindUrl()
-        : `https://www.google.com/maps/search/parking/@${p.geom.lat},${p.geom.lng},16z`,
-    external: true,
-    icon: "parking",
-    accent: "#4A4A48",
-  });
+  if (cityGarage) {
+    actions.push({
+      key: "garage-rates",
+      label: "Garage rates and payment",
+      href: "/parking#garage-basics-heading",
+      external: false,
+      icon: "parking",
+      accent: "#4A4A48",
+    });
+  } else if (p.parkmobile_zone && p.parkmobile_zone !== "needs_verification") {
+    actions.push({
+      key: "parking",
+      label: `Park · Zone ${p.parkmobile_zone}`,
+      href: parkMobileWebUrl(p.parkmobile_zone),
+      external: true,
+      icon: "parking",
+      accent: "#4A4A48",
+    });
+  } else if (p.category !== "parking") {
+    actions.push({
+      key: "parking",
+      label: "Park nearby",
+      href: `https://www.google.com/maps/search/parking/@${p.geom.lat},${p.geom.lng},16z`,
+      external: true,
+      icon: "parking",
+      accent: "#4A4A48",
+    });
+  }
 
   // Website
   if (p.website) {
@@ -216,6 +226,7 @@ export function groupPlaceActions(
         : actions[0].key;
   const primary = actions.find((action) => action.key === primaryKey) ?? null;
   const secondaryOrder = [
+    "garage-rates",
     "reserve",
     "email",
     "call",

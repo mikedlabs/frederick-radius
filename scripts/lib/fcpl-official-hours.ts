@@ -71,12 +71,8 @@ export function parseFcplOfficialHours(weekly: OfficialPageReceipt, closures: Of
       for (let date = dates[0]; date <= (dates[1] ?? dates[0]); date = shift(date, 1)) exceptions.push({ date, reason, ...(early ? { closes_at: "17:00" } : { closed: true as const }) });
     }
   }
-  // Active banners can announce weather/branch closures outside the annual
-  // calendar. Only two reviewed, explicitly dated all-library wordings are
-  // accepted, and only when the same full closure is already in the calendar.
-  // A banner therefore never creates, moves or extends a closure; any other
-  // wording, or a date the calendar does not list as closed, still throws so
-  // a person reviews it.
+  // A banner may confirm an annual-calendar entry. Unreviewed wording or
+  // a conflicting date, time or reason requires a fresh source review.
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const bannerDate = (month: string, day: string, year: string) => `${year}-${String(months.indexOf(month) + 1).padStart(2, "0")}-${day.padStart(2, "0")}`;
   const calendarClosed = (date: string, reason?: string) => isCalendarDate(date)
@@ -90,6 +86,20 @@ export function parseFcplOfficialHours(weekly: OfficialPageReceipt, closures: Of
       if (!notices.length && /closed|closing|hours|delay|weather/i.test(clean(block.textContent))) throw new Error("Unrecognized active FCPL hours notice.");
       for (const notice of notices) {
         const text = clean(notice.textContent);
+        const thanksgiving = text.match(/^Frederick County Public Libraries will close at 5pm on Wednesday, November (\d{1,2}) and will remain closed on Thursday November (\d{1,2}), and Friday November (\d{1,2}), (\d{4}) in observance of Thanksgiving\.$/);
+        if (thanksgiving) {
+          const [, wed, thu, fri, year] = thanksgiving;
+          const eve = bannerDate("November", wed, year);
+          const first = bannerDate("November", thu, year);
+          const last = bannerDate("November", fri, year);
+          const hasEarlyClose = exceptions.some((item) => item.date === eve && item.closes_at === "17:00" && /^Thanksgiving Eve -/i.test(item.reason));
+          if (!isCalendarDate(eve) || new Date(`${eve}T12:00:00Z`).getUTCDay() !== 3 ||
+              first !== shift(eve, 1) || last !== shift(eve, 2) || !hasEarlyClose ||
+              !calendarClosed(first, "Thanksgiving") || !calendarClosed(last, "Thanksgiving")) {
+            throw new Error("Active FCPL Thanksgiving notice is not covered by the dated calendar.");
+          }
+          continue;
+        }
         const staffDay = text.match(/^Frederick County Public Libraries will be closed on (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2}), (\d{4}) for Staff Development Day\.$/);
         // System-wide holiday wording, first seen 2026-11-09 for Veteran's Day.
         // The closure itself is taken from the calendar, which must already

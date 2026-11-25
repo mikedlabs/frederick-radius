@@ -18,6 +18,12 @@ describe("history image attribution", () => {
     }
   });
 
+  it("does not use the Garrett County bridge as a Frederick National Pike photograph", () => {
+    const entry = HISTORY.find((item) => item.slug === "national-pike");
+    expect(entry?.title).toBe("The National Pike");
+    expect(entry?.image?.source_url ?? "").not.toContain("Casselman_River_Bridge");
+  });
+
   it("links every Creative Commons license to its matching deed", () => {
     for (const image of images.filter((item) => item.license.label.startsWith("CC "))) {
       const expected = image.license.label

@@ -244,7 +244,7 @@ function Card({
             </div>
             {listingNote.sourceUrl ? (
               <div className="mt-1 text-[13px]">
-                <EventSourceLink href={listingNote.sourceUrl} />
+                <EventSourceLink href={listingNote.sourceUrl} label="Official event page" />
               </div>
             ) : null}
           </div>

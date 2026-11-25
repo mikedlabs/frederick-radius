@@ -124,6 +124,7 @@ describe("/api/ask location policy", () => {
     });
     mocks.getFcpsAlertsResult.mockResolvedValue({
       available: true,
+      checkedAt: new Date().toISOString(),
       data: [],
     });
     mocks.getCivicPressReleasesResult.mockResolvedValue({
@@ -431,6 +432,7 @@ describe("/api/ask location policy", () => {
     });
     mocks.getFcpsAlertsResult.mockResolvedValue({
       available: true,
+      checkedAt: new Date().toISOString(),
       data: [{
         id: "fcps-1",
         title: "FCPS schools and offices are closed",
@@ -456,6 +458,17 @@ describe("/api/ask location policy", () => {
       label: "Check FCPS",
       href: "https://www.fcps.org/",
     });
+  });
+
+  it("directs a school question to FCPS when a cached empty feed is stale", async () => {
+    mocks.readJsonBodyWithLimit.mockResolvedValue({ ok: true, value: { query: "Is FCPS open today?" } });
+    mocks.getFcpsAlertsResult.mockResolvedValue({
+      available: true, data: [], checkedAt: new Date(Date.now() - 21 * 60_000).toISOString(),
+    });
+    const body = await (await POST(request())).json();
+    expect(body.answer).toContain("couldn’t verify the latest FCPS school status");
+    expect(body.sources[0]).toMatchObject({ href: "https://www.fcps.org/", confidence: "medium" });
+    expect(mocks.askFrederick).not.toHaveBeenCalled();
   });
 
   it("does not invent a reason for nearby police activity or return place cards", async () => {

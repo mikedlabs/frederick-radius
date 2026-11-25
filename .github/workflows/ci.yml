@@ -224,6 +224,16 @@ jobs:
           if-no-files-found: error
           retention-days: 3
           compression-level: 0
+      - name: WebKit touch tablet Tools rotation
+        if: ${{ env.AUTOMATED_DATA_PR != '1' }}
+        run: >-
+          npx playwright test e2e/tool-hierarchy.spec.ts
+          --grep 'touch tablets keep the index, focused filter and results through rotation'
+          --project=webkit-mobile --workers=1 --retries=1
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          PW_PRODUCTION: "1"
+          PW_WEBKIT: "1"
       - name: WebKit visual discovery and map continuity
         if: ${{ env.AUTOMATED_DATA_PR != '1' }}
         run: >-
