@@ -151,6 +151,13 @@ describe("applyAskOutdoorSafety", () => {
     expect(guarded.answer).not.toContain("creekside concert");
   });
 
+  it("still fully suppresses outdoor picks during a real NWS hazard", () => {
+    // An active alert removes the park from a playground answer.
+    const guarded = applyAskOutdoorSafety(result(), "playground near me", HOLD);
+    expect(guarded.answer).toContain("leaving outdoor suggestions out");
+    expect(guarded.sources.map((source) => source.name)).not.toContain("Hill Street Skate Park");
+  });
+
   it("uses measured AirNow AQI as the trust source", () => {
     const observation: AqiObservation = {
       parameter: "PM2.5",

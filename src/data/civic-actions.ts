@@ -22,6 +22,15 @@ export type CivicAction = {
   url: string;
   /** Search terms so the Ask can match natural phrasings. */
   keywords?: string[];
+  /** Who publishes the link, when it is not Frederick County Government.
+   *  Shown on the source card so a city page is never labeled as a county one. */
+  publisher?: string;
+  /** A complete answer for tasks the generic "use this official resource"
+   *  line would answer incompletely. Plain sentences, sourced from the
+   *  publisher's own page. */
+  answer?: string;
+  /** Other action ids that complete the answer. Listed after this one. */
+  related?: string[];
 };
 
 export const CIVIC_VERB_LABEL: Record<CivicVerb, string> = {
@@ -86,6 +95,33 @@ export const CIVIC_ACTIONS: CivicAction[] = [
   { id: "ordinances", verb: "view", label: "Council resolutions & ordinances", url: "https://frederickcountymd.gov/6455/Council-Ordinances-and-Resolutions", keywords: ["law", "code"] },
   { id: "holidays", verb: "view", label: "County government holidays", url: "https://www.frederickcountymd.gov/4367/County-Government-Holidays", keywords: ["closed", "hours"] },
   { id: "road-closures", verb: "view", label: "Road closures", url: "https://www.frederickcountymd.gov/5052/Roads-Closed", keywords: ["traffic", "detour"] },
+  // Collection days. A resident asking "when is trash day" wants the
+  // SCHEDULE, not the "report a missed collection" form the query used to
+  // land on. Two publishers own this answer, so there are two actions:
+  // recycling is a County curbside service; trash and yard waste belong to
+  // the resident's town or hauler, and the City of Frederick publishes its
+  // own schedule. Both are "view" actions on purpose: an explicit "find a
+  // trash CAN" stays a physical-amenity query (the verb contract in
+  // matchCivicAction excludes a view action). Both pages re-read from the
+  // publishers on 2026-11-09.
+  {
+    id: "recycling-schedule",
+    verb: "view",
+    label: "Recycling collection schedule",
+    url: "https://www.frederickcountymd.gov/3447/Curbside-Collection-Schedule",
+    keywords: ["recycling day", "recycling pickup", "recycling collection", "recycling schedule", "when is recycling", "curbside recycling", "curbside collection", "curbside"],
+    answer: "Frederick County collects curbside recycling every other week, and the day for an address stays the same from year to year. The County schedule looks up your day by address.",
+  },
+  {
+    id: "trash-schedule",
+    verb: "view",
+    label: "Trash and yard waste collection schedule",
+    publisher: "City of Frederick",
+    url: "https://www.cityoffrederickmd.gov/236/Collection-Schedule",
+    keywords: ["trash day", "garbage day", "trash pickup", "garbage pickup", "trash collection", "garbage collection", "trash schedule", "garbage schedule", "when is trash", "when is garbage", "yard waste", "collection day", "pickup schedule", "collection schedule", "trash and recycling", "recycling and trash", "garbage and recycling", "recycling and garbage"],
+    answer: "Trash day depends on where you live. The City of Frederick collects trash and yard waste for city addresses and publishes that schedule. Other towns and private haulers set their own days. Recycling is a separate Frederick County service with its own schedule.",
+    related: ["recycling-schedule"],
+  },
   { id: "stray-animals", verb: "view", label: "Found stray animals", url: "https://frederickcountymd.gov/1995/Stray-Animals", keywords: ["lost pet"] },
   { id: "schools", verb: "view", label: "Schools (FCPS)", url: "https://www.fcps.org/", keywords: ["closings", "school"] },
   { id: "zoning", verb: "view", label: "Property zoning", url: "https://www.frederickcountymd.gov/7949/Zoning", keywords: ["parcel", "land use"] },
@@ -98,13 +134,23 @@ export const CIVIC_ACTIONS_BY_VERB = (verb: CivicVerb) =>
 const FOOD_CONTROL_INTENT =
   /\b(?:(?:food|restaurant|vendor)\s+(?:license|permit)|(?:license|permit)\s+(?:for\s+)?(?:food|restaurant|vendor)|health inspection)\b/i;
 
-/** Keep broad discovery phrases such as "health food" out of Food Control. */
+/** The two schedule actions carry phrase keywords such as "trash day" and
+ *  "when is recycling". Both matchers split those into single words, so "day",
+ *  "when" and "pickup" alone scored a match: "when is election day" answered
+ *  with recycling, and "day care and preschool" returned only the trash
+ *  schedule in Find. The question has to name the service itself. */
+const COLLECTION_INTENT =
+  /\b(?:trash|garbage|refuse|rubbish|recycl\w*|yard waste|curbside (?:collection|recycling)|collection (?:day|schedule))\b/i;
+
+/** Keep broad discovery phrases such as "health food" out of Food Control,
+ *  and everyday words out of the trash and recycling schedules. */
 export function civicActionFitsQuery(actionId: string, query: string): boolean {
+  if (actionId === "trash-schedule" || actionId === "recycling-schedule") return COLLECTION_INTENT.test(query);
   return actionId !== "food-license" || FOOD_CONTROL_INTENT.test(query);
 }
 
 const CIVIC_INTENT =
-  /\b(?:county office|city office|government|agency|department|official|contact|call|phone|report|request|register|apply|pay|permit|license|vote|voting|election|ballot|pothole|recycling|trash|tax|bill|zoning|ordinance|budget|council|jury|public records?|foia|mpia|road closures?|school clos(?:ing|ure)s?|bus|transit|adopt|animal control|marriage|deed|broadband|volunteer)\b/i;
+  /\b(?:county office|city office|government|agency|department|official|contact|call|phone|report|request|register|apply|pay|permit|license|vote|voting|election|ballot|pothole|recycling|trash|garbage|yard waste|tax|bill|zoning|ordinance|budget|council|jury|public records?|foia|mpia|road closures?|school clos(?:ing|ure)s?|bus|transit|adopt|animal control|marriage|deed|broadband|volunteer)\b/i;
 
 const CIVIC_STOP = new Set([
   "a", "an", "and", "can", "city", "county", "do", "for", "frederick", "get", "handle", "handles", "how", "i",
