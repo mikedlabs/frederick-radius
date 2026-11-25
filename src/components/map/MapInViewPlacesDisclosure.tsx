@@ -159,17 +159,22 @@ export default function MapInViewPlacesDisclosure({
               <ul
                 id={listId}
                 aria-label="Places currently visible on the map"
-                className="m-0 grid list-none gap-0.5 p-0"
+                // One column bounded by the panel (repeat(1, minmax(0, 1fr))),
+                // so a long street line wraps inside its row instead of
+                // widening every row past the clipped edge on a 320px phone.
+                className="m-0 grid grid-cols-1 list-none gap-0.5 p-0"
               >
                 {visiblePlaces.map((place) => {
                   const category = CATEGORY_BY_SLUG[place.category];
-                  const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name;
+                  // Two same-named stores in one town carry a street line,
+                  // which takes the town's slot so their rows differ.
+                  const locality = place.name_detail ?? MUNICIPALITY_BY_SLUG[place.municipality]?.name;
                   const availability = availabilityLabel(place);
                   const distance =
                     sortOrigin && place.geom
                       ? formatDistance(haversineMeters(sortOrigin, place.geom))
                       : null;
-                  const meta = [category?.name ?? place.category, town, availability]
+                  const meta = [category?.name ?? place.category, locality, availability]
                     .filter(Boolean)
                     .join(" · ");
                   const color = category?.color ?? "var(--app-brand)";
@@ -207,7 +212,10 @@ export default function MapInViewPlacesDisclosure({
                           <span className="block truncate text-[12.5px] font-semibold leading-tight text-[var(--app-ink)]">
                             {place.name}
                           </span>
-                          <span className="mt-0.5 block truncate text-[10.5px] leading-tight text-[var(--app-ink-3)]">
+                          <span
+                            className="mt-0.5 line-clamp-2 break-words text-[10.5px] leading-tight text-[var(--app-ink-3)]"
+                            data-map-in-view-place-meta
+                          >
                             {meta}
                           </span>
                         </span>
