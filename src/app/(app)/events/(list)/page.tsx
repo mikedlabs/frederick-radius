@@ -294,6 +294,7 @@ async function EventsBoard({
                   variant="glance"
                   live={liveSlugs.includes(e.slug)}
                   nowISO={now.toISOString()}
+                  saveControl
                 />
               </li>
             ))}
@@ -321,6 +322,7 @@ async function EventsBoard({
                   variant="glance"
                   live={false}
                   nowISO={now.toISOString()}
+                  saveControl
                 />
               </li>
             ))}

@@ -65,6 +65,7 @@ import { APP_UPDATE_ACCEPTED_EVENT } from "@/lib/pwa-display";
 import {
   askResponsePresentation,
   askResponseSectionOrder,
+  askSupportingSourcesDisclosure,
   type AskResponseSection,
 } from "@/lib/ask/presentation";
 import SaveButton from "@/components/saved/SaveButton";
@@ -1991,6 +1992,10 @@ export default function AskFrederick({
       )
     : null;
   const supportingSources = res?.sources.slice(1) ?? [];
+  const supportingDisclosure = askSupportingSourcesDisclosure(
+    responsePresentation?.layout ?? "standard",
+    res?.sources ?? [],
+  );
   const collapsedSourceCount = responsePresentation?.layout === "place" ? 3 : 2;
   const collapsedSupportingCount = Math.max(
     0,
@@ -2576,11 +2581,8 @@ export default function AskFrederick({
                   <details
                     key={section}
                     data-ask-section={section}
-                    open={
-                      responsePresentation.layout === "place"
-                        ? true
-                        : undefined
-                    }
+                    data-ask-supporting={supportingDisclosure.noun}
+                    open={supportingDisclosure.open ? true : undefined}
                     className="group mt-6 border-t"
                     style={{ borderColor: "var(--app-border)" }}
                   >
@@ -2589,18 +2591,13 @@ export default function AskFrederick({
                         className="text-[17px] font-semibold leading-snug"
                         style={{ color: "var(--app-ink)" }}
                       >
-                        {responsePresentation.layout === "place"
-                          ? "Other options and sources"
-                          : responsePresentation.layout === "civic"
-                            ? "More official sources"
-                            : "Sources behind this answer"}
+                        {supportingDisclosure.label}
                       </span>
                       <span
                         className="inline-flex shrink-0 items-center gap-2 text-[14px] tabular-nums"
                         style={{ color: "var(--app-ink-2)" }}
                       >
-                        {supportingSources.length}{" "}
-                        {supportingSources.length === 1 ? "source" : "sources"}
+                        {supportingDisclosure.countLabel}
                         <ChevronDown
                           className="h-4 w-4 motion-safe:transition-transform group-open:rotate-180"
                           strokeWidth={2.2}
@@ -2634,8 +2631,8 @@ export default function AskFrederick({
                           }}
                         >
                           {showAllSources
-                            ? "Show fewer sources"
-                            : `Show all ${supportingSources.length} sources`}
+                            ? `Show fewer ${supportingDisclosure.noun}`
+                            : `Show all ${supportingSources.length} ${supportingDisclosure.noun}`}
                         </button>
                       ) : null}
                     </div>

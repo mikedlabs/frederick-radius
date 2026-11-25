@@ -65,7 +65,7 @@ for (const width of [390, 1366]) {
     const event = await openRealEvent(page);
     await event.button.click();
     await expect(event.button).toHaveAttribute("aria-pressed", "true");
-    await expect(event.button).toHaveAccessibleName(`Remove ${event.title} from Saved`);
+    await expect(event.button).toHaveAccessibleName(`Saved ${event.title}`);
     await expect(page.getByText(`Saved · ${event.title}`, { exact: true })).toBeVisible();
     const committed = await page.evaluate((key) => localStorage.getItem(key), KEY);
     expect(JSON.parse(committed!)).toEqual([{ type: "event", id: event.slug, saved_at: expect.any(String) }]);

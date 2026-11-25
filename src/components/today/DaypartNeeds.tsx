@@ -237,11 +237,14 @@ export function daypartShelfTier(
   return "confirmed";
 }
 
+// "Confirmed", because the shelf can only speak for the places whose hours
+// are current. "Places open now" over one card read as the whole county when
+// hours were known for about 2 percent of it (November 2026 feedback review).
 export const DAYPART_SHELF_TITLE: Record<
   ReturnType<typeof daypartShelfTier>,
   string
 > = {
-  confirmed: "Places open now",
+  confirmed: "Confirmed open now",
   likely: "Places likely open",
   unconfirmed: "Places to try",
 };
@@ -250,7 +253,7 @@ export const DAYPART_SHELF_ARIA: Record<
   ReturnType<typeof daypartShelfTier>,
   string
 > = {
-  confirmed: "Open places right now",
+  confirmed: "Places confirmed open right now",
   likely: "Places likely open right now",
   unconfirmed: "Places to try, hours not confirmed",
 };
@@ -271,8 +274,8 @@ export function daypartShelfHeading(
   }
   return tier === "confirmed"
     ? {
-        title: "Open now and soon",
-        aria: "Places open now and opening soon",
+        title: "Confirmed open now and soon",
+        aria: "Places confirmed open now and opening soon",
       }
     : {
         title: "Places for now and soon",
@@ -394,7 +397,7 @@ export function isPhotoFailureSignal(image: {
  * existing shelf instead of turning it into another full-size card. */
 export function DaypartEmptyState({
   href = "/open-now",
-  label = "Places open now",
+  label = DAYPART_SHELF_TITLE.confirmed,
   contextLabel = "Across Frederick County",
   countywide = true,
   mayReportNoneOpen = false,
@@ -408,7 +411,7 @@ export function DaypartEmptyState({
   groupLabel?: string;
 } = {}) {
   return (
-    <section aria-label="Open places right now" className="mt-6">
+    <section aria-label={DAYPART_SHELF_ARIA.confirmed} className="mt-6">
       <TodaySectionHeading
         title={label}
         meta={contextLabel}
@@ -762,7 +765,7 @@ function DaypartNeedsShelf({
     return (
       <DaypartEmptyState
         href={countywide ? browseHref : countyHref}
-        label="Places open now"
+        label={DAYPART_SHELF_TITLE.confirmed}
         contextLabel={shelfContextLabel}
         countywide={countywide}
         mayReportNoneOpen={liveActive?.mayAssertNoneOpen === true}

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { createElement } from "react";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -9,6 +10,8 @@ import { prepareEventsForBrowse } from "@/lib/events/browsePayload";
 import { eventPinFromEvent } from "@/lib/map/eventPin";
 import { MapEventPeek } from "@/components/map/MapEntityPeek";
 import EventCard from "./EventCard";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 // Declared source fixture, not a claim about a scheduled production. Real
 // payload reducers and renderers remain connected across a JSON boundary.
@@ -63,6 +66,22 @@ function cardRoot(event: EventWithMeta, variant: typeof CARD_VARIANTS[number]) {
 }
 
 describe("event identity across source, browse payload and map pin boundaries", () => {
+  it("names the row's Save after the presenter's display title once mounted", async () => {
+    // The static HTML holds an inert placeholder; the name arrives with the
+    // device store read.
+    const payload = browseEvent(sourceEvent());
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    try {
+      await act(async () => root.render(createElement(EventCard, { event: payload, variant: "row", nowISO: NOW.toISOString(), priorityImage: false })));
+      expect(container.querySelector(`[data-save-ref="event:${payload.slug}"]`)?.getAttribute("aria-label")).toBe(`Save ${DISPLAY_TITLE}`);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
   it.each(CARD_VARIANTS)("keeps presenter identity on the %s browse card", (variant) => {
     const source = sourceEvent();
     const payload = browseEvent(source);
@@ -75,8 +94,7 @@ describe("event identity across source, browse payload and map pin boundaries", 
     expect(source.title).toBe("Live Theatre Production");
     expect(source.presenter).toBe("Other Voices Theatre");
     if (variant === "row") {
-      expect(container.querySelector(`[data-save-ref="event:${source.slug}"]`)?.getAttribute("aria-label"))
-        .toContain(DISPLAY_TITLE);
+      expect(container.querySelector(`[data-save-ref="event:${source.slug}"]`)).not.toBeNull();
     }
   });
 

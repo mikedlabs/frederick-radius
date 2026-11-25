@@ -7,19 +7,29 @@ import { getOpenStatus, isDisplayOnlyHours } from "@/lib/hours";
 import OpenClosedDot from "@/components/place/OpenClosedDot";
 import { formatCheckedDay } from "@/lib/trust";
 
+/** An open, closing-soon or closed state is only true for the minute it was computed. */
+function isClockDependent(status: OpenStatus): boolean {
+  return status.state === "open" || status.state === "closing-soon" || status.state === "closed";
+}
+
 /**
  * LiveOpenStatus — the detail status line, recomputed against the visitor's
  * clock. The place page hero and the place sheet both use it, so the two
  * surfaces say the same thing about the same place.
  *
- * The page is ISR (revalidate 300), so the server-baked open_status can be
- * minutes stale: around a closing time the hero said "Closing soon · 10pm"
- * while HoursBlock below (client-computed) said "Closed" — two opposite
- * claims on one screen (fresh-eyes audit, Jul 2026). Same fix class as the
- * /map stale-status repair (W1): render the server value as the
- * pre-hydration fallback, then recompute from the SAME hours + verified
- * inputs on mount and on a minute tick so the hero and the hours table can
- * never disagree for more than the tick.
+ * The page is cached (revalidate 300, served stale while it revalidates), so
+ * the server-baked open_status is as old as the last render of that page. On
+ * a page nobody has opened since the last build that is many hours: a build
+ * at 9:50 PM baked "Closing soon · 10pm" into Il Porto's page, and the first
+ * visitor at 9 AM the next day saw it until hydration (November 2026
+ * feedback review). An open, closing-soon or closed state is a claim about
+ * this minute, so a baked one is never painted when the hours are here to
+ * recompute it. The line holds its height with an empty placeholder until
+ * the first effect tick computes the state from the SAME hours + verified
+ * inputs against the visitor's clock, and a minute tick keeps it current so
+ * the hero and the hours table cannot disagree for longer than the tick. The
+ * states that do not depend on the time of day (unknown, unverified and a
+ * display-only schedule) still paint from the server value at once.
  *
  * One line carries the answer and its caveat together. A confirmed open,
  * closing-soon or closed state is the answer by itself. When the hours are
@@ -43,7 +53,12 @@ export default function LiveOpenStatus({
   /** When the hours were last observed at their source (place.hours_updated_at). */
   hoursCheckedAt?: string;
 }) {
-  const [status, setStatus] = useState<OpenStatus>(initial);
+  // Null means "not computed in this browser yet". Readers without scripts
+  // get no status line, and the weekly table in HoursBlock still renders. A
+  // display-only schedule never asserts a state, so it has nothing to wait for.
+  const [status, setStatus] = useState<OpenStatus | null>(
+    () => (hours && !isDisplayOnlyHours(hours) && isClockDependent(initial) ? null : initial),
+  );
 
   useEffect(() => {
     if (!hours) return;
@@ -53,6 +68,13 @@ export default function LiveOpenStatus({
     return () => window.clearInterval(id);
   }, [hours, verified]);
 
+  if (status === null) {
+    // One text-xs line with no claim in it, so nothing below moves when the
+    // computed state replaces it. The minimum width is close to a typical
+    // state ("Open until 9pm"), so a price or other fact beside it in the
+    // same row moves little when the state arrives.
+    return <span aria-hidden data-place-status-pending className="inline-block min-w-[8.5rem] text-xs font-medium">{"\u00a0"}</span>;
+  }
   // A current scoped schedule is not a failed refresh, and a stale initial
   // open state must never override its display-only qualification before mount.
   const answer = isDisplayOnlyHours(hours)

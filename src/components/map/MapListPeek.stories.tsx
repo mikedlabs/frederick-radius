@@ -42,6 +42,21 @@ export const RankedUnknownHours: Story = {
   },
 };
 export const SelectedRow: Story = { args: { selectedPlaceSlug: "component-fixture-0" } };
+/** Two stores with one name in one town show their street where the town
+ * would be. Every other row keeps its town. */
+export const SameNameStoresShowTheirStreet: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { list: { ...list, rows: list.rows.slice(0, 3).map((row, index) => row.kind === "place" && index < 2
+    ? { ...row, place: { ...row.place, name: "Sample coffee chain", name_detail: index === 0 ? "104 N Market St" : "899 W 7th St" } }
+    : row) } },
+  play: async ({ canvasElement }) => {
+    const rows = [...canvasElement.querySelectorAll<HTMLElement>("[data-map-list-place]")];
+    await expect(rows[0]).toHaveTextContent("Coffee · 104 N Market St");
+    await expect(rows[1]).toHaveTextContent("Coffee · 899 W 7th St");
+    await expect(rows[0]).not.toHaveTextContent("Frederick City");
+    await expect(rows[2]).toHaveTextContent("Frederick City");
+  },
+};
 export const FailedSearchRetainsChoices: Story = { args: { list: { ...list, unavailable: true }, onRetrySearch: fn() } };
 export const LocationNotShared: Story = { args: { list: { ...list, rows: [], locationRequired: true, note: "Radius has not determined where you are.", empty: { title: "Your location is needed for this search.", copy: "Share your location from the header, or name a town. Your search is kept here." } } } };
 export const MixedCanonicalLinks: Story = { args: { list: { ...list, unit: "result", rows: [

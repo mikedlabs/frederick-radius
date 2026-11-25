@@ -103,7 +103,7 @@ describe("compact local news composition", () => {
     const html = await renderBrief();
     expect(html).toContain("Local headlines are unavailable right now.");
     expect(html).toContain("Official city and county updates are unavailable right now.");
-    expect(html).not.toContain("No local headlines were returned");
+    expect(html).not.toContain("found no local headlines");
     expect(html).not.toContain("No civic updates were returned");
   });
 
@@ -111,7 +111,7 @@ describe("compact local news composition", () => {
     providers.news.mockResolvedValue({ items: [], status: "available" });
     providers.press.mockResolvedValue({ items: [], sourceHealth: { degraded: false, unavailable: [] } });
     const html = await renderBrief();
-    expect(html).toContain("No local headlines were returned by these feeds.");
+    expect(html).toContain("Radius found no local headlines in Google News from the past week.");
     expect(html).toContain("No civic updates were returned by these newsrooms.");
     expect(html).not.toContain("are unavailable");
   });

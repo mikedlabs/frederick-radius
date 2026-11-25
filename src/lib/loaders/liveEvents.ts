@@ -31,6 +31,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
+import { reviewedVenueNameForAddress } from "@/lib/events/venue-resolver";
 import { isPromotedDataBuild } from "@/lib/data-release-mode";
 import {
   eventAttendanceMode,
@@ -197,10 +198,20 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     (attendance_mode !== "physical" && isLikelyEventActionUrl(e.url)
       ? e.url
       : undefined);
-  const venueName =
-    attendance_mode === "online" ? "Online" : cleanFeedText(e.venue_name ?? "");
   const address =
     attendance_mode === "online" ? "" : formatAddress(cleanFeedText(e.address ?? ""));
+  const feedVenueName =
+    attendance_mode === "online" ? "Online" : cleanFeedText(e.venue_name ?? "");
+  // Some calendars send the street address as the venue name. A reviewed
+  // table supplies the name the publisher's own event page prints. The slug
+  // (title and date) and the feed's dedupe key (the raw LiveEvent) are
+  // already fixed by this point, so shared links do not move.
+  const venueName =
+    reviewedVenueNameForAddress({
+      venue_name: feedVenueName,
+      address,
+      source: e.source,
+    }) ?? feedVenueName;
   return applyVenueTimeCorrection({
     // Clean, shareable slug (Phase 2). The legacy liveEventSlug is kept
     // only as a fallback resolver for old shared links.

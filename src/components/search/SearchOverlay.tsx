@@ -32,6 +32,15 @@ import { commandDestination } from "@/lib/command-routing";
 import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { settleFindReturnScroll } from "./find-return-scroll";
+import {
+  FIND_FRAME_HEADER_CLASS,
+  FIND_FRAME_HEADER_STYLE,
+  FIND_FRAME_PANEL_CLASS,
+  FIND_FRAME_PANEL_STYLE,
+  FIND_FRAME_ROOT_CLASS,
+  FIND_FRAME_ROOT_STYLE,
+  FIND_FRAME_SCRIM_CLASS,
+} from "./find-frame";
 import SearchPlaceVisual, { SearchPlaceVisualImage, SearchPlaceVisualCredit, SearchPlaceLeadPhoto } from "./SearchPlaceVisual";
 import { searchEventCoverageMessage, searchEventRecoveryHref, searchEventRecoveryLabel, type SearchEventCoverage } from "@/lib/search/event-coverage";
 
@@ -395,11 +404,18 @@ export default function SearchOverlay({
   const eventCoverage = searchMeta?.eventCoverage ?? (searchMeta?.liveEventsUnavailable ? "unavailable" : "complete");
   const eventCoverageMessage = searchEventCoverageMessage(eventCoverage);
   const [retryNonce, setRetryNonce] = useState(0);
-  const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
+  // Seeded on the first render, so an open with a cached fix does not change
+  // coords in an effect and send a restored draft's request twice.
+  const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(
+    () => (open ? readCachedPosition() : null),
+  );
   const searchedArea: Scope | null = area ?? (coords ? "nearme" : null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const focusResultRef = useRef(returnPlaceHref);
+  // False until the person edits the field. A restored draft is already whole
+  // words, so its first request does not wait out the typing debounce.
+  const editedRef = useRef(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   /** Element focused before the overlay opened — focus returns to it on
    *  close (WCAG 2.4.3; previously focus was dropped on the body). */
@@ -453,6 +469,7 @@ export default function SearchOverlay({
 
   const updateQuery = (next: string) => {
     focusResultRef.current = null;
+    editedRef.current = true;
     onQueryChange?.(next);
     setQuery(next);
     // Never leave a result from the previous query tappable during the
@@ -465,6 +482,8 @@ export default function SearchOverlay({
 
   // Debounced fetch against /api/search. 150ms feels instant on a fast
   // typer but still coalesces 3-4 keystrokes into a single round trip.
+  // Words that arrived whole (a restored draft, or the query a Back entry
+  // owns) are requested at once: there are no further keystrokes to wait for.
   // AbortController prevents out-of-order responses from clobbering
   // newer ones — without it, a slow "co" can land after a fast "coffee"
   // and replace the right answer with the wrong one.
@@ -530,7 +549,7 @@ export default function SearchOverlay({
             setStatus("error");
           }
         });
-    }, focusResultRef.current ? 0 : 150);
+    }, focusResultRef.current || !editedRef.current ? 0 : 150);
     return () => {
       clearTimeout(t);
       ctrl.abort();
@@ -572,7 +591,14 @@ export default function SearchOverlay({
       leavingFindRef.current = false;
       returnScrollYRef.current =
         returnScrollY ?? storedFindReturnScrollY() ?? window.scrollY;
-      const syncLocation = () => setCoords(readCachedPosition());
+      // The reader returns a new object every call. Keep the old one for the
+      // same fix, so an unchanged location never refetches.
+      const syncLocation = () => {
+        const next = readCachedPosition();
+        setCoords(prev =>
+          prev && next && prev.lng === next.lng && prev.lat === next.lat ? prev : next,
+        );
+      };
       syncLocation();
       window.addEventListener(GEOLOCATION_CHANGE_EVENT, syncLocation);
       // Remember what had focus (the TopBar search button) so closing the
@@ -733,11 +759,8 @@ export default function SearchOverlay({
     <div
       id="radius-find-dialog"
       ref={dialogRef}
-      className="fixed inset-0 z-[var(--z-overlay)] flex items-start justify-center bg-[var(--app-bg)] sm:bg-transparent"
-      style={{
-        paddingLeft: "env(safe-area-inset-left, 0px)",
-        paddingRight: "env(safe-area-inset-right, 0px)",
-      }}
+      className={FIND_FRAME_ROOT_CLASS}
+      style={FIND_FRAME_ROOT_STYLE}
       role="dialog"
       aria-modal="true"
       aria-labelledby="radius-find-title"
@@ -751,19 +774,13 @@ export default function SearchOverlay({
         tabIndex={-1}
         aria-label="Close search"
         onClick={dismiss}
-        className="absolute inset-0 hidden bg-black/40 backdrop-blur-[2px] sm:block"
+        className={FIND_FRAME_SCRIM_CLASS}
       />
 
       {/* Sheet. One fixed desktop height: a panel that grows and shrinks with
           each response moves the field's surroundings while someone types. */}
-      <div
-        className="relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden sm:mt-[8dvh] sm:h-[min(84dvh,46rem)] sm:max-w-screen-sm sm:rounded-[var(--app-radius-lg)] sm:border sm:border-[var(--app-border)] sm:shadow-[var(--app-shadow-3)]"
-        style={{ background: "var(--app-bg)" }}
-      >
-        <div
-          className="flex min-h-14 items-center justify-between gap-3 px-4 sm:px-5"
-          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
-        >
+      <div className={FIND_FRAME_PANEL_CLASS} style={FIND_FRAME_PANEL_STYLE}>
+        <div className={FIND_FRAME_HEADER_CLASS} style={FIND_FRAME_HEADER_STYLE}>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-2)" }}>
               Ask or find

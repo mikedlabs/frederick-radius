@@ -1,6 +1,6 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDisplayTitle } from "@/lib/events/display-title";
-import { eventDateBlock } from "@/lib/events/format";
+import { eventDateBlock, runningRangeStart } from "@/lib/events/format";
 import { eventDecisionLocation, eventDecisionTime } from "@/lib/events/decision-facts";
 import { isEventListingEnded } from "@/lib/eventHorizon";
 import { statusLabel } from "@/lib/event-status";
@@ -11,13 +11,20 @@ export function eventsForRestorePreview(events: readonly EventWithMeta[], nowISO
   const now = new Date(nowISO);
   if (!Number.isFinite(now.getTime())) return [];
   const seen = new Set<string>();
-  return events.filter(event => {
+  const rows = events.filter(event => {
     if (!isResolvableEventSlug(event.slug) || !event.title.trim()
       || !Number.isFinite(Date.parse(event.starts_at)) || isEventListingEnded(event, now)
       || seen.has(event.slug)) return false;
     seen.add(event.slug);
     return true;
-  }).slice(0, 3);
+  });
+  // The list arrives sorted by start, so an exhibit that opened in September
+  // would lead a November preview. A range in its run has no day of its own
+  // to lead with: dated listings come first, in their order, and a running
+  // range only fills a slot they leave open.
+  const running = rows.filter(event => runningRangeStart(event, now) !== null);
+  if (running.length === 0) return rows.slice(0, 3);
+  return [...rows.filter(event => !running.includes(event)), ...running].slice(0, 3);
 }
 
 /** Ordinary anchors keep an honest public preview usable before hydration.
@@ -51,14 +58,23 @@ export default function EventsRestorePreview({ events, nowISO, degraded }: {
           {preview.map(event => {
             const date = eventDateBlock(event);
             const status = statusLabel(event.status ?? "scheduled");
+            // A running range prints its closing date only. Its first day is
+            // not this row's date, and the row makes no claim about hours.
+            const runningRange = runningRangeStart(event, now) !== null;
             return <li key={event.slug}>
               <a data-events-preview-link href={`/events/${event.slug}`}
                 className="block min-h-[44px] min-w-0 space-y-1 border-b py-4 [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2"
                 style={{ color: "var(--app-ink)", outlineColor: "var(--app-focus)", borderColor: "var(--app-border)" }}>
                 {status && <p data-events-preview-status className="text-sm font-semibold" style={{ color: event.status === "cancelled" ? "var(--app-danger-text)" : "var(--app-ink)" }}>{status}</p>}
                 <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>
-                  <time dateTime={event.starts_at}>{date.weekday} {date.month} {date.day}</time>
-                  <span data-events-preview-time> · {eventDecisionTime(event, now)}</span>
+                  {runningRange ? (
+                    <span data-events-preview-time>Running {eventDecisionTime(event, now)}</span>
+                  ) : (
+                    <>
+                      <time dateTime={event.starts_at}>{date.weekday} {date.month} {date.day}</time>
+                      <span data-events-preview-time> · {eventDecisionTime(event, now)}</span>
+                    </>
+                  )}
                 </p>
                 <h2 className={`text-[17px] font-semibold leading-snug ${event.status === "cancelled" ? "line-through" : ""}`}>
                   {eventDisplayTitle(event)}

@@ -231,6 +231,25 @@ export const ConfirmedRemoval: Story = { beforeEach: () => sample(true), play: a
   await expect(canvas.queryByRole("list", { name: "Saved places, as a card wallet" })).toBeNull();
   await confirmedControls(canvasElement, false);
 } };
+/** The raised ledger prints the stored street address under the hours, whole.
+ *  At 320px this one is longer than the card, so it wraps instead of clipping. */
+export const RaisedPlaceLedgerShowsAddress: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  beforeEach: () => sample(true),
+  render: () => (
+    <div data-app-primary-tab="/my-radius" style={{ width: 320, maxWidth: "100%" }} className="p-4">
+      <SavedWallet places={[{ ...place, address: "5221 Buckeystown Pike, Ste A, Frederick, MD 21704" }]} openSlug={SLUG} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const address = canvas.getByText("5221 Buckeystown Pike, Ste A, Frederick, MD 21704");
+    // The raised stub fades in. Wait for that reveal before measuring.
+    await waitFor(() => expect(address).toBeVisible());
+    await expect(canvas.getByText("Address")).toBeVisible();
+    await expect(address.scrollWidth).toBeLessThanOrEqual(address.clientWidth);
+  },
+};
 
 const eventSample = {
   slug: "workshop-saved-event", title: "Community concert", description: "The event is a sample for review.",
@@ -295,9 +314,10 @@ export const SingleCollapsedEventAt390: Story = {
 async function multipleCollapsedWalletTargets({ canvasElement }: { canvasElement: HTMLElement }) {
   const canvas = within(canvasElement);
   const [first, last] = canvas.getAllByRole("listitem");
-  await expect(first.firstElementChild!.getBoundingClientRect().height).toBe(186);
-  await expect(last.firstElementChild!.getBoundingClientRect().height).toBe(186);
-  await expect(Math.abs(last.getBoundingClientRect().top - first.getBoundingClientRect().top - 62)).toBeLessThanOrEqual(1);
+  // Closed cards are rows, not a tucked deck: each is as tall as its face, with no empty box beneath the name.
+  for (const card of [first.firstElementChild!, last.firstElementChild!]) await expect(Math.abs(card.getBoundingClientRect().height - card.querySelector(".sw-face")!.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
+  // The second row starts on the first row's bottom hairline.
+  await expect(Math.abs(last.getBoundingClientRect().top - first.getBoundingClientRect().bottom + 1)).toBeLessThanOrEqual(1);
   for (const name of ["Community concert", "Library story afternoon"]) {
     const opener = canvas.getByRole("link", { name });
     const disclosure = canvas.getByRole("button", { name: `Show details for ${name}` });

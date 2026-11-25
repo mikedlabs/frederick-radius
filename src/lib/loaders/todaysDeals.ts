@@ -1,7 +1,7 @@
 import data from "@/data/field-notes.json";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { verifiedLabel, fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import { fieldNoteCheck, fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import type { DealRow } from "@/lib/deals/dealRow";
 
 export {
@@ -305,7 +305,12 @@ export type TodaysDeal = {
   park?: string;
   tip?: string;
   source_url?: string;
+  /** "verified 2w ago" inside the check window, "last checked Jun 2026" past it. */
   verified: string | null;
+  /** True only while the recorded source check is inside the freshness
+   *  window. Owner-added rows read it from their own recorded date; absent
+   *  reads as not current. */
+  verifiedCurrent?: boolean;
   confidence: string;
 };
 
@@ -560,11 +565,22 @@ export function distillOffer(offer: string): DistilledOffer {
 const OK: Record<string, number> = { high: 2, medium: 1 };
 
 /**
- * The verified specials that run TODAY (Eastern), best one per venue, ranked
- * confidence-first then by venue name. `limit` caps the strip (default 6).
+ * Sort key for the source-check window: a check inside the window ranks ahead
+ * of a stale one, so a special read at the source this month is never listed
+ * below one last read months ago. Exported for the spec.
+ */
+export function checkRank(row: { verifiedCurrent?: boolean }): number {
+  return row.verifiedCurrent ? 1 : 0;
+}
+
+/**
+ * The source-checked specials that run TODAY (Eastern), best one per venue.
+ * Current checks rank first, then downtown, confidence and venue name.
+ * `limit` caps the strip (default 6).
  */
 export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
   const dow = easternDow(now);
+  const nowMs = now.getTime();
   const best = new Map<string, TodaysDeal>();
   for (const [slug, entry] of Object.entries(NOTES)) {
     if (!entry.deals?.length) continue;
@@ -591,6 +607,7 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
       // isn't a redundant restatement.
       const offer = stripHours(trimDay(today));
       const distilled = distillOffer(offer);
+      const check = fieldNoteCheck(d.last_verified, nowMs);
       const cand: TodaysDeal = {
         slug, name: place.name, town,
         downtown: place.municipality === "frederick",
@@ -602,17 +619,28 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
         hours,
         park: fn?.parking?.text,
         tip: fn?.insider?.[0]?.text,
-        source_url: d.source_url, verified: verifiedLabel(d.last_verified), confidence: conf,
+        source_url: d.source_url,
+        verified: check?.label ?? null,
+        verifiedCurrent: check?.current ?? false,
+        confidence: conf,
       };
       const prev = best.get(slug);
-      if (!prev || OK[conf] > OK[prev.confidence]) best.set(slug, cand);
+      // One row per venue: a current check beats a stale one, then confidence.
+      if (
+        !prev ||
+        checkRank(cand) > checkRank(prev) ||
+        (checkRank(cand) === checkRank(prev) && OK[conf] > OK[prev.confidence])
+      ) {
+        best.set(slug, cand);
+      }
     }
   }
   return [...best.values()]
     .sort(
       (a, b) =>
-        // Downtown Frederick leads (the walkable core), then verification
-        // confidence, then name — so the deck opens on the best downtown deals.
+        // A current source check leads. Then downtown Frederick (the walkable
+        // core), verification confidence and name.
+        checkRank(b) - checkRank(a) ||
         Number(Boolean(b.downtown)) - Number(Boolean(a.downtown)) ||
         OK[b.confidence] - OK[a.confidence] ||
         a.name.localeCompare(b.name),
@@ -625,9 +653,12 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
  * todaysDeals (best-one-per-venue, today-only), this keeps each deal as its
  * own row so the almanac can show every day's specials across the week. Same
  * honesty gate: only confidence-backed, last_verified deals whose place is
- * still in the dataset. Sorted downtown-first, then confidence, then name.
+ * still in the dataset. Nothing is dropped for age: a check past the window
+ * keeps its row and prints its date. Sorted current checks first, then
+ * confidence, then name. `now` is injectable for the spec.
  */
-export function allDeals(): DealRow[] {
+export function allDeals(now: Date = new Date()): DealRow[] {
+  const nowMs = now.getTime();
   const rows: DealRow[] = [];
   for (const [slug, entry] of Object.entries(NOTES)) {
     if (!entry.deals?.length) continue;
@@ -657,6 +688,7 @@ export function allDeals(): DealRow[] {
           : new Set(dayHourValues).size === 1
             ? dayHourValues[0]
             : undefined;
+      const check = fieldNoteCheck(d.last_verified, nowMs);
       rows.push({
         slug,
         name: place.name,
@@ -673,13 +705,16 @@ export function allDeals(): DealRow[] {
         hours: sharedHours,
         days,
         source_url: d.source_url,
-        verified: verifiedLabel(d.last_verified),
+        verified: check?.label ?? null,
+        verifiedCurrent: check?.current ?? false,
         confidence: conf,
       });
     }
   }
   return rows.sort(
     (a, b) =>
-      OK[b.confidence] - OK[a.confidence] || a.name.localeCompare(b.name),
+      checkRank(b) - checkRank(a) ||
+      OK[b.confidence] - OK[a.confidence] ||
+      a.name.localeCompare(b.name),
   );
 }

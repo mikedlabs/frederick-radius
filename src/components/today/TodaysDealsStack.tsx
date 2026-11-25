@@ -44,6 +44,9 @@ export default function TodaysDealsStack({
     .sort((a, b) => a.availability.rank - b.availability.rank || a.index - b.index)
     .slice(0, embedded ? EMBEDDED_MAX_ROWS : MAX_ROWS);
   if (shown.length === 0) return null;
+  // The pill is a claim about every row under it. It shows only when each
+  // shown special was read at its source inside the check window.
+  const allShownCurrent = shown.every(({ deal }) => deal.verifiedCurrent === true);
 
   return (
     <section aria-labelledby="today-specials-heading" className="space-y-3">
@@ -57,16 +60,18 @@ export default function TodaysDealsStack({
             Specials
           </h3>
         </div>
-        <span
-          className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold"
-          style={{
-            background: "color-mix(in srgb, var(--app-positive) 10%, var(--app-bg-elevated))",
-            color: "var(--app-positive)",
-          }}
-        >
-          <BadgeCheck className="h-4 w-4" strokeWidth={2.2} aria-hidden />
-          Verified
-        </span>
+        {allShownCurrent ? (
+          <span
+            className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-semibold"
+            style={{
+              background: "color-mix(in srgb, var(--app-positive) 10%, var(--app-bg-elevated))",
+              color: "var(--app-positive)",
+            }}
+          >
+            <BadgeCheck className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+            Verified
+          </span>
+        ) : null}
       </div>
 
       <ol

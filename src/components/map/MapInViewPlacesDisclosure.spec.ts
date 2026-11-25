@@ -177,4 +177,41 @@ describe("MapInViewPlacesDisclosure", () => {
       0,
     );
   });
+
+  it("prints the street of two same-named stores where the town would be", async () => {
+    await act(async () => {
+      root.render(
+        createElement(MapInViewPlacesDisclosure, {
+          places: [
+            { ...place("food-lion-yellow-springs-frederick", -77.45), name: "Food Lion", name_detail: "2060 Yellow Springs Rd" },
+            { ...place("food-lion-crestwood-frederick", -77.4), name: "Food Lion", name_detail: "6920 Crestwood Blvd" },
+            place("gravel-and-grind", -77.41),
+          ],
+          sortOrigin: null,
+          onPick: vi.fn(),
+        }),
+      );
+    });
+
+    const row = (slug: string) =>
+      container.querySelector(`[data-map-in-view-place="${slug}"]`)?.textContent ?? "";
+    expect(row("food-lion-yellow-springs-frederick")).toContain("2060 Yellow Springs Rd");
+    expect(row("food-lion-yellow-springs-frederick")).not.toContain("Frederick City");
+    expect(row("food-lion-crestwood-frederick")).toContain("6920 Crestwood Blvd");
+    expect(row("food-lion-yellow-springs-frederick")).not.toBe(row("food-lion-crestwood-frederick"));
+    // Every other row keeps its town.
+    expect(row("gravel-and-grind")).toContain("Frederick City");
+
+    // A street line is longer than a town. The single column is bounded by
+    // the panel (minmax(0, 1fr)) and the meta line wraps, so on a 320px phone
+    // no row grows past the clipped edge and cuts off its distance. The
+    // geometry itself is asserted in the "Map/Places in this view" story.
+    expect(container.querySelector("ul")?.className).toContain("grid-cols-1");
+    const metaLine = container.querySelector(
+      '[data-map-in-view-place="food-lion-yellow-springs-frederick"] [data-map-in-view-place-meta]',
+    );
+    expect(metaLine?.textContent).toContain("2060 Yellow Springs Rd");
+    expect(metaLine?.className).toContain("line-clamp-2");
+    expect(metaLine?.className).not.toContain("truncate");
+  });
 });

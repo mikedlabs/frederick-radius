@@ -1,6 +1,9 @@
+// @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { renderToStaticMarkup } from "react-dom/server";
+import { act, type ReactElement } from "react";
+import { createRoot, hydrateRoot } from "react-dom/client";
+import { renderToStaticMarkup, renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Hours } from "@/data/places";
 import HoursBlock from "./HoursBlock";
@@ -23,11 +26,70 @@ function merchantFixture(slug: string, file: string, observedAt: string, at: Dat
     url: source.url, html: readFileSync(`tests/fixtures/merchant-hours/${file}.html`, "utf8"), observedAt,
   }, at)] };
 }
-afterEach(() => vi.useRealTimers());
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+const mountedRoots: Array<() => void> = [];
+/** The block as a visitor sees it once its first effect has run. */
+async function mounted(element: ReactElement) {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => { root.render(element); });
+  mountedRoots.push(() => { act(() => root.unmount()); container.remove(); });
+  return { html: container.innerHTML, doc: container };
+}
+afterEach(() => {
+  while (mountedRoots.length) mountedRoots.pop()!();
+  vi.useRealTimers();
+});
+
+describe("what the server HTML says about today", () => {
+  const dinner = [{ open: "16:00", close: "21:00" }];
+  // Closed Monday and Tuesday, dinner the rest of the week.
+  const dinnerHours: Hours = {
+    mon: [], tue: [], wed: dinner, thu: dinner, fri: dinner, sat: [{ open: "11:00", close: "22:00" }], sun: dinner,
+  };
+
+  it("paints no today line, trust chip or warning from the build clock", () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-14T01:50:00Z")); // Tue Oct 13, 9:50 PM ET
+    const html = renderToString(<HoursBlock hours={dinnerHours} verified />);
+    const doc = new JSDOM(html).window.document;
+    expect(doc.querySelector("summary")?.textContent).toBe("Hours");
+    expect(html).not.toContain("Hours today");
+    expect(html).not.toContain("Checked at source");
+    expect(html).not.toContain("Needs a new check");
+    expect(html).not.toContain("not current enough");
+    // The weekly table is true on any day, so a reader without scripts keeps it.
+    expect(doc.querySelector('ul[aria-label="Weekly hours"]')?.children).toHaveLength(7);
+    expect(html).toContain("4pm–9pm");
+  });
+
+  it("hydrates a Tuesday-night prerender on Wednesday morning with Wednesday's hours and no mismatch", async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-14T01:50:00Z")); // Tue 9:50 PM ET
+    const container = document.createElement("div");
+    document.body.append(container);
+    container.innerHTML = renderToString(<HoursBlock hours={dinnerHours} verified />);
+    vi.setSystemTime(new Date("2026-10-14T13:00:00Z")); // Wed 9:00 AM ET
+    const recoverable: unknown[] = [];
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    await act(async () => {
+      root = hydrateRoot(container, <HoursBlock hours={dinnerHours} verified />, {
+        onRecoverableError: (error) => { recoverable.push(error); },
+      });
+    });
+    expect(recoverable).toEqual([]);
+    expect(errors).not.toHaveBeenCalled();
+    errors.mockRestore();
+    expect(container.querySelector("summary")?.textContent).toContain("Hours today · 4pm–9pm");
+    act(() => root!.unmount());
+    container.remove();
+  });
+});
+
 describe("official hours detail display", () => {
-  it("shows today's dated closure, the unmodified normal week, and both actual official source links", () => {
+  it("shows today's dated closure, the unmodified normal week, and both actual official source links", async () => {
     vi.useFakeTimers(); vi.setSystemTime(now);
-    const html = renderToStaticMarkup(<HoursBlock hours={hours} verified provenance="Hours from Frederick County Public Libraries." />);
+    const { html } = await mounted(<HoursBlock hours={hours} verified provenance="Hours from Frederick County Public Libraries." />);
     expect(html).toContain("Hours today · Closed");
     expect(html).toContain("Libraries Closed - Staff Development Day");
     expect(html).toContain("10am–9pm");
@@ -35,9 +97,9 @@ describe("official hours detail display", () => {
     expect(html).toContain('href="https://www.fcpl.org/holiday-closings"');
     expect(html).not.toContain("Hours from Google");
   });
-  it("labels a retained long-session schedule as unconfirmed after expiry", () => {
+  it("labels a retained long-session schedule as unconfirmed after expiry", async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-19T16:00:00Z"));
-    const html = renderToStaticMarkup(<HoursBlock hours={hours} verified />);
+    const { html } = await mounted(<HoursBlock hours={hours} verified />);
     expect(html).toContain("Hours today · Hours not confirmed");
     expect(html).toContain("not current enough to confirm a visit");
   });
@@ -110,10 +172,13 @@ describe("merchant hours", () => {
 });
 
 describe("status line answer and caveat", () => {
-  it("keeps a confirmed state as the whole answer, with no date beside it", () => {
+  it("holds a confirmed state out of the server HTML, with no date beside the placeholder", () => {
+    // The baked state can be hours old on a cached page. The mounted line is
+    // covered in LiveOpenStatus.browser.spec.tsx.
     vi.useFakeTimers(); vi.setSystemTime(now);
     const html = renderToStaticMarkup(<LiveOpenStatus hours={hours} verified initial={{ state: "open", closesAt: "21:00", closingSoon: false }} hoursCheckedAt="2026-10-12T09:13:00.000Z" />);
-    expect(html).toContain("Open until 9pm");
+    expect(html).not.toContain("Open until");
+    expect(html).toContain("data-place-status-pending");
     expect(html).not.toContain("data-place-status-line");
     expect(html).not.toContain("Hours not recently confirmed");
   });
@@ -156,10 +221,9 @@ describe("qualified official schedules", () => {
     },
   };
 
-  it("keeps the admission qualification visible before expansion and separates it from the closing time", () => {
+  it("keeps the admission qualification visible before expansion and separates it from the closing time", async () => {
     vi.useFakeTimers(); vi.setSystemTime(checkedAt);
-    const html = renderToStaticMarkup(<HoursBlock hours={museum} verified />);
-    const doc = new JSDOM(html).window.document;
+    const { html, doc } = await mounted(<HoursBlock hours={museum} verified />);
     const section = doc.querySelector('section[aria-label="Museum hours"]')!;
     const note = section.querySelector("p")!;
     expect(note.textContent).toBe("Last admission is at 4:30pm. The museum closes at 5pm.");
@@ -174,7 +238,7 @@ describe("qualified official schedules", () => {
     expect(doc.querySelector('ul[aria-label="Museum hours by day"]')?.children).toHaveLength(7);
   });
 
-  it("keeps scoped kitchen hours checked without claiming the restaurant is closed outside those hours", () => {
+  it("keeps scoped kitchen hours checked without claiming the restaurant is closed outside those hours", async () => {
     vi.useFakeTimers(); vi.setSystemTime(checkedAt);
     const kitchen: Hours = {
       ...museum, fri: [{ open: "16:00", close: "21:00" }],
@@ -183,19 +247,19 @@ describe("qualified official schedules", () => {
         note: "The kitchen follows this schedule. Bar hours may differ.",
       } },
     };
-    const html = renderToStaticMarkup(<HoursBlock hours={kitchen} verified />);
+    const { html, doc } = await mounted(<HoursBlock hours={kitchen} verified />);
     expect(html).toContain("Kitchen hours today · 4pm–9pm");
     expect(html).toContain("Checked at source");
-    expect(new JSDOM(html).window.document.querySelector("summary")?.textContent).not.toContain("Closed");
+    expect(doc.querySelector("summary")?.textContent).not.toContain("Closed");
     const hero = renderToStaticMarkup(<LiveOpenStatus hours={kitchen} verified initial={{ state: "closed" }} />);
     expect(hero).toContain("Venue opening not confirmed");
     expect(hero).not.toContain("Hours not recently confirmed");
     expect(hero).not.toContain("Closed");
   });
 
-  it("withholds an expired today's schedule without hiding its qualification or erasing the posted week", () => {
+  it("withholds an expired today's schedule without hiding its qualification or erasing the posted week", async () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-30T16:00:00Z"));
-    const html = renderToStaticMarkup(<HoursBlock hours={museum} verified />);
+    const { html } = await mounted(<HoursBlock hours={museum} verified />);
     expect(html).toContain("Museum hours today · Hours not confirmed");
     expect(html).toContain("Needs a new check");
     expect(html).toContain("This posted schedule needs a new source check.");
@@ -203,6 +267,15 @@ describe("qualified official schedules", () => {
     expect(html).toContain("10am–5pm");
     expect(html).not.toContain("Checked at source");
     expect(html).not.toContain("No posted hours");
+  });
+
+  it("keeps the qualification note in the server HTML and waits for the clock to call it previously posted", () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-30T16:00:00Z"));
+    const html = renderToString(<HoursBlock hours={museum} verified />);
+    expect(html).toContain("Last admission is at 4:30pm. The museum closes at 5pm.");
+    expect(new JSDOM(html).window.document.querySelector("summary")?.textContent).toBe("Museum hours");
+    expect(html).not.toContain("Previously posted");
+    expect(html).not.toContain("Needs a new check");
   });
 
   it("does not expose a stale server open claim before hydration for display-only schedules", () => {

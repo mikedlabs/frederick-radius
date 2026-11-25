@@ -31,7 +31,7 @@ const meta = {
     layout: "centered",
     docs: { description: { component: "The existing event action saves to this device's Saved list. Its selected state follows confirmed storage; unavailable storage never shows a successful save. Saving and removing each raise a toast that names the event and offers Undo." } },
   },
-  args: { eventId: SAMPLE, label: "Add Sample Frederick event to itinerary" },
+  args: { eventId: SAMPLE, eventName: "Sample Frederick event" },
   decorators: [(Story) => <><Story /><AppToaster /></>],
   beforeEach: () => { toast.dismiss(); const restore = sampleStorage(); return () => { toast.dismiss(); restore(); }; },
 } satisfies Meta<typeof ItineraryButton>;
@@ -46,7 +46,7 @@ const confirmedSave: Story["play"] = async ({ canvasElement }) => {
   await expect(parseFloat(hitArea.width)).toBeGreaterThanOrEqual(44);
   await expect(parseFloat(hitArea.height)).toBeGreaterThanOrEqual(44);
   await userEvent.click(save);
-  const remove = await canvas.findByRole("button", { name: "Remove Sample Frederick event from Saved" });
+  const remove = await canvas.findByRole("button", { name: "Saved Sample Frederick event" });
   await expect(remove).toHaveAttribute("aria-pressed", "true");
   await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([{ type: "event", id: SAMPLE, saved_at: expect.any(String) }]);
   await userEvent.click(remove);
@@ -68,16 +68,55 @@ export const RemovalOffersUndoAt390: Story = {
     await waitFor(() => expect(save).toBeEnabled());
     await userEvent.click(save);
     await waitFor(() => expect(body.getByText("Saved · Sample Frederick event", { exact: true })).toBeVisible());
-    await userEvent.click(await canvas.findByRole("button", { name: "Remove Sample Frederick event from Saved" }));
+    await userEvent.click(await canvas.findByRole("button", { name: "Saved Sample Frederick event" }));
     // One toast per item: the removal replaces the save confirmation.
     const removed = await body.findByText("Removed from Saved · Sample Frederick event", { exact: true });
     await waitFor(() => expect(document.querySelectorAll("[data-sonner-toast]")).toHaveLength(1));
     await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([]);
     await userEvent.click(within(removed.closest<HTMLElement>("[data-sonner-toast]")!).getByRole("button", { name: "Undo" }));
-    await waitFor(() => expect(canvas.getByRole("button", { name: "Remove Sample Frederick event from Saved" })).toHaveAttribute("aria-pressed", "true"));
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Saved Sample Frederick event" })).toHaveAttribute("aria-pressed", "true"));
     await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([{ type: "event", id: SAMPLE, saved_at: expect.any(String) }]);
   },
 };
+/** The labeled shape leads the event sheet's action row. It prints Save, then
+ * Saved, beside the bookmark and keeps a 44px row height at every width. */
+const labeledSave: Story["play"] = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const save = await canvas.findByRole("button", { name: "Save Sample Frederick event" });
+  await waitFor(() => expect(save).toBeEnabled());
+  await expect(save).toHaveTextContent("Save");
+  await expect(save.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+  const saveWidth = save.getBoundingClientRect().width;
+  await userEvent.click(save);
+  const remove = await canvas.findByRole("button", { name: "Saved Sample Frederick event" });
+  await expect(remove).toHaveTextContent("Saved");
+  // Save and Saved take one width, so the sheet's action row keeps its wrap.
+  await expect(remove.getBoundingClientRect().width).toBe(saveWidth);
+  await expect(remove).toHaveAttribute("aria-pressed", "true");
+  await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([{ type: "event", id: SAMPLE, saved_at: expect.any(String) }]);
+};
+export const LabeledAt320: Story = { args: { appearance: "labeled" }, globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } }, play: labeledSave };
+export const LabeledAt390: Story = { args: { appearance: "labeled" }, globals: { viewport: { value: "radiusMobile", isRotated: false } }, play: labeledSave };
+
+/** The plain shape is the unboxed bookmark for a list of rows (the Events
+ * board). It has no border or tile and a real 44px box. */
+export const PlainForListRowsAt390: Story = {
+  args: { appearance: "plain" },
+  globals: { viewport: { value: "radiusMobile", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const save = await canvas.findByRole("button", { name: "Save Sample Frederick event" });
+    await waitFor(() => expect(save).toBeEnabled());
+    const box = save.getBoundingClientRect();
+    await expect(box.width).toBeGreaterThanOrEqual(44);
+    await expect(box.height).toBeGreaterThanOrEqual(44);
+    await expect(getComputedStyle(save).borderTopWidth).toBe("0px");
+    await expect(getComputedStyle(save).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await userEvent.click(save);
+    await expect(await canvas.findByRole("button", { name: "Saved Sample Frederick event" })).toHaveAttribute("aria-pressed", "true");
+  },
+};
+
 export const UnavailableAt390: Story = {
   globals: { viewport: { value: "radiusMobile", isRotated: false } },
   beforeEach: () => sampleStorage(true),
@@ -109,12 +148,13 @@ export const QueuedSaveAt390: Story = {
     const save = await canvas.findByRole("button", { name: "Save Sample Frederick event" });
     await waitFor(() => expect(save).toBeEnabled());
     await userEvent.click(save);
-    const pending = await canvas.findByRole("button", { name: "Saving Sample Frederick event" });
+    // aria-busy carries the pending write; the name holds the confirmed state.
+    await waitFor(() => expect(save).toHaveAttribute("aria-busy", "true"));
+    const pending = canvas.getByRole("button", { name: "Save Sample Frederick event" });
     await expect(pending).toBeDisabled();
-    await expect(pending).toHaveAttribute("aria-busy", "true");
     await expect(pending).toHaveAttribute("aria-pressed", "false");
     await expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([]);
     await releaseQueuedSave();
-    await waitFor(() => expect(canvas.getByRole("button", { name: "Remove Sample Frederick event from Saved" })).toHaveAttribute("aria-pressed", "true"));
+    await waitFor(() => expect(canvas.getByRole("button", { name: "Saved Sample Frederick event" })).toHaveAttribute("aria-pressed", "true"));
   },
 };

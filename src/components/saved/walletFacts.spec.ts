@@ -107,9 +107,103 @@ describe("todayHoursLine: prints the shipped schedule, not a verdict", () => {
       value: "Open 24 hours",
     });
   });
+  it("passes over the ended tail of last night and names the next opening", () => {
+    const bar: Hours = Object.fromEntries(
+      (["tue", "wed", "thu", "fri", "sat"] as const).map((day) => [day, [{ open: "17:00", close: "02:00" }]]),
+    );
+    // Sunday, December 6, 2026 in Frederick (EST = UTC-5). Closed Sunday and
+    // Monday, so the only Sunday window is Saturday night's tail.
+    expect(todayHoursLine(bar, new Date("2026-12-06T20:00:00Z"))).toEqual({ label: "Tue", value: "5 PM – 2 AM" });
+    // At 1 AM that tail is still running, so it is today's hours.
+    expect(todayHoursLine(bar, new Date("2026-12-06T06:00:00Z"))).toEqual({ label: "Today", value: "12 AM – 2 AM" });
+    // A night that opens again today keeps both windows on today's line.
+    expect(todayHoursLine(bar, new Date("2026-12-05T20:00:00Z"))).toEqual({ label: "Today", value: "12 AM – 2 AM, 5 PM – 2 AM" });
+  });
   it("returns null when there is no schedule at all", () => {
     expect(todayHoursLine(undefined, TUE_EVENING)).toBeNull();
     expect(todayHoursLine({}, TUE_EVENING)).toBeNull();
+  });
+});
+
+describe("todayHoursLine: follows dated exceptions like the place page", () => {
+  // The library's ordinary week, with the published Thanksgiving changes.
+  const weekly: Hours = {
+    mon: [{ open: "10:00", close: "21:00" }],
+    tue: [{ open: "10:00", close: "21:00" }],
+    wed: [{ open: "10:00", close: "21:00" }],
+    thu: [{ open: "10:00", close: "21:00" }],
+    fri: [{ open: "10:00", close: "17:00" }],
+    sat: [{ open: "10:00", close: "17:00" }],
+  };
+  function libraryHours(observed: Date): Hours {
+    return {
+      ...weekly,
+      _official: {
+        slug: "c-burr-artz-public-library-frederick",
+        source_url: "https://example.test/hours",
+        observed_at: new Date(observed.getTime() - 60_000).toISOString(),
+        expires_at: new Date(observed.getTime() + 7 * 86_400_000).toISOString(),
+        coverage_from: "2026-11-01",
+        coverage_through: "2026-12-31",
+        exceptions: [
+          { date: "2026-11-25", reason: "Thanksgiving Eve", closes_at: "17:00" },
+          { date: "2026-11-26", reason: "Thanksgiving", closed: true },
+          { date: "2026-11-27", reason: "Day after Thanksgiving", closed: true },
+        ],
+      },
+    };
+  }
+  // Wednesday, November 25, 2026, 11 AM in Frederick (EST = UTC-5).
+  const THANKSGIVING_EVE = new Date("2026-11-25T16:00:00Z");
+  const THANKSGIVING = new Date("2026-11-26T16:00:00Z");
+
+  it("clips today to a dated early closing instead of printing the weekly window", () => {
+    expect(todayHoursLine(libraryHours(THANKSGIVING_EVE), THANKSGIVING_EVE)).toEqual({
+      label: "Today",
+      value: "10 AM – 5 PM",
+    });
+  });
+  it("skips dated closures and names the next date that is open", () => {
+    expect(todayHoursLine(libraryHours(THANKSGIVING), THANKSGIVING)).toEqual({
+      label: "Sat",
+      value: "10 AM – 5 PM",
+    });
+    // With the eve closed too, the next two dates are closed as well.
+    const eve = libraryHours(THANKSGIVING_EVE);
+    eve._official!.exceptions[0] = { date: "2026-11-25", reason: "Closed", closed: true };
+    expect(todayHoursLine(eve, THANKSGIVING_EVE)).toEqual({ label: "Sat", value: "10 AM – 5 PM" });
+  });
+  it("never prints weekly hours for a Thanksgiving nobody confirmed", () => {
+    expect(todayHoursLine(weekly, THANKSGIVING)).toEqual({
+      label: "Today",
+      value: "Hours not confirmed",
+    });
+    // A later date that cannot be confirmed ends the search there. The card's
+    // own status promises nothing past it, so neither does the ledger.
+    expect(todayHoursLine({ ...weekly, wed: [] }, THANKSGIVING_EVE)).toEqual({
+      label: "Tomorrow",
+      value: "Hours not confirmed",
+    });
+    expect(todayHoursLine({ ...weekly, tue: [], wed: [] }, new Date("2026-11-24T16:00:00Z"))).toEqual({
+      label: "Thu",
+      value: "Hours not confirmed",
+    });
+  });
+  it("does not print a schedule whose evidence has lapsed", () => {
+    const lapsed = new Date("2026-12-09T16:00:00Z");
+    expect(todayHoursLine(libraryHours(THANKSGIVING_EVE), lapsed)).toEqual({
+      label: "Today",
+      value: "Hours not confirmed",
+    });
+  });
+  it("names the service when the hours describe only one", () => {
+    const dinner = libraryHours(THANKSGIVING_EVE);
+    dinner._official!.qualification = { scope: "kitchen", label: "Dinner hours", note: "Dinner service", usage: "display_only" };
+    expect(todayHoursLine(dinner, THANKSGIVING_EVE)).toEqual({ label: "Dinner hours today", value: "10 AM – 5 PM" });
+    expect(todayHoursLine(dinner, THANKSGIVING)).toEqual({ label: "Dinner hours, Sat", value: "10 AM – 5 PM" });
+  });
+  it("still has nothing to say about a place with no hours on a holiday", () => {
+    expect(todayHoursLine({}, THANKSGIVING)).toBeNull();
   });
 });
 

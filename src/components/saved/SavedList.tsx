@@ -3,7 +3,8 @@
 import { eventDisplayTitle } from "@/lib/events/display-title";
 import { townAccent } from "@/lib/townAccent";
 import { useSyncExternalStore, useEffect, useMemo, useState } from "react";
-import { useSavedList, useMounted, type SavedRef } from "@/hooks/useSaved";
+import { savedChangeDescription, setEventSaved, useSavedList, useMounted, type SavedRef } from "@/hooks/useSaved";
+import { notifyError, notifyRemoved } from "@/lib/feedback/notify";
 import { useSavedOutings } from "@/hooks/useSavedOutings";
 import SavedOutings from "./SavedOutings";
 import { useFollowedSlugs } from "@/hooks/useFollows";
@@ -27,13 +28,13 @@ export { fetchSavedEventsHydration, mergeSavedEventHydration } from "@/lib/event
 import { normalizeRequestedEventSlugList } from "@/lib/events/eventSlugBatch";
 import PlaceCard from "@/components/place/PlaceCard";
 import MyTaps from "@/components/beer/MyTaps";
-import SavedWallet from "@/components/saved/SavedWallet";
+import SavedWallet, { walletFocusAfterRemoval } from "@/components/saved/SavedWallet";
 import SavedEventWallet from "@/components/saved/SavedEventWallet";
 import SavedTransitSection from "@/components/saved/SavedTransitSection";
 import { useSavedTransitBuses } from "@/components/transit/useSavedTransitBuses";
 import { useSavedTransitStops } from "@/components/transit/useSavedTransitStops";
 import KeepRadiusCard from "@/components/pwa/KeepRadiusCard";
-import { fmtClockShort } from "@/components/saved/walletFacts";
+import { fmtClockShort, savedDateLabel } from "@/components/saved/walletFacts";
 import AppMapClient from "@/components/map/AppMapClient";
 import ShareButton from "@/components/place/ShareButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -173,6 +174,11 @@ export async function fetchSavedPlacesBySlugs(slugs: readonly string[], signal?:
   return places;
 }
 
+const noticeAction = "tap-44 inline-flex items-center text-[13px] font-semibold underline underline-offset-4";
+/** The Upcoming section's heading, where focus lands when the event notice's
+ *  Remove takes the notice away. */
+const SAVED_UPCOMING_HEADING_ID = "saved-upcoming-heading";
+
 export function SavedPlaceRefreshNotice({ unavailableCount, missingCount, onRetry, retrying }: {
   unavailableCount: number;
   missingCount: number;
@@ -184,19 +190,52 @@ export function SavedPlaceRefreshNotice({ unavailableCount, missingCount, onRetr
     <div role="status" className="space-y-2 border-y py-3 text-[13px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
       {unavailableCount > 0 && <p>We could not refresh {unavailableCount} saved place{unavailableCount === 1 ? "" : "s"}. Your saves are still here. Check current hours on the place page.</p>}
       {missingCount > 0 && <p>{missingCount} saved place{missingCount === 1 ? " is" : "s are"} no longer listed. {missingCount === 1 ? "It remains" : "They remain"} saved on this device.</p>}
-      {unavailableCount > 0 && <button type="button" onClick={onRetry} disabled={retrying} className="tap-44 inline-flex items-center text-[13px] font-semibold underline underline-offset-4" style={{ color: "var(--app-link)" }}>{retrying ? "Trying again…" : "Try again"}</button>}
+      {unavailableCount > 0 && <button type="button" onClick={onRetry} disabled={retrying} className={noticeAction} style={{ color: "var(--app-link)" }}>{retrying ? "Trying again…" : "Try again"}</button>}
     </div>
   );
 }
 
+/** A saved event row holds its id and the day it was saved, and nothing
+ * else. Once the event is no longer listed, that day is all this device can
+ * say about it: one date, or the first and last of several. Null when no row
+ * carries a usable stamp. */
+export function savedEventDatesLabel(savedAt: readonly string[]): string | null {
+  const labels = [...savedAt]
+    .map((iso) => ({ time: Date.parse(iso), label: savedDateLabel(iso) }))
+    .filter((row): row is { time: number; label: string } => row.label !== null)
+    .sort((a, b) => a.time - b.time)
+    .map((row) => row.label);
+  if (labels.length === 0) return null;
+  const first = labels[0];
+  const last = labels[labels.length - 1];
+  return first === last ? first : `${first} to ${last}`;
+}
+
+
 export function SavedEventRefreshNotice({
   unresolvedCount,
   missingCount,
+  missingSavedAt = [],
+  onRetry,
+  retrying = false,
+  onRemoveMissing,
+  removing = false,
 }: {
   unresolvedCount: number;
   missingCount: number;
+  /** The saved_at stamp of each event that is no longer listed. */
+  missingSavedAt?: readonly string[];
+  /** Ask the catalog again for the events it could not refresh. */
+  onRetry?: () => void;
+  retrying?: boolean;
+  /** Remove the events that are no longer listed from this device. Receives
+   *  the pressed button, which leaves the page when the last row does. */
+  onRemoveMissing?: (button: HTMLButtonElement) => void;
+  removing?: boolean;
 }) {
   if (unresolvedCount === 0 && missingCount === 0) return null;
+  const one = missingCount === 1;
+  const savedOn = savedEventDatesLabel(missingSavedAt);
   return (
     <div
       role="status"
@@ -211,12 +250,123 @@ export function SavedEventRefreshNotice({
           We could not refresh {unresolvedCount} saved event{unresolvedCount === 1 ? "" : "s"} right now. {unresolvedCount === 1 ? "It is" : "They are"} still saved.
         </p>
       )}
+      {unresolvedCount > 0 && onRetry && (
+        // The places notice has its own Try again, so this name says which.
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={retrying}
+          aria-label={`${retrying ? "Trying again" : "Try again"}: saved events`}
+          className={noticeAction}
+          style={{ color: "var(--app-link)" }}
+        >
+          {retrying ? "Trying again…" : "Try again"}
+        </button>
+      )}
       {missingCount > 0 && (
         <p>
-          {missingCount} saved event{missingCount === 1 ? " is" : "s are"} no longer listed. {missingCount === 1 ? "It remains" : "They remain"} saved on this device.
+          {missingCount} saved event{one ? " is" : "s are"} no longer listed. {one ? "It remains" : "They remain"} saved on this device, which kept {savedOn
+            ? `when you saved ${one ? "it" : "them"} (${savedOn}) but not ${one ? "its name" : "their names"}`
+            : `no name for ${one ? "it" : "them"}`}.
         </p>
       )}
+      {missingCount > 0 && onRemoveMissing && (
+        <button
+          type="button"
+          onClick={(event) => onRemoveMissing(event.currentTarget)}
+          disabled={removing}
+          aria-busy={removing}
+          // The name starts with the visible label, then says which events.
+          aria-label={`${removing ? "Removing" : "Remove from Saved"}: ${one ? "the event that is no longer listed" : `the ${missingCount} events that are no longer listed`}`}
+          className={noticeAction}
+          style={{ color: "var(--app-link)" }}
+        >
+          {removing ? "Removing…" : "Remove from Saved"}
+        </button>
+      )}
     </div>
+  );
+}
+
+/** Put removed saved-event rows back with the day each was first saved, so
+ * the notice never reports the Undo as the save date. Reports a failure with
+ * a retry. */
+async function restoreSavedEventRows(rows: readonly SavedRef[]): Promise<void> {
+  try {
+    for (const row of rows) {
+      if (!await setEventSaved(row.id, true, row.saved_at)) throw new Error("Restore not confirmed");
+    }
+  } catch (error) {
+    notifyError({ title: "Could not undo this change", description: savedChangeDescription(error), onRetry: () => void restoreSavedEventRows(rows) });
+  }
+}
+
+/**
+ * Remove the saved rows of events that are no longer listed, through the same
+ * device store every other save control writes, and offer Undo for the rows
+ * that were removed. Resolves true only when every row was removed.
+ */
+async function removeUnlistedSavedEvents(rows: readonly SavedRef[]): Promise<boolean> {
+  const removed: SavedRef[] = [];
+  let failure: unknown = null;
+  try {
+    for (const row of rows) {
+      if (await setEventSaved(row.id, false)) throw new Error("Removal not confirmed");
+      removed.push(row);
+    }
+  } catch (error) {
+    failure = error ?? new Error("Removal not confirmed");
+  }
+  if (removed.length > 0) {
+    notifyRemoved({
+      label: `${removed.length} unlisted event${removed.length === 1 ? "" : "s"}`,
+      onUndo: () => void restoreSavedEventRows(removed),
+      item: removed.length === 1 ? { type: "event", id: removed[0].id } : undefined,
+    });
+  }
+  if (failure) notifyError({ title: "Could not remove from Saved", description: savedChangeDescription(failure) });
+  return failure === null;
+}
+
+/**
+ * The saved-event notice wired to this device's saved rows. An event that is
+ * no longer listed has no card, so this is the only place its row can be
+ * removed. An event the catalog could not refresh keeps its row and gets a
+ * second request instead.
+ */
+export function SavedEventRefresh({
+  missing,
+  unresolvedCount,
+  onRetry,
+  retrying,
+}: {
+  /** The saved rows whose events are no longer listed. */
+  missing: readonly SavedRef[];
+  unresolvedCount: number;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  const [removing, setRemoving] = useState(false);
+  return (
+    <SavedEventRefreshNotice
+      unresolvedCount={unresolvedCount}
+      missingCount={missing.length}
+      missingSavedAt={missing.map((row) => row.saved_at)}
+      onRetry={onRetry}
+      retrying={retrying}
+      removing={removing}
+      onRemoveMissing={(button) => {
+        if (removing) return;
+        // The notice leaves with its last row. When the button held focus,
+        // send it to the Upcoming heading beside it, or to the page heading
+        // once the section has gone, instead of the document body.
+        const moveFocus = walletFocusAfterRemoval(button, SAVED_UPCOMING_HEADING_ID);
+        setRemoving(true);
+        void removeUnlistedSavedEvents(missing)
+          .then((done) => { if (done) moveFocus(); })
+          .finally(() => setRemoving(false));
+      }}
+    />
   );
 }
 
@@ -253,6 +403,34 @@ function EventRow({ event, today }: { event: DecoratedEvent; today: boolean }) {
       <span className="arr" aria-hidden><ArrowRight className="ml-1 inline h-3.5 w-3.5 -translate-y-px" strokeWidth={2.25} /></span>
     </Link>
   );
+}
+
+/**
+ * The masthead standfirst's counts in reading order: places and their towns,
+ * then events, outings and transit saves. A kind with nothing saved is left
+ * out. Events are counted beside places, since the Upcoming section below
+ * shows them on the same page. The caller counts saved event rows, not loaded
+ * event cards, so a row that is no longer listed or could not be refreshed
+ * still counts, as its notice says it is still saved. `lead` marks the first of places or events,
+ * which the masthead sets one step darker.
+ */
+export function savedStandfirstParts(counts: {
+  places: number;
+  towns: number;
+  events: number;
+  outings: number;
+  transit: number;
+}): { key: string; text: string; lead: boolean }[] {
+  const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+  const parts: { key: string; text: string; lead: boolean }[] = [];
+  if (counts.places > 0) {
+    parts.push({ key: "places", text: count(counts.places, "place"), lead: true });
+    if (counts.towns > 1) parts.push({ key: "towns", text: count(counts.towns, "town"), lead: false });
+  }
+  if (counts.events > 0) parts.push({ key: "events", text: count(counts.events, "event"), lead: counts.places === 0 });
+  if (counts.outings > 0) parts.push({ key: "outings", text: `${count(counts.outings, "outing")} on this device`, lead: false });
+  if (counts.transit > 0) parts.push({ key: "transit", text: count(counts.transit, "transit save"), lead: false });
+  return parts;
 }
 
 /** The page masthead: title + a mono standfirst that carries the counts as
@@ -435,6 +613,9 @@ export default function SavedList({
   const [eventsResolved, setEventsResolved] = useState(false);
   const [unresolvedEventSlugs, setUnresolvedEventSlugs] = useState<string[]>([]);
   const [missingEventSlugs, setMissingEventSlugs] = useState<string[]>([]);
+  // The notice's Try again asks for the same slugs a second time.
+  const [eventRetry, setEventRetry] = useState(0);
+  const [eventsRetrying, setEventsRetrying] = useState(false);
 
   useEffect(() => {
     if (!mounted) return;
@@ -451,6 +632,7 @@ export default function SavedList({
         );
         setUnresolvedEventSlugs(result.unresolvedSlugs);
         setMissingEventSlugs(result.missingSlugs);
+        setEventsRetrying(false);
         setEventsResolved(true);
       })
       .catch((err) => {
@@ -460,11 +642,18 @@ export default function SavedList({
         if (err && err.name !== "AbortError") {
           setUnresolvedEventSlugs(eventSlugsToFetch);
           setMissingEventSlugs([]);
+          setEventsRetrying(false);
           setEventsResolved(true);
         }
       });
     return () => ctrl.abort();
-  }, [mounted, eventSlugsToFetch]);
+  }, [mounted, eventSlugsToFetch, eventRetry]);
+  // The saved rows behind the events that are no longer listed. Derived from
+  // the live rows, so a removed row leaves the notice without a second fetch.
+  const missingEventRows = useMemo(
+    () => items.filter((i) => i.type === "event" && missingEventSlugs.includes(i.id.trim())),
+    [items, missingEventSlugs],
+  );
 
   const { journey, updateJourney } = useSavedJourney(
     mounted && !(Boolean(userId) && followsLoading) &&
@@ -911,35 +1100,21 @@ export default function SavedList({
     withBrowseReturnTo(planClusterSlugs.length >= 2 ? `/plan?p=${planTokenFromSaved(planClusterSlugs)}` : "/plan", "/my-radius");
 
   // Masthead standfirst: the counts as supporting detail, never a headline.
-  // Places + towns only — events would overflow 390px, and the colophon's
-  // fin line already carries the full tally.
-  const townN = townTally.size;
-  const standParts: ReactNode[] = [];
-  if (places.length > 0) {
-    standParts.push(
-      <em key="p">{places.length} place{places.length === 1 ? "" : "s"}</em>,
-    );
-    if (townN > 1) standParts.push(<span key="t">{townN} towns</span>);
-  } else if (events.length > 0) {
-    standParts.push(<em key="e">{events.length} event{events.length === 1 ? "" : "s"}</em>);
-  }
-  if (savedOutings.status === "ready" && savedOutings.outings.length > 0) {
-    standParts.push(<span key="outings">{savedOutings.outings.length} outing{savedOutings.outings.length === 1 ? "" : "s"} on this device</span>);
-  }
-  const transitSavedCount =
-    savedTransitStops.length + savedTransitBuses.length;
+  // Events count the saved event rows, the same rows the Upcoming deck and
+  // its notice draw from, so the count does not wait on the catalog or drop
+  // an event the notice says is still saved.
+  const standParts = savedStandfirstParts({
+    places: places.length,
+    towns: townTally.size,
+    events: eventSlugsToFetch.length,
+    outings: savedOutings.status === "ready" ? savedOutings.outings.length : 0,
+    transit: savedTransitStops.length + savedTransitBuses.length,
+  });
   const hasOrganizerContent =
     items.length > 0 ||
     placeRefsAll.length > 0 ||
     notedPlaces.length > 0 ||
     visitedPlaces.length > 0;
-  if (transitSavedCount > 0) {
-    standParts.push(
-      <span key="r">
-        {transitSavedCount} transit save{transitSavedCount === 1 ? "" : "s"}
-      </span>,
-    );
-  }
   // Wallet is the calm default. Legacy stored "wallet" preferences map to the
   // organizer's list view; Map only mounts after the person opens the advanced
   // disclosure and explicitly keeps that preference.
@@ -952,7 +1127,7 @@ export default function SavedList({
           <>
             {standParts.length > 0
               ? standParts.map((part, i) => (
-                  <span key={i}>{i > 0 ? " · " : ""}{part}</span>
+                  <span key={part.key}>{i > 0 ? " · " : ""}{part.lead ? <em>{part.text}</em> : part.text}</span>
                 ))
               : "Outings, places, and events you want to keep"}
           </>
@@ -1069,7 +1244,9 @@ export default function SavedList({
         >
           <header className="flex items-baseline gap-2.5">
             <h2
-              className="text-[13px] font-semibold uppercase tracking-[0.09em]"
+              id={SAVED_UPCOMING_HEADING_ID}
+              tabIndex={-1}
+              className="text-[13px] font-semibold uppercase tracking-[0.09em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-focus)]"
               style={{ color: "var(--app-ink-3)" }}
             >
               Upcoming
@@ -1091,7 +1268,7 @@ export default function SavedList({
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               There are no upcoming events. Your saved events have all passed.
             </p>
-          ) : unresolvedEventSlugs.length === 0 && missingEventSlugs.length === 0 ? (
+          ) : unresolvedEventSlugs.length === 0 && missingEventRows.length === 0 ? (
             // Defensive fallback for an invalid/legacy empty response. Normal
             // misses now carry unresolved or missing status below.
             <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
@@ -1100,9 +1277,11 @@ export default function SavedList({
             </p>
           ) : null}
           {!eventsPending && (
-            <SavedEventRefreshNotice
+            <SavedEventRefresh
+              missing={missingEventRows}
               unresolvedCount={unresolvedEventSlugs.length}
-              missingCount={missingEventSlugs.length}
+              retrying={eventsRetrying}
+              onRetry={() => { setEventsRetrying(true); setEventRetry((value) => value + 1); }}
             />
           )}
           {pastEvents.length > 0 && (

@@ -123,6 +123,17 @@ describe("Existing save consumers report only confirmed changes", () => {
     await act(async () => { root.render(<SavedWallet places={[second]} />); await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())); });
     expect(document.activeElement).toBe(container.querySelector("#sw-slot-second-stop .sw-brand"));
   });
+  it("prints the stored street address in the raised place ledger, and no cell without one", async () => {
+    const ledger = () => Object.fromEntries([...container.querySelectorAll(".sw-cell")].map((cell) => [cell.querySelector("dt")!.textContent, cell.querySelector("dd")!.textContent]));
+    await render(<SavedWallet places={[{ ...place, address: "122 W Potomac St, Brunswick, MD 21716" }]} openSlug={place.slug} />);
+    // Printed as stored: the town is already in this record and is not repeated.
+    expect(ledger().Address).toBe("122 W Potomac St, Brunswick, MD 21716");
+    expect(Object.keys(ledger()).indexOf("Address")).toBe(Object.keys(ledger()).indexOf("Hours") + 1);
+    await render(<SavedWallet places={[{ ...place, address: "  " }]} openSlug={place.slug} />);
+    expect(ledger()).not.toHaveProperty("Address");
+    await render(<SavedWallet places={[place]} openSlug={place.slug} />);
+    expect(ledger()).not.toHaveProperty("Address");
+  });
   it("names the removed event and restores it from Undo through the device store", async () => {
     mocks.toggleLocal.mockResolvedValueOnce(false);
     await render(<SavedEventWallet events={[event]} now={new Date("2026-10-08T13:00:00Z")} startRaised />);

@@ -9,13 +9,14 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ComponentProps,
   type RefObject,
 } from "react";
 import { Search, Compass, ChevronLeft, Menu, MessageSquare, X } from "lucide-react";
 import RippleMark from "@/components/brand/RippleMark";
 import styles from "./NavChrome.module.css";
 import LocationChip from "./LocationChip";
-import { feedbackInMoreMenu, requestFeedback } from "@/lib/feedback-ui";
+import { requestFeedback } from "@/lib/feedback-ui";
 import HeaderDisclosure from "./HeaderDisclosure";
 import TodayAsk from "@/components/today/TodayAsk";
 import TodayScopeStatus from "@/components/today/TodayScopeStatus";
@@ -37,8 +38,66 @@ import { useReversibleHistoryLayer } from "@/hooks/useReversibleHistoryLayer";
 import { useScrollLock } from "@/hooks/useScrollLock";
 
 import { forgetFindResult, readFindResultReturn } from "@/components/search/find-result-return";
+import {
+  FIND_FRAME_HEADER_CLASS,
+  FIND_FRAME_HEADER_STYLE,
+  FIND_FRAME_PANEL_CLASS,
+  FIND_FRAME_PANEL_STYLE,
+  FIND_FRAME_ROOT_CLASS,
+  FIND_FRAME_ROOT_STYLE,
+  FIND_FRAME_SCRIM_CLASS,
+} from "@/components/search/find-frame";
 
-const SearchOverlay = lazy(() => import("@/components/search/SearchOverlay"));
+type SearchOverlayComponent = typeof import("@/components/search/SearchOverlay").default;
+type FindWorkspaceProps = ComponentProps<SearchOverlayComponent> & {
+  openerRef: RefObject<HTMLElement | null>;
+  returnScrollY: number | null;
+};
+
+// The Find workspace stays out of the shell bundle. One request serves both
+// the speculative preload and the on-demand lazy boundary. Once it resolves,
+// the header renders the component itself: a lazy component suspends on its
+// first render even when its chunk is already present, and React then holds
+// that fallback on screen for 300ms.
+let searchOverlayRequest: Promise<{ default: SearchOverlayComponent }> | null = null;
+let loadedSearchOverlay: SearchOverlayComponent | null = null;
+const searchOverlayListeners = new Set<() => void>();
+
+function loadSearchOverlay() {
+  searchOverlayRequest ??= import("@/components/search/SearchOverlay").then(
+    (loaded) => {
+      loadedSearchOverlay = loaded.default;
+      for (const listener of searchOverlayListeners) listener();
+      return loaded;
+    },
+    (error: unknown) => {
+      // Keep no rejection. React.lazy caches the rejection it saw, so the
+      // failed wrapper is replaced too: the next intent or open then asks
+      // again instead of rethrowing the old error.
+      searchOverlayRequest = null;
+      LazySearchOverlay = lazy(loadSearchOverlay);
+      throw error;
+    },
+  );
+  return searchOverlayRequest;
+}
+
+function preloadSearchOverlay() {
+  void loadSearchOverlay().catch(() => {
+    // A failed speculative request must not become an unhandled page error.
+    // Opening Find asks again through the lazy boundary.
+  });
+}
+
+let LazySearchOverlay = lazy(loadSearchOverlay);
+const subscribeSearchOverlay = (listener: () => void) => {
+  searchOverlayListeners.add(listener);
+  return () => {
+    searchOverlayListeners.delete(listener);
+  };
+};
+const readSearchOverlay = () => loadedSearchOverlay;
+const readNoSearchOverlay = () => null;
 let searchLayerSequence = 0;
 const FIND_DRAFT_KEY = "fr:find-draft:v1";
 
@@ -235,6 +294,21 @@ export default function TopBar() {
   // immediately, but enable it only after React can honor the interaction.
   useEffect(() => {
     queueMicrotask(() => setFindInteractionReady(true));
+  }, []);
+
+  // Fetch the Find chunk once the page is idle, so the first open usually
+  // draws the workspace itself and not its loading frame. A visitor who asked
+  // the browser to save data keeps the on-demand request.
+  useEffect(() => {
+    if (readSearchOverlay()) return;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    if (connection?.saveData) return;
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(preloadSearchOverlay);
+      return () => window.cancelIdleCallback(idleId);
+    }
+    const timer = globalThis.setTimeout(preloadSearchOverlay, 2_000);
+    return () => globalThis.clearTimeout(timer);
   }, []);
 
   // Sticky-header activation can make a browser reposition the document just
@@ -450,7 +524,14 @@ export default function TopBar() {
                 aria-controls={searchOpen ? "radius-find-dialog" : undefined}
                 aria-expanded={searchOpen}
                 aria-keyshortcuts={findShortcut}
-                onPointerDown={capturePointerScroll}
+                // Reaching for Find is enough reason to fetch it. These are
+                // the same intent signals the Tools link uses to prefetch.
+                onPointerEnter={preloadSearchOverlay}
+                onFocus={preloadSearchOverlay}
+                onPointerDown={() => {
+                  preloadSearchOverlay();
+                  capturePointerScroll();
+                }}
                 onClick={(event) => {
                   haptic("light");
                   const returnScrollY = pointerScrollYRef.current ?? window.scrollY;
@@ -490,19 +571,19 @@ export default function TopBar() {
                 <span>Tools</span>
                 {pathname === "/compass" ? <span aria-hidden data-top-tool-rule /> : null}
               </AppTransitionLink>
-              {feedbackInMoreMenu(pathname) && (
-                <button type="button" className={styles.utilityRow} aria-haspopup="dialog"
-                  disabled={!findInteractionReady}
-                  onClick={event => {
-                    const menu = event.currentTarget.closest("details");
-                    const opener = menu?.querySelector("summary") ?? event.currentTarget;
-                    if (menu) menu.open = false;
-                    requestFeedback(opener);
-                  }}>
-                  <MessageSquare size={20} strokeWidth={1.75} aria-hidden />
-                  <span>Send feedback</span>
-                </button>
-              )}
+              {/* Feedback is in this menu on every route. Below the desktop
+                  rail there is no floating trigger, so this row is the way in. */}
+              <button type="button" className={styles.utilityRow} aria-haspopup="dialog"
+                disabled={!findInteractionReady}
+                onClick={event => {
+                  const menu = event.currentTarget.closest("details");
+                  const opener = menu?.querySelector("summary") ?? event.currentTarget;
+                  if (menu) menu.open = false;
+                  requestFeedback(opener);
+                }}>
+                <MessageSquare size={20} strokeWidth={1.75} aria-hidden />
+                <span>Send feedback</span>
+              </button>
               <AppearanceControl />
             </HeaderDisclosure>
           </div>
@@ -518,33 +599,56 @@ export default function TopBar() {
       </header>
 
       {searchOpen ? (
-        <Suspense
-          fallback={(
-            <SearchOverlayFallback
-              onClose={closeSearch}
-              openerRef={searchOpenerRef}
-              historyLayerId={searchLayerIdRef.current}
-              returnScrollY={searchReturnScrollYRef.current}
-            />
-          )}
-        >
-          <SearchOverlay
-            open
-            initialQuery={searchInitialQuery}
-            returnPlaceHref={returnPlaceRef.current}
-            onQueryChange={rememberSearchDraft}
-            onClose={closeSearch}
-            openerRef={searchOpenerRef}
-            historyLayerId={searchLayerIdRef.current}
-            returnScrollY={searchReturnScrollYRef.current}
-          />
-        </Suspense>
+        <FindWorkspace
+          open
+          initialQuery={searchInitialQuery}
+          returnPlaceHref={returnPlaceRef.current}
+          onQueryChange={rememberSearchDraft}
+          onClose={closeSearch}
+          openerRef={searchOpenerRef}
+          historyLayerId={searchLayerIdRef.current}
+          returnScrollY={searchReturnScrollYRef.current}
+        />
       ) : null}
     </>
   );
 }
 
-function SearchOverlayFallback({
+/**
+ * Draws Find. When its chunk is already present the workspace renders
+ * directly, with no Suspense boundary to show a fallback. Only an open that
+ * beats the preload goes through the lazy boundary, and the moment the shared
+ * request resolves this component swaps the loading frame for the workspace.
+ */
+function FindWorkspace(props: FindWorkspaceProps) {
+  const LoadedSearchOverlay = useSyncExternalStore(
+    subscribeSearchOverlay,
+    readSearchOverlay,
+    readNoSearchOverlay,
+  );
+  // eslint-disable-next-line react-hooks/static-components -- the store hands back the chunk's one module-level export, so its identity never changes between renders and no state is reset
+  if (LoadedSearchOverlay) return <LoadedSearchOverlay {...props} />;
+  return (
+    <Suspense
+      fallback={(
+        <SearchOverlayFallback
+          onClose={props.onClose}
+          openerRef={props.openerRef}
+          historyLayerId={props.historyLayerId}
+          returnScrollY={props.returnScrollY}
+        />
+      )}
+    >
+      <LazySearchOverlay {...props} />
+    </Suspense>
+  );
+}
+
+/**
+ * The loading frame Find shows when an open beats its chunk. Exported for the
+ * Find loading frame story; the header is its only app caller.
+ */
+export function SearchOverlayFallback({
   onClose,
   openerRef,
   historyLayerId,
@@ -586,63 +690,81 @@ function SearchOverlayFallback({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [dismiss]);
 
+  // The same frame SearchOverlay draws: the page ground on a phone, and from
+  // the sm breakpoint a centered panel over the scrim. The title row and the
+  // field outline sit where the real ones will, so the swap moves nothing.
   return (
     <div
       ref={dialogRef}
       tabIndex={-1}
       id="radius-find-dialog"
-      className="fixed inset-0 z-[var(--z-overlay)] bg-[var(--app-bg)]"
+      className={FIND_FRAME_ROOT_CLASS}
+      style={FIND_FRAME_ROOT_STYLE}
       role="dialog"
       aria-modal="true"
       aria-label="Loading search"
     >
+      {/* Not a button here: the focus trap counts every enabled button, and
+          Tab must not land on an invisible full-screen control. A pointer can
+          still dismiss, and Escape and Close serve the keyboard. */}
       <div
-        className="mx-auto flex min-h-14 max-w-screen-sm items-center gap-3 px-4"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
-      >
-        <Search
-          className="h-5 w-5 shrink-0"
-          strokeWidth={2}
-          style={{ color: "var(--app-link)" }}
+        aria-hidden
+        data-find-loading-scrim
+        onClick={dismiss}
+        className={FIND_FRAME_SCRIM_CLASS}
+      />
+      <div data-find-loading-panel className={FIND_FRAME_PANEL_CLASS} style={FIND_FRAME_PANEL_STYLE}>
+        <div className={FIND_FRAME_HEADER_CLASS} style={FIND_FRAME_HEADER_STYLE}>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-2)" }}>
+              Ask or find
+            </p>
+            <p className="truncate font-sans text-[22px] font-extrabold leading-tight tracking-[-0.03em]" style={{ color: "var(--app-ink)" }}>
+              What do you need?
+            </p>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={dismiss}
+            aria-label="Close search"
+            className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-[var(--app-radius-sm)] px-2 text-[13px] font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+            style={{ color: "var(--app-ink)" }}
+          >
+            <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            Close
+          </button>
+        </div>
+        <div
           aria-hidden
-        />
-        <span
-          className="min-w-0 flex-1 font-sans text-[20px] font-bold tracking-[-0.02em]"
-          style={{ color: "var(--app-ink)" }}
+          className="mx-4 mb-3 flex min-h-14 items-center gap-3 rounded-[var(--app-radius-md)] border px-3 sm:mx-5"
+          style={{ background: "var(--app-bg)", borderColor: "var(--app-control-border)" }}
         >
-          Ask or find
-        </span>
-        <button
-          ref={closeRef}
-          type="button"
-          onClick={dismiss}
-          className="grid h-11 w-11 place-items-center rounded-[var(--app-radius-sm)] border"
-          style={{
-            borderColor: "var(--app-control-border)",
-            color: "var(--app-ink)",
-          }}
-          aria-label="Close search"
+          <Search className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink)" }} aria-hidden />
+        </div>
+        <div
+          className="min-h-0 flex-1 border-t px-4 pt-4 sm:px-5"
+          style={{ borderColor: "var(--app-border)" }}
+          role="status"
+          aria-live="polite"
         >
-          <X className="h-5 w-5" strokeWidth={2} aria-hidden />
-        </button>
-      </div>
-      <div className="mx-auto max-w-screen-sm px-4 pt-3" role="status" aria-live="polite">
-        <span className="sr-only">Loading search.</span>
-        <div
-          aria-hidden
-          className="h-12 w-full animate-pulse rounded-[var(--app-radius-md)]"
-          style={{ background: "var(--app-bg-sunken)" }}
-        />
-        <div
-          aria-hidden
-          className="mt-5 h-3 w-28 animate-pulse rounded-[var(--app-radius-sm)]"
-          style={{ background: "var(--app-bg-sunken)" }}
-        />
-        <div
-          aria-hidden
-          className="mt-3 h-16 w-full animate-pulse rounded-[var(--app-radius-md)]"
-          style={{ background: "var(--app-bg-sunken)" }}
-        />
+          <span className="sr-only">Loading search.</span>
+          <div
+            aria-hidden
+            className="h-3 w-28 animate-pulse rounded-[var(--app-radius-sm)]"
+            style={{ background: "var(--app-bg-sunken)" }}
+          />
+          <div
+            aria-hidden
+            className="mt-3 h-14 w-full animate-pulse rounded-[var(--app-radius-md)]"
+            style={{ background: "var(--app-bg-sunken)" }}
+          />
+          <div
+            aria-hidden
+            className="mt-2 h-14 w-full animate-pulse rounded-[var(--app-radius-md)]"
+            style={{ background: "var(--app-bg-sunken)" }}
+          />
+        </div>
       </div>
     </div>
   );

@@ -181,7 +181,7 @@ export function TodayEventsRecoveryView({
   });
 
   const status = healthyEmpty
-    ? "No picks in this brief"
+    ? "There are no event picks for the rest of today."
     : failed ? "Event picks are unavailable here" : "Updating today's event picks";
   const hasEvents = events.length > 0;
 

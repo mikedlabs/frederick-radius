@@ -1,3 +1,4 @@
+import { eventSourceStatement, ticketingSourcesOn } from "@/lib/events/source-statement";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { connection } from "next/server";
@@ -190,10 +191,9 @@ export default async function TrustPage() {
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Event feeds.</strong>{" "}
-            Downtown Frederick Partnership, Celebrate Frederick, Hood College,
-            Frederick County government calendar, plus ticketed listings from
-            Ticketmaster, Bandsintown, and the Weinberg Center. Radius checks
-            these feeds multiple times a day.
+            {/* The same sentence as the Events board footer, so a ticketing
+                source is named only while it is switched on. */}
+            {eventSourceStatement(ticketingSourcesOn())}
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Google Places.</strong>{" "}

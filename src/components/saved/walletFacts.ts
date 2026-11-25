@@ -4,14 +4,15 @@
  * SHIPPED PlaceCardData fields (open_status, google_rating, distance_m,
  * price_band, hours, saved_at) so it can be spec'd without a DOM.
  *
- * The headline export is `lipFact`: a closed card's 62px lip carries the
+ * The headline export is `lipFact`: a closed card's row carries the
  * place name and exactly ONE mono fact, chosen by VALUE to the reader —
  * "can I go right now" beats a star rating beats geography. One fact,
  * never a chip pile; the stub ledger carries the rest after the raise.
  */
 import type { Hours, HoursWindow, DayOfWeek } from "@/data/places";
 import type { OpenStatus } from "@/lib/hours";
-import { isAllDayWindow } from "@/lib/hours";
+import { hoursForDate, isAllDayWindow, isDisplayOnlyHours } from "@/lib/hours";
+import { easternDayKey, easternParts } from "@/lib/tz";
 
 /** "21:00" -> "9 PM", "07:30" -> "7:30 AM". Null on a bad value. */
 export function fmtClock(hhmm?: string): string | null {
@@ -89,16 +90,10 @@ const DAY_LABEL: Record<DayOfWeek, string> = {
   mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
 };
 
-/** Frederick's current day-of-week, independent of the device timezone. */
-function frederickDay(now: Date): DayOfWeek {
-  const wd = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-  }).format(now);
-  const map: Record<string, DayOfWeek> = {
-    Sun: "sun", Mon: "mon", Tue: "tue", Wed: "wed", Thu: "thu", Fri: "fri", Sat: "sat",
-  };
-  return map[wd] ?? "mon";
+/** Midday on the Frederick calendar date `days` after `today`. 17:00 UTC is
+ *  noon or 1 PM Eastern on that same date in both halves of the year. */
+function middayOn(today: string, days: number): Date {
+  return new Date(Date.parse(`${today}T17:00:00Z`) + days * 86_400_000);
 }
 
 function windowsLine(windows: HoursWindow[]): string | null {
@@ -114,26 +109,54 @@ function windowsLine(windows: HoursWindow[]): string | null {
 }
 
 /**
- * The stub ledger's schedule cell: today's stated window ("Today ·
- * 11 AM – 11 PM"), else the next day that has one ("Tomorrow" / "Sat").
- * Prints the SHIPPED schedule, never an open/closed assertion — that
- * verdict stays with open_status and its verified-hours policy. Null when
- * the place carries no hours at all (the cell renders an honest dash).
+ * The stub ledger's schedule cell: the hours for today's date ("Today ·
+ * 11 AM – 11 PM"), else the next date that has any ("Tomorrow" / "Sat").
+ * Each date is read through `hoursForDate`, the same date-aware answer the
+ * place page prints as "Hours today" (or "Dinner hours today" for hours that
+ * describe one service), so a dated closure or early closing
+ * cannot contradict the card's own open status. A closed date has no line and
+ * the search moves on, and so does a today whose only window is last night's
+ * tail after it has ended. A date the schedule cannot confirm (an unconfirmed
+ * Thanksgiving, evidence past its horizon) is never printed as open: it says
+ * "Hours not confirmed" and the search stops there, because the card's open
+ * status promises nothing beyond it either. Still a schedule, never an
+ * open/closed verdict, which stays with open_status. Null when the place
+ * carries no hours at all (the cell renders an honest dash).
  */
 export function todayHoursLine(
   hours: Hours | undefined,
   now: Date = new Date(),
 ): { label: string; value: string } | null {
   if (!hours) return null;
-  const start = DAYS.indexOf(frederickDay(now));
+  const today = easternDayKey(now);
+  const hasWeeklyTable = DAYS.some((day) => (hours[day]?.length ?? 0) > 0);
+  // Hours that describe one service ("Dinner hours") carry its name, as the
+  // place page's "Dinner hours today" does.
+  const service = isDisplayOnlyHours(hours) ? hours._official?.qualification?.label.trim() : undefined;
   for (let i = 0; i < 7; i++) {
-    const day = DAYS[(start + i) % 7];
-    const line = windowsLine(hours[day] ?? []);
+    const at = i === 0 ? now : middayOn(today, i);
+    const day = i === 0 ? "Today" : i === 1 ? "Tomorrow" : DAY_LABEL[DAYS[at.getUTCDay()]];
+    const label = !service ? day : i < 2 ? `${service} ${day.toLowerCase()}` : `${service}, ${day}`;
+    const windows = hoursForDate(hours, at);
+    if (!windows) {
+      if (hasWeeklyTable) return { label, value: "Hours not confirmed" };
+      continue;
+    }
+    if (i === 0 && windows.length > 0 && windows.every((w) => endedMidnightTail(w, now))) continue;
+    const line = windowsLine(windows);
     if (!line) continue;
-    const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : DAY_LABEL[day];
     return { label, value: line };
   }
   return null;
+}
+
+/** A window that starts at midnight is the tail of the night before. True
+ *  once that tail has closed by `now` on the Frederick clock. Eastern offsets
+ *  are whole hours, so the UTC minute is Frederick's minute. */
+function endedMidnightTail(w: HoursWindow, now: Date): boolean {
+  if (w.open !== "00:00" || isAllDayWindow(w)) return false;
+  const [h, m] = w.close.split(":").map(Number);
+  return easternParts(now).hour * 60 + now.getUTCMinutes() >= h * 60 + m;
 }
 
 /** "0.4 mi" past a quarter mile, "320 m" under it. Null when unknown. */

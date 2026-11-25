@@ -53,7 +53,15 @@ async function readablePlace(canvasElement: HTMLElement) {
 }
 
 export const ConfirmedCurrentPlace: Story = {
-  play: async ({ canvasElement }) => readablePlace(canvasElement),
+  play: async ({ canvasElement }) => {
+    await readablePlace(canvasElement);
+    // The heading says "confirmed": the shelf speaks only for places whose
+    // hours are current, not for every place in the county.
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("heading", { name: "Confirmed open now" })).toBeVisible();
+    await expect(canvas.getByRole("region", { name: "Places confirmed open right now" })).toBeVisible();
+    await expect(canvas.queryByRole("heading", { name: "Places open now" })).toBeNull();
+  },
 };
 async function readableOpeningSoon(canvasElement: HTMLElement, name: string, fact: string) {
   await readablePlace(canvasElement);

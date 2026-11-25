@@ -178,6 +178,37 @@ describe("device save write confirmation", () => {
     expect(JSON.parse(localStorage.getItem("fr:saved:v1")!).map((item: { id: string }) => item.id)).toEqual(["tab-one", "tab-two"]);
   });
 
+  it("restores a removed event with the day it was first saved, for this tab and every other", async () => {
+    const original = "2026-11-18T15:00:00.000Z";
+    localStorage.setItem("fr:saved:v1", JSON.stringify([
+      { type: "place", id: "kept-place", saved_at: "2026-11-01T12:00:00.000Z" },
+      { type: "event", id: "undo-event", saved_at: original },
+    ]));
+    await act(async () => { expect(await setEventSaved("undo-event", false)).toBe(false); });
+    vi.resetModules();
+    const otherTab = await import("./useSaved");
+    expect(otherTab.useSavedList).toBeTypeOf("function");
+    await act(async () => { expect(await setEventSaved("undo-event", true, original)).toBe(true); });
+    const stored = JSON.parse(localStorage.getItem("fr:saved:v1")!) as { id: string; saved_at: string }[];
+    expect(stored.find((row) => row.id === "undo-event")?.saved_at).toBe(original);
+    // A second tab reads the same bytes when the storage event arrives.
+    function OtherTab() { return <span>{otherTab.useSavedList().map((row) => `${row.id}@${row.saved_at}`).join(",")}</span>; }
+    const tab = document.createElement("div");
+    const tabRoot = createRoot(tab);
+    await act(async () => tabRoot.render(<OtherTab />));
+    await act(async () => { window.dispatchEvent(new StorageEvent("storage", { key: "fr:saved:v1", storageArea: localStorage })); });
+    expect(tab.textContent).toContain(`undo-event@${original}`);
+    await act(async () => tabRoot.unmount());
+    // A stamp offered for a row that is already saved changes nothing, and a
+    // stamp that is not a date falls back to the time of the save.
+    const writes = vi.spyOn(Storage.prototype, "setItem");
+    await act(async () => { expect(await setEventSaved("undo-event", true, "2020-01-01T00:00:00.000Z")).toBe(true); });
+    expect(writes).not.toHaveBeenCalled();
+    await act(async () => { await setEventSaved("fresh-event", true, "not a date"); });
+    const fresh = (JSON.parse(localStorage.getItem("fr:saved:v1")!) as { id: string; saved_at: string }[]).find((row) => row.id === "fresh-event");
+    expect(Number.isFinite(Date.parse(fresh!.saved_at))).toBe(true);
+  });
+
   it("preserves old data and rejects changes when this browser cannot coordinate writes", async () => {
     localStorage.setItem("fr:saved:v1", JSON.stringify([{ type: "event", id: "old", saved_at: "2026-10-08" }]));
     const old = localStorage.getItem("fr:saved:v1");

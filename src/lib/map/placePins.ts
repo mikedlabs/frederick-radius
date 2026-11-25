@@ -1,6 +1,7 @@
 import "server-only";
 
 import { decoratePlace, publicPlaces } from "@/lib/loaders/places";
+import { duplicateNameQualifiers } from "@/lib/format/placeName";
 import type { MapPinPlace } from "@/components/map/types";
 
 /**
@@ -11,6 +12,8 @@ import type { MapPinPlace } from "@/components/map/types";
 export function mapPinPlace(
   place: Parameters<typeof decoratePlace>[0],
   now: Date,
+  /** Set only for a place that shares its name and town with another one. */
+  nameDetail?: string,
 ): MapPinPlace {
   const decorated = decoratePlace(place, undefined, now);
   const pin: MapPinPlace = {
@@ -26,6 +29,7 @@ export function mapPinPlace(
     municipality: decorated.municipality,
     short_blurb: decorated.short_blurb,
     primary_type: decorated.primary_type,
+    name_detail: nameDetail,
   };
 
   return Object.fromEntries(
@@ -41,7 +45,11 @@ let memo:
 export function mapPinPlaces(now = new Date()): MapPinPlace[] {
   const bucket = Math.floor(now.getTime() / 300_000);
   if (memo?.bucket === bucket) return memo.places;
-  const places = publicPlaces().map((place) => mapPinPlace(place, now));
+  const published = publicPlaces();
+  // Two stores with one name in one town ("Food Lion" in Frederick) are the
+  // only pins that carry a street line. Every other pin omits the field.
+  const nameDetails = duplicateNameQualifiers(published);
+  const places = published.map((place) => mapPinPlace(place, now, nameDetails.get(place.slug)));
   memo = { bucket, places };
   return places;
 }

@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   allDeals,
+  checkRank,
   daysInText,
   dealHoursForDay,
   dealOfferForDay,
   distillOffer,
   extractHoursForDay,
   stripProvenance,
+  todaysDeals,
 } from "./todaysDeals";
 
 describe("weekday normalization", () => {
@@ -185,5 +187,62 @@ describe("distillOffer", () => {
 
   it("falls back to the raw clause when stripping would gut the text", () => {
     expect(distillOffer("Every Thursday").headline).toBe("Every Thursday");
+  });
+});
+
+describe("source-check freshness", () => {
+  // The Wednesday the stale labels were reported from production.
+  const reported = new Date("2026-11-25T17:00:00Z");
+  // Years past any date in the committed notes, so every check is stale.
+  const yearsLater = new Date("2031-01-15T17:00:00Z");
+
+  /** No stale row may sit above a row whose check is inside the window. */
+  function lastCurrentBeforeFirstStale(rows: { verifiedCurrent?: boolean }[]) {
+    const firstStale = rows.findIndex((row) => !row.verifiedCurrent);
+    const lastCurrent = rows.findLastIndex((row) => Boolean(row.verifiedCurrent));
+    return firstStale === -1 || lastCurrent < firstStale;
+  }
+
+  it("ranks a current check ahead of a stale one", () => {
+    expect(checkRank({ verifiedCurrent: true })).toBeGreaterThan(
+      checkRank({ verifiedCurrent: false }),
+    );
+    // An owner-added row carries no check window and never outranks a check.
+    expect(checkRank({})).toBe(checkRank({ verifiedCurrent: false }));
+  });
+
+  it("prints a dated label for an old check and never calls it verified", () => {
+    const rows = allDeals(yearsLater);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.verifiedCurrent).toBe(false);
+      expect(row.verified).toMatch(/^last checked [A-Z][a-z]{2} \d{4}$/);
+    }
+  });
+
+  it("keeps every deal when its check goes stale", () => {
+    // Relabel and reorder only. Hiding old rows is an owner decision.
+    const key = (row: { slug: string; fullOffer: string }) =>
+      `${row.slug}|${row.fullOffer}`;
+    expect(allDeals(yearsLater).map(key).sort()).toEqual(
+      allDeals(reported).map(key).sort(),
+    );
+  });
+
+  it("lists current checks ahead of stale ones on the deals page", () => {
+    const rows = allDeals(reported);
+    expect(lastCurrentBeforeFirstStale(rows)).toBe(true);
+    for (const row of rows) {
+      expect(row.verified).toMatch(
+        row.verifiedCurrent ? /^verified / : /^last checked /,
+      );
+    }
+  });
+
+  it("leads today's strip with current checks", () => {
+    const rows = todaysDeals(reported, 999);
+    expect(lastCurrentBeforeFirstStale(rows)).toBe(true);
+    // One row per venue survives the freshness preference.
+    expect(new Set(rows.map((row) => row.slug)).size).toBe(rows.length);
   });
 });

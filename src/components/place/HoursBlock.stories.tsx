@@ -49,7 +49,8 @@ export const DatedClosure: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expectTouchDisclosure(canvas.getByText("Hours today · Closed"));
+    // The today line arrives with the first client tick, never from the server.
+    await expectTouchDisclosure(await canvas.findByText("Hours today · Closed"));
     await userEvent.click(canvas.getByText("Hours today · Closed"));
     const branch = canvas.getByRole("link", { name: "Official branch hours" });
     const closures = canvas.getByRole("link", { name: "FCPL holiday closures" });
@@ -120,6 +121,31 @@ export const NoScheduleStatusLine: Story = {
   },
 };
 
+const alwaysOpen = [{ open: "00:00", close: "24:00" }];
+const alwaysOpenHours: Hours = { mon: alwaysOpen, tue: alwaysOpen, wed: alwaysOpen, thu: alwaysOpen, fri: alwaysOpen, sat: alwaysOpen, sun: alwaysOpen };
+
+/** A cached page can carry a state that was true hours ago. The line never
+ * paints it: it waits for the state computed in this browser. */
+export const StaleServerStateIsNotPainted: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  parameters: { docs: { description: { story: "The server value says \"Closing soon\" for a place that is open all day. The status line holds its height with an empty placeholder until the first effect computes the state against this browser's clock, so the stale claim never appears." } } },
+  render: () => (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <LiveOpenStatus hours={alwaysOpenHours} verified initial={{ state: "closing-soon", closesAt: "22:00" }} />
+      <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>$$</span>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Thanksgiving Day withholds an ordinary weekly schedule, so the caveat
+    // is the correct computed answer on that one date.
+    const computed = await canvas.findByText(/^(?:Open 24 hours|Hours not recently confirmed)$/);
+    await expect(computed).toBeVisible();
+    await expect(canvas.queryByText(/Closing soon/)).not.toBeInTheDocument();
+    await expect(canvasElement.querySelector("[data-place-status-pending]")).toBeNull();
+  },
+};
+
 export const NativeBeforeClientListeners: Story = {
   globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
   parameters: { docs: { description: { story: "The real HoursBlock markup is copied without React listeners, representing native interaction before its JavaScript is ready. Its arrow follows the actual disclosure instead of waiting for a missed client toggle event." } } },
@@ -168,7 +194,7 @@ export const MerchantWeek: Story = {
   args: { hours: { ...hours, _official: { ...hours._official!, kind: "merchant", schedule_kind: "weekly", source_name: "Demonstration cafe", source_url: "https://example.org/", closures_url: undefined, exceptions: [] } }, provenance: "Hours from the demonstration cafe." },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expectTouchDisclosure(canvas.getByText(/Hours today/));
+    await expectTouchDisclosure(await canvas.findByText(/Hours today/));
     await userEvent.click(canvas.getByText(/Hours today/));
     await expect(canvas.getByRole("link", { name: "Official business hours" })).toBeVisible();
     await expect(canvas.queryByRole("link", { name: "FCPL holiday closures" })).not.toBeInTheDocument();
@@ -202,7 +228,7 @@ export const QualifiedMuseum: Story = {
     await expect(note).toBeVisible();
     await expect(note.closest("details")).toBeNull();
     await expect(canvas.getByText("Venue opening not confirmed")).toBeVisible();
-    await expect(canvas.getByText("Checked at source")).toBeVisible();
+    await expect(await canvas.findByText("Checked at source")).toBeVisible();
     await expect(canvas.queryByText("Unconfirmed")).not.toBeInTheDocument();
     const label = canvas.getByText("Museum hours today · 10am–5pm");
     await expectTouchDisclosure(label);
@@ -261,7 +287,7 @@ export const QualifiedKitchen: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("These are kitchen hours. Bar hours may differ.")).toBeVisible();
-    await expectTouchDisclosure(canvas.getByText("Kitchen hours today · 10am–5pm"));
+    await expectTouchDisclosure(await canvas.findByText("Kitchen hours today · 10am–5pm"));
     await expect(canvas.getByText("Checked at source")).toBeVisible();
   },
 };

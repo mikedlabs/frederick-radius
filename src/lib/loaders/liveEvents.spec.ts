@@ -51,6 +51,7 @@ import {
   getLiveCardEventBySlug,
   liveCleanSlug,
   LiveEventLookupIncompleteError,
+  liveToCardEvent,
 } from "./liveEvents";
 
 function card(slug: string): EventWithMeta {
@@ -277,5 +278,54 @@ it("returns a fast provider hit without waiting for a never-settling source", as
     await Promise.resolve();
 
     expect(mocks.venueEventsToCards).not.toHaveBeenCalled();
+  });
+});
+
+describe("liveToCardEvent venue names", () => {
+  function countyEvent(venue: string, address: string): LiveEvent {
+    return {
+      ...liveEvent("county-18068", "Bridge @ Frederick"),
+      source: "county",
+      source_label: "Frederick County Government",
+      venue_name: venue,
+      address,
+    };
+  }
+
+  it("prints the reviewed venue name where a county row sends its street address", () => {
+    const raw = countyEvent(
+      "1440 Taney Avenue",
+      "1440 Taney Avenue, Frederick, MD 21702",
+    );
+    const card = liveToCardEvent(raw);
+
+    expect(card.venue_name).toBe("Frederick 50+ Community Center");
+    // The address stays what the publisher sent, and the shared link is
+    // built from the title and date, so neither moves with the name.
+    expect(card.address).toBe("1440 Taney Avenue, Frederick, MD 21702");
+    expect(card.slug).toBe(liveCleanSlug(raw));
+    expect(card.slug).toBe(
+      liveToCardEvent(countyEvent("Somewhere else", "")).slug,
+    );
+  });
+
+  it("leaves an unreviewed address and another publisher's row as the feed sent them", () => {
+    expect(
+      liveToCardEvent(
+        countyEvent("121 N Bentz St", "121 N Bentz St, Frederick, MD 21701"),
+      ).venue_name,
+    ).toBe("121 N Bentz St");
+    expect(
+      liveToCardEvent({
+        ...countyEvent(
+          "1440 Taney Avenue",
+          "1440 Taney Avenue, Frederick, MD 21702",
+        ),
+        source: "celebrate",
+      }).venue_name,
+    ).toBe("1440 Taney Avenue");
+    expect(liveToCardEvent(liveEvent("named", "Named venue")).venue_name).toBe(
+      "Test venue",
+    );
   });
 });

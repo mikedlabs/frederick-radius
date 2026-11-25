@@ -114,9 +114,15 @@ function PlaceRow({
   };
   const category = CATEGORY_BY_SLUG[place.category];
   const town = MUNICIPALITY_BY_SLUG[place.municipality]?.name;
-  const locationLine = [category?.name ?? place.category, town].filter(Boolean).join(" · ");
+  const categoryName = category?.name ?? place.category;
+  const townLine = [categoryName, town].filter(Boolean).join(" · ");
+  // Two same-named stores in one town carry a street line, which takes the
+  // town's slot so their rows do not read identically.
+  const locationLine = place.name_detail ? `${categoryName} · ${place.name_detail}` : townLine;
   const status = placeStatus(place);
-  const subtitle = searchSubtitleBeyondLocation(searchSubtitle, locationLine);
+  // A search subtitle still leads with "Category · Town", so that is the
+  // prefix to drop even when the row prints the street.
+  const subtitle = searchSubtitleBeyondLocation(searchSubtitle, townLine);
   // Distance is a promise about where the reader is. Without a real device
   // fix there is no honest origin, so the row says nothing about distance.
   const hasDestination = isValidCoord(place.geom);

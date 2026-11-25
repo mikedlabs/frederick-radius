@@ -303,6 +303,40 @@
   margin-top: var(--app-space-2);
 }
 
+/* THE TRAILING CONTROL (Save on the Events board). It sits at the row's
+   trailing edge, at the foot of the picture's column and level with the last
+   line of facts, so a list of rows keeps its height. It is centered in that
+   column, under the picture or the category glyph, which puts every row's
+   control on one line down the list. It stays above the row link's overlay,
+   and above the photo credit (z-index 1) that starts 2px under the control's
+   44px box, so the credit cannot take the bottom of the Save target. */
+.trailingAction {
+  position: relative;
+  z-index: 2;
+  grid-column: 3;
+  grid-row: 1;
+  align-self: end;
+  justify-self: center;
+}
+
+/* A row with no picture and no glyph (an uncategorized event) has no third
+   column. It gets the same 64px slot, so its control and its title's right
+   edge line up with the rows around it. */
+.withTrailingAction:not(.withMedia) {
+  grid-template-columns: 4.75rem minmax(0, 1fr) 64px;
+}
+
+/* A short row still clears what sits above the control: the 64px picture, or
+   the 24px glyph under the eyebrow line, then a 4px gap and the control's
+   36px footprint. Rows with a venue and a timing note are already taller. */
+.withTrailingAction.withMedia .body {
+  min-height: calc(64px + 4px + 36px);
+}
+
+.withTrailingAction.withGlyph .body {
+  min-height: calc(0.8125rem * 1.35 + 4px + 24px + 4px + 36px);
+}
+
 .credit {
   position: relative;
   z-index: 1;
@@ -332,6 +366,20 @@
   .body {
     margin-top: var(--app-space-2);
   }
+
+  /* The facts now run the full width under the time column, so the control
+     follows them instead of sharing the picture's column. */
+  .trailingAction {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-self: start;
+    margin-top: var(--app-space-2);
+  }
+
+  .withTrailingAction.withMedia .body,
+  .withTrailingAction.withGlyph .body {
+    min-height: 0;
+  }
 }
 
 @media (max-width: 359.98px) {
@@ -358,6 +406,17 @@
 
   .glyph {
     display: none;
+  }
+
+  /* The trailing control keeps a column of its own width where the glyph
+     gave its slot back. The hidden glyph needs no clearance. */
+  .withTrailingAction:not(.withMedia),
+  .withTrailingAction.withGlyph {
+    grid-template-columns: 4.25rem minmax(0, 1fr) 36px;
+  }
+
+  .withTrailingAction.withGlyph .body {
+    min-height: 0;
   }
 
   .lead {

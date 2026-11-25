@@ -35,6 +35,10 @@ export type EventRowProps = {
    * "Happening now"), so the visible date line would only repeat it. The
    * date stays available to screen readers. */
   showDate?: boolean;
+  /** Replaces the weekday, month and day when the first day is not the day
+   * to print: a date-range listing in its run passes "Started Sep 8", so the
+   * column reads "through Dec 8" without a months-old date under it. */
+  dateLabel?: string;
   /** An approved thumbnail and its credit, placed by the row grid. Rows
    * without one remain purely typographic. */
   media?: ReactNode;
@@ -46,9 +50,13 @@ export type EventRowProps = {
    * picture's slot and shows this category's glyph there, so the right edge
    * of every title in a list lines up. The lead row never reserves it. */
   glyph?: string;
-  /** A control that belongs to the row (Save on the itinerary). It sits
-   * above the row's link overlay so it keeps its own tap target. */
+  /** A control that belongs to the row (Save). It sits above the row's link
+   * overlay so it keeps its own tap target. */
   action?: ReactNode;
+  /** "below" puts the control under the facts (the itinerary). "trailing"
+   * puts it at the row's trailing edge, under the picture or the category
+   * glyph, so a list of rows keeps its height (the Events board). */
+  actionPlacement?: "below" | "trailing";
   /** A full-width picture above the facts (the pictured lead). */
   banner?: ReactNode;
   /** On the compact weekend shelf the decision facts precede the image. */
@@ -81,11 +89,13 @@ export default function EventRow({
   extra,
   lead = false,
   showDate = true,
+  dateLabel,
   media,
   mediaCredit,
   mediaKind,
   glyph,
   action,
+  actionPlacement = "below",
   banner,
   bannerAfterFacts = false,
   position = "result",
@@ -110,11 +120,13 @@ export default function EventRow({
   }
   if (status) eyebrowItems.push(<span key="status" style={{ color: statusColor, fontWeight: 600 }}>{status}</span>);
   const showGlyph = !media && !lead && !banner && Boolean(glyph);
+  const trailingAction = Boolean(action) && actionPlacement === "trailing";
   const className = [
     styles.row,
     lead ? styles.lead : "",
     media || showGlyph ? styles.withMedia : "",
     showGlyph ? styles.withGlyph : "",
+    trailingAction ? styles.withTrailingAction : "",
     banner ? styles.withBanner : "",
     cancelled ? styles.cancelled : "",
   ].filter(Boolean).join(" ");
@@ -152,7 +164,9 @@ export default function EventRow({
           <span>{clock}</span>
           {meridiem ? <span className={styles.meridiem}>{meridiem}</span> : null}
         </span>
-        {showDate ? (
+        {dateLabel ? (
+          <span className={showDate ? styles.date : "sr-only"} data-event-row-date-label>{dateLabel}</span>
+        ) : showDate ? (
           <span className={styles.date}>
             <span>{weekday}</span>{" "}
             <span className={styles.monthDay}><span>{month}</span>{" "}<span>{day}</span></span>
@@ -177,8 +191,10 @@ export default function EventRow({
         {where ? <p data-event-card-venue className={styles.where}>{where}</p> : null}
         {note ? <p data-event-card-time className={styles.note}>{note}</p> : null}
         {extra}
-        {action ? <div className={styles.action}>{action}</div> : null}
+        {action && !trailingAction ? <div className={styles.action}>{action}</div> : null}
       </div>
+      {/* After the facts in reading and tab order, outside the event link. */}
+      {trailingAction ? <div data-event-row-action="trailing" className={styles.trailingAction}>{action}</div> : null}
       {bannerAfterFacts && bannerElement}
       {mediaCredit}
       {schedule && <EventTimeRail mark={schedule} id={scheduleId} />}

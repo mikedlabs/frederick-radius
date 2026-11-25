@@ -70,6 +70,46 @@ export const MastheadReading: Story = {
   },
 };
 
+const AIR_READING = "PM2.5 is in the good range (AQI 42). The AirNow reading is from 9:00 AM EDT on Oct 8.";
+
+export const MastheadAirQualityReading: Story = {
+  args: {
+    density: "masthead", headline: "Mostly sunny",
+    airQuality: { aqi: 42, category: "Good", parameter: "PM2.5", observedAt: "2026-10-08T13:00:00.000Z" },
+  },
+  play: async ({ canvasElement }) => {
+    const reading = canvasElement.querySelector<HTMLElement>("[data-weather-air-quality]")!;
+    const summary = canvasElement.querySelector<HTMLElement>("summary[data-today-weather-summary]")!;
+    // A routine reading is evidence. It waits inside the forecast details.
+    await expect(reading.closest("details")).not.toBeNull();
+    await expect(reading).not.toBeVisible();
+    await userEvent.click(summary);
+    await expect(reading).toBeVisible();
+    await expect(reading).toHaveTextContent(AIR_READING);
+    await expect(reading.querySelector("time")).toHaveAttribute("datetime", "2026-10-08T13:00:00.000Z");
+    await expect(canvasElement.scrollWidth).toBeLessThanOrEqual(canvasElement.clientWidth);
+  },
+};
+
+export const MastheadAlertWithoutAirReading: Story = {
+  args: {
+    density: "masthead", headline: "Wind Advisory is active.", actionableHeadline: true,
+    safetyNote: "The air-quality reading is unavailable.", safetyNoteRoutine: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The alert keeps the first read. The missing reading stays reachable behind it.
+    const alert = canvas.getByRole("heading", { name: "Wind Advisory is active." });
+    await expect(alert).toBeVisible();
+    await expect(alert.closest("details")).toBeNull();
+    const note = canvas.getByText("The air-quality reading is unavailable.");
+    await expect(note).not.toBeVisible();
+    await userEvent.click(canvasElement.querySelector<HTMLElement>("summary[data-today-weather-summary]")!);
+    await expect(note).toBeVisible();
+    await expect(note.closest("details")).not.toBeNull();
+  },
+};
+
 export const MastheadAlertFeedMiss: Story = {
   args: { density: "masthead", headline: "Mostly sunny", safetyNote: "The weather-alert feed is unavailable.", safetyNoteRoutine: false },
   play: async ({ canvasElement }) => {

@@ -216,13 +216,39 @@ contracts used.
   passes `glyph: event.category` on every list row.
 - **`banner`** places a full-width picture above the facts for a pictured
   lead.
+- **`dateLabel`** replaces the weekday, month and day when the first day is
+  not the day to print. A date-range listing in its run reads "through Dec 8"
+  as its time, so `EventCard` and `EventPosterCard` pass "Started Sep 8" with
+  `showDate` false: the column shows only the closing date and the label
+  stays available to screen readers. A range that has not opened, or a card
+  with no page clock, keeps its real first day.
+- **`action`** is a control that belongs to the row (Save). It keeps its own
+  44px target above the row link. **`actionPlacement`** says where it goes:
+  `"below"` (the default) puts it under the facts, as on the itinerary row;
+  `"trailing"` puts it at the row's trailing edge, under the picture or the
+  category glyph, so a list keeps its row height (the Events board).
+- `EventCard`'s **`saveControl`** asks for that trailing Save on the browsing
+  rows (`glance`, `discovery`, `tile`). The Events board sets it. Place pages,
+  collections and Today leave it off, `compact` and `utility` never show it,
+  and the `row` variant always keeps its boxed Save below the facts.
+- The Save is `ItineraryButton`, which writes through the same event save
+  path as `SaveButton`. It takes `eventId` and `eventName` (the display
+  title) and has three shapes: `boxed` (the bordered 36px square, the
+  default), `plain` (SaveButton's unboxed glyph, `SAVE_ICON_CLASS`, for list
+  rows) and `labeled` (EventActions' `LABELED_EVENT_ACTION_CLASS`, printing
+  Save or Saved beside the bookmark, which leads the event sheet's action
+  row). It is named "Save <title>" or "Saved <title>" to match what it shows.
+  While a change is pending, the name and word hold the confirmed state and
+  `aria-busy` says so; the labeled word reserves the width of "Saved", so the
+  row never rewraps mid-tap. Before mount it renders an inert, `aria-hidden`
+  placeholder that claims nothing, and "Saved state unavailable" appears only
+  after the device store has been read and could not be.
 - The other props are the facts (`slug`, `title`, `weekday`, `month`, `day`,
   `startTime`, `timing`, `category`, `where`, `extra`), state (`live`,
   `status` with `statusColor`, `cancelled`), `showDate` (false when the group
   heading already states the day; the date stays available to screen
-  readers), `action` (a control such as Save that keeps its own tap target
-  above the row link), `headingLevel` (`3` under a group heading, `2` for a
-  lead directly under the page title), and the telemetry hooks `position`,
+  readers), `headingLevel` (`3` under a group heading, `2` for a lead
+  directly under the page title), and the telemetry hooks `position`,
   `surface`, `layout` and `poster`.
 - Use it on Today, Events, Saved and the map list. Do not rebuild an event
   card, and do not give a second row the coral block.
@@ -287,6 +313,35 @@ row rules, so do not put cards inside a sheet.
   event data. Sheets FRONT-RUN pages; they never replace them (canonical
   URLs, JSON-LD, and SEO stay on the real pages).
 
+### Find loading frame and focus clearance
+When Find opens before its code has loaded, the header draws
+`SearchOverlayFallback` (`src/components/nav/TopBar.tsx`). It uses the root,
+scrim and panel values in `src/components/search/find-frame.ts`, so the swap
+to the real workspace does not move anything. Its story is "Radius UI/Find
+loading frame", at 320 and 390 pixels and at desktop width, in light and
+dark. If the Find chunk fails to load, the header drops both the request and
+the lazy wrapper, so the next open asks again.
+
+Focused controls in the reading column stop clear of the header and the
+phone tab bar. A base-layer rule in `globals.css` gives every link, button,
+summary, field and `[tabindex]` inside `.app-main-reading` a top scroll
+margin of the header height plus 12px and a bottom margin of the tab bar
+reserve plus 12px. It has no specificity, so a `scroll-mt-*` utility or a
+component's own margin still wins. A bar that pins directly under the
+header is already clear of it, so its controls get no top margin: today
+that is the Events dock head (`.eb-dock > .eb-head`), the docked Ask
+composer (`[data-ask-composer-dock="sticky"]`) and the Nearby filter bar
+(`[data-nearby-filter-dock]`). Add any new bar that pins under the header
+to that list.
+
+On Saved each wallet card is one ruled row. Rows overlap by their 1px
+hairline, an opened row keeps its side and closing hairlines, and below
+375px a place row hides its one fact so the name keeps its room. An event
+row keeps its date at every width. "Places in this view" on the map keeps
+its rows in one column bounded by the panel, and its meta line wraps to at
+most two lines, so a street qualifier never pushes the distance past the
+panel edge at 320px.
+
 ### Transient feedback: Sonner through `AppToaster` and `notify`
 
 `src/components/ui/AppToaster.tsx` is the one Sonner configuration,
@@ -301,6 +356,10 @@ notifyError({ title: "That did not save.", description, onRetry });
 ```
 - A reversible action offers Undo for 6 seconds. An error stays 8
   seconds and offers a retry when one exists.
+- Undo puts back exactly what was removed. A restored saved row keeps its
+  original `saved_at`, so pass the removed row's stamp to the store
+  (`setEventSaved(id, true, row.saved_at)`) instead of saving it again as
+  new. A page never keeps its own copy of the old stamp.
 - Toasts for one item share an id, so toggling it replaces its toast
   instead of stacking another.
 - Do not write a flash strip, a status chip, or a timer-driven message
@@ -315,8 +374,7 @@ place and event detail pages and pins the key actions (directions, call,
 tickets, calendar, save) within thumb reach. It is a flat bar attached to the
 screen's bottom edge: the page ground with one top hairline, and no floating
 offset, card, radius or shadow. Its height matches `--app-bottomnav-reserve`
-above the bottom safe area, so toasts and the feedback trigger clear it as
-they clear the tab bar. `MobileBarLink` with `primary` is the one filled
+above the bottom safe area, so toasts clear it as they clear the tab bar. `MobileBarLink` with `primary` is the one filled
 coral cell (white on `--app-brand-press`); every other cell is quiet ink text
 under its icon. `MobileBarControl` wraps a reused client control such as
 `SaveButton`. Link cells forward `data-decision-action`.
@@ -334,7 +392,7 @@ under its icon. `MobileBarControl` wraps a reused client control such as
   Directions or calendar cell. The desktop action row keeps its own order.
 - Do not stack it above `BottomNav` or add a second floating action bar.
 
-### `LiveOpenStatus` and `PlaceSourceLine`: answer first, provenance last
+### `LiveOpenStatus`, `HoursBlock` and `PlaceSourceLine`: answer first, provenance last
 `src/components/place/LiveOpenStatus.tsx` is the one status line under a
 place's title on the place page and in the place sheet. A confirmed open,
 closing-soon or closed state is the whole answer. Otherwise it keeps the plain
@@ -344,6 +402,30 @@ checked {date}" on its own line under it, the date the hours themselves were
 last checked (`hoursCheckedAt`, from `placeFreshnessEvidence(place).hours`).
 That date is plain muted text, not a `FreshnessChip`: the chip's green
 "checked at source" form would contradict the caveat.
+
+The place page is prerendered and cached, so a value computed on the server
+can be many hours old when a visitor first sees it. An open, closing-soon or
+closed state is a claim about the current minute, so the server HTML never
+carries one when the hours are present to recompute it. Until the first
+client effect computes the state against the visitor's clock, the line is an
+empty, `aria-hidden` placeholder (`data-place-status-pending`) one text-xs
+line tall and about one typical state wide, so the row around it barely
+moves. A minute tick keeps the state current after that. The states that do
+not depend on the time of day (unknown, unverified and a display-only
+schedule) still paint from the server value at once. Do not seed the line
+from the server status again.
+
+`src/components/place/HoursBlock.tsx` is the weekly schedule disclosure for
+a place that has hours. It follows the same rule: nothing that depends on
+today is painted from the server. Before its first client tick the summary
+is the plain label ("Hours", or the qualification label such as "Museum
+hours"), and the details hold the weekly table, the qualification note, the
+official source links and the hours provenance, which are true on any day.
+The "Hours today" line, its `TrustChip`, today's dated exception, the
+"needs a new check" warning and the "Previously posted" prefix arrive with
+the first tick, so a reader without scripts or a crawler is never told a
+build-day answer, and the server and client HTML match at hydration.
+
 `src/components/place/PlaceSourceLine.tsx` is the one muted line of record
 provenance after the content: the `SourceBadge`, "Confirmed by Google" when
 the hours are not first-party, the listing check (a `FreshnessChip`), and

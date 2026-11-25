@@ -66,6 +66,23 @@ describe("MapListPeek native directions", () => {
     expect(details("coffee-1").textContent).toContain("Drive-through window");
   });
 
+  it("prints the street of two same-named stores where the town would be, without repeating the town from search", async () => {
+    await mount({ list: list([
+      { kind: "place", place: place(0, { name: "Starbucks", name_detail: "104 N Market St" }), searchSubtitle: "Coffee · Brunswick" },
+      { kind: "place", place: place(1, { name: "Starbucks", name_detail: "899 W 7th St" }), searchSubtitle: "Coffee · Brunswick · Not confirmed: Wi-Fi." },
+      { kind: "place", place: place(2) },
+    ]) });
+    expect(details("coffee-0").textContent).toContain("Coffee · 104 N Market St");
+    expect(details("coffee-0").textContent).not.toContain("Brunswick");
+    expect(details("coffee-1").textContent).toContain("Coffee · 899 W 7th St");
+    // The search subtitle still loses its "Category · Town" lead and keeps the caveat.
+    expect(details("coffee-1").textContent).toContain("Not confirmed: Wi-Fi.");
+    expect(details("coffee-1").textContent).not.toContain("Brunswick");
+    expect(details("coffee-0").textContent).not.toBe(details("coffee-1").textContent);
+    // Every other row keeps its town.
+    expect(details("coffee-2").textContent).toContain("Coffee · Brunswick");
+  });
+
   it("makes the exact destination a separately named native link outside the place button", async () => {
     await mount();
     const link = directions();

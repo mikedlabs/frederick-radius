@@ -6,22 +6,20 @@ import { MessageSquare } from "lucide-react";
 import Sheet from "@/components/ui/Sheet";
 import { track } from "@/lib/track";
 import { FEEDBACK_MAX_MESSAGE } from "@/lib/feedback";
-import {
-  feedbackInMoreMenu,
-  OPEN_FEEDBACK_EVENT,
-  PENDING_FEEDBACK_KEY,
-} from "@/lib/feedback-ui";
+import { OPEN_FEEDBACK_EVENT, PENDING_FEEDBACK_KEY } from "@/lib/feedback-ui";
 import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
 /**
- * FeedbackWidget — the always-available "Send feedback" affordance on every
- * app page.
+ * FeedbackWidget owns the one "Send feedback" sheet for every app page.
  *
- * Today and Parking offer feedback in More tools to keep reading controls clear.
- * Elsewhere, a floating trigger (bottom-left, lifted clear of the bottom-nav pill and
- * the map's bottom-right controls) opens the canonical bottom Sheet, which
- * already carries the a11y contract: role=dialog + aria-modal, focus trap, ESC,
- * and focus restore to the trigger on close.
+ * More tools in the header offers feedback on every route and at every width.
+ * Where the desktop side rail is present (the lg breakpoint), a floating
+ * trigger also sits at the foot of that rail, where it covers no content.
+ * Below lg there is no floating trigger: on a phone it sat on the map's "Use
+ * my location" action and on rows of Saved and Events, and it took their taps.
+ * Both entries open the canonical bottom Sheet, which already carries the
+ * a11y contract: role=dialog + aria-modal, focus trap, ESC, and focus restore
+ * to the opener on close.
  *
  * Every visitor can send a note. It used to appear only for beta testers
  * (the `fr_who` cookie) and on the food-truck board; the beta layer was
@@ -32,15 +30,16 @@ import { MOBILE_BOTTOM_CHROME_RESERVE } from "@/components/ui/MobileActionBar";
 
 type Phase = "idle" | "sending" | "ok" | "error";
 
+/** Shown only from the breakpoint where SideRail replaces BottomNav
+ * (`hidden lg:flex` there, `hidden lg:inline-flex` here). The two must move
+ * together, because the trigger sits at the foot of the rail. */
+export const FEEDBACK_TRIGGER_DISPLAY_CLASS = "hidden lg:inline-flex";
+
+/** 12px above the bottom edge. The shared bottom-chrome reserve resolves to
+ * 0px wherever the trigger shows, and stays in the sum so the trigger can
+ * never sit on a bottom bar if that breakpoint and this one drift apart. */
 export const FEEDBACK_TRIGGER_BOTTOM =
   `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_CHROME_RESERVE} + 12px)`;
-
-/** On /map the dock's command bar sits at the same bottom offset, so the
- * standard position parks this pill exactly on the search field's left end
- * (mobile audit 2026-08-18: both boxes top out ~124px from the viewport
- * bottom). Lift the trigger clear of the 48px bar plus its 8px inset. */
-export const FEEDBACK_TRIGGER_BOTTOM_MAP =
-  `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_CHROME_RESERVE} + 12px + 56px)`;
 
 export function publicFeedbackSurface(
   pathname: string | null,
@@ -190,9 +189,10 @@ export default function FeedbackWidget() {
       {/* A compact icon-only tab, not a full text pill (beta review, Jul 2026:
           the pill overlapped content and fought the bottom controls). 44px so
           the tap target stays comfortable. The owner wants feedback reachable on
-          every screen. On routes that use the tab, it stays up
-          over other bottom sheets and only steps aside for its OWN open sheet. */}
-      {!open && !feedbackInMoreMenu(pathname) && (
+          every screen: More tools carries it everywhere, and this tab adds a
+          second entry beside the desktop rail. It stays up over other bottom
+          sheets and only steps aside for its OWN open sheet. */}
+      {!open && (
         <button
           type="button"
           onClick={(event) => {
@@ -201,15 +201,12 @@ export default function FeedbackWidget() {
           }}
           aria-haspopup="dialog"
           aria-label="Send feedback"
-          className="tap-44 fixed inline-flex h-11 w-11 items-center justify-center rounded-full border transition-colors"
+          data-feedback-trigger
+          className={`tap-44 fixed ${FEEDBACK_TRIGGER_DISPLAY_CLASS} h-11 w-11 items-center justify-center rounded-full border transition-colors`}
           style={{
             zIndex: "var(--z-fab)",
             left: "max(0.75rem, env(safe-area-inset-left, 0px))",
-            // BottomNav and MobileActionBar are mutually exclusive and share
-            // one shell reserve. One offset therefore clears either bottom
-            // control without double-counting both of them. The map carries
-            // its own bottom command bar, so the pill steps above it there.
-            bottom: pathname === "/map" ? FEEDBACK_TRIGGER_BOTTOM_MAP : FEEDBACK_TRIGGER_BOTTOM,
+            bottom: FEEDBACK_TRIGGER_BOTTOM,
             background: "var(--app-bg-elevated-solid)",
             borderColor: "var(--app-border)",
             color: "var(--app-ink-2)",

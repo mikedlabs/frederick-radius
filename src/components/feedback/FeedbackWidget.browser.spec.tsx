@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OPEN_FEEDBACK_EVENT } from "@/lib/feedback-ui";
 
-import FeedbackWidget from "./FeedbackWidget";
+import FeedbackWidget, { FEEDBACK_TRIGGER_DISPLAY_CLASS } from "./FeedbackWidget";
 
 let pathname = "/food-trucks";
 
@@ -43,15 +43,26 @@ describe("FeedbackWidget public reporting", () => {
     document.body.querySelectorAll('[role="dialog"]').forEach((node) => node.remove());
   });
 
-  it("keeps the floating control on active reporting surfaces and leaves Today and Parking clear", async () => {
+  it("renders the same floating control on every route, shown only beside the desktop rail", async () => {
     expect(document.cookie).not.toContain("fr_who");
-    for (const page of ["/today", "/parking", "/map", "/food-trucks", "/places/baker-park-frederick"]) {
+    const rendered: Array<string | null> = [];
+    for (const page of ["/today", "/parking", "/map", "/events", "/my-radius", "/food-trucks", "/places/baker-park-frederick"]) {
       pathname = page;
       await act(async () => {
         root.render(createElement(FeedbackWidget));
       });
-      expect(!!container.querySelector('button[aria-label="Send feedback"]'), page).toBe(page !== "/today" && page !== "/parking");
+      const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="Send feedback"]');
+      expect(trigger, page).not.toBeNull();
+      // Hidden below lg, where it covered the map's location action and rows
+      // of Saved and Events. jsdom applies no stylesheet, so read the classes.
+      expect(FEEDBACK_TRIGGER_DISPLAY_CLASS).toBe("hidden lg:inline-flex");
+      expect(trigger!.classList.contains("hidden"), page).toBe(true);
+      expect(trigger!.classList.contains("lg:inline-flex"), page).toBe(true);
+      expect(trigger!.classList.contains("inline-flex"), page).toBe(false);
+      rendered.push(trigger!.outerHTML);
     }
+    // No route moves or restyles it, the map included.
+    expect(new Set(rendered).size).toBe(1);
   });
 
   it("opens the one generic form from an inline page request", async () => {

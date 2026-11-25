@@ -33,6 +33,7 @@ import {
 } from "@/lib/events/attendance";
 import { classifyEvent } from "@/lib/events/classify";
 import { storedCopyCategory } from "@/lib/events/county-category";
+import { reviewedVenueNameForAddress } from "@/lib/events/venue-resolver";
 import { cleanEventSlug } from "@/lib/events/normalize";
 import { FREDERICK_COUNTY_BBOX, type LngLat } from "@/lib/geo";
 import { resolveFrederickMunicipality } from "@/lib/location";
@@ -256,15 +257,30 @@ function occurrenceToCard(
     is_recurring: isRecurring,
     // Cancelled dates are lifecycle updates, never promised upcoming dates.
     recurrence_text: isRecurring ? `${scheduledCount} upcoming dates` : undefined,
-    venue_name: attendance_mode === "online" ? "Online" : (s.venueName ?? ""),
+    // A county, city or Mount Airy feed that prints only a street address gets
+    // its reviewed venue name, the same rule the live feeds use. The slug above
+    // was already computed, so shared links do not move.
+    venue_name: attendance_mode === "online"
+      ? "Online"
+      : (reviewedVenueNameForAddress({ venue_name: s.venueName, address: s.address, source }) ?? s.venueName ?? ""),
     address: attendance_mode === "online" ? "" : (s.address ?? ""),
     geom,
     municipality,
     category,
     audience: audienceFromText(s.title, s.description),
-    // No reliable admission signal on these feeds — withhold the "Free" claim
-    // rather than mislabel a bingo buy-in as free.
-    is_free: false,
+    // Neither feed carries an admission field. The library states that all of
+    // its programs are available at no cost (the general questions on
+    // https://www.fcpl.org/srpfaq/general-questions, read 2026-11-25), so a
+    // library row is free unless its own text states a price, a fee or a
+    // ticket. The fire company feed has no such statement, so it withholds
+    // the "Free" claim rather than mislabel a bingo buy-in as free. "No cost",
+    // "at no cost", "free of cost" and "without cost" say the opposite of a
+    // price, so they are removed before the test.
+    is_free:
+      source === "fcpl" &&
+      !/\$\s?\d|\bfees?\b|\bcosts?\b|\btickets?\b/i.test(
+        `${s.title} ${s.description ?? ""}`.replace(/\b(?:no|free\s+of|without)\s+costs?\b/gi, " "),
+      ),
     attendance_mode,
     online_url,
     hero_image: s.heroImage ?? undefined,

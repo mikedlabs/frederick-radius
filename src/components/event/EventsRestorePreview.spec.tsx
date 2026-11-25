@@ -76,6 +76,28 @@ describe("public restore-preview server HTML", () => {
     expect(root.textContent).toContain("through Apr 30");
     expect(root.textContent).not.toMatch(/Happening now|Open now|12:00 PM/);
   });
+  it("does not lead with a running range or print its first day as the row's date", () => {
+    // Site audit, November 25, 2026: the start-sorted list put an exhibit
+    // that opened weeks earlier first, labeled with its opening day.
+    const exhibit = event("running-exhibit", { starts_at: "2030-04-01T16:00:00Z", ends_at: "2030-04-30T22:00:00Z" });
+    const concerts = ["one", "two", "three"].map(slug => event(slug));
+    expect(eventsForRestorePreview([exhibit, ...concerts], NOW).map(row => row.slug)).toEqual(["one", "two", "three"]);
+    // It still fills a slot the dated listings leave open, after them.
+    expect(eventsForRestorePreview([exhibit, concerts[0]], NOW).map(row => row.slug)).toEqual(["one", "running-exhibit"]);
+    const links = [...render([exhibit, concerts[0]]).querySelectorAll<HTMLAnchorElement>("a[data-events-preview-link]")];
+    expect(links[1].querySelector("[data-events-preview-time]")?.textContent).toBe("Running through Apr 30");
+    expect(links[1].querySelector("time")).toBeNull();
+    expect(links[1].textContent).not.toMatch(/APR 1\b|Mon/);
+    expect(links[0].querySelector("time")?.textContent).toBe("Thu APR 18");
+  });
+  it("keeps a range that opens later in its dated place, because opening day is a real date", () => {
+    const opening = event("opening-exhibit", { starts_at: "2030-04-18T20:00:00Z", ends_at: "2030-05-30T22:00:00Z" });
+    const later = event("later-concert", { starts_at: "2030-04-19T22:00:00Z", ends_at: "2030-04-20T00:00:00Z" });
+    expect(eventsForRestorePreview([opening, later], NOW).map(row => row.slug)).toEqual(["opening-exhibit", "later-concert"]);
+    const link = render([opening, later]).querySelector<HTMLAnchorElement>("a[data-events-preview-link]")!;
+    expect(link.querySelector("time")?.textContent).toBe("Thu APR 18");
+    expect(link.querySelector("[data-events-preview-time]")?.textContent).toBe(" · through May 30");
+  });
   it("preserves published cancellation/postponement and unknown-end evidence", () => {
     const root = render([event("cancelled", { status: "cancelled", ends_at: "2030-04-18T22:00:00Z" }), event("postponed", { status: "postponed" })]);
     const links = [...root.querySelectorAll<HTMLAnchorElement>("a[data-events-preview-link]")];

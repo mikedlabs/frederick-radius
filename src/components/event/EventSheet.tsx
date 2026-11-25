@@ -33,6 +33,11 @@ import {
   isLikelyEventActionUrl,
 } from "@/lib/events/attendance";
 
+/* On a wide sheet a full-width frame upscaled a 504px flyer to 718px and
+ * pushed the description below the fold, so the venue photo and publisher
+ * artwork stop at 26rem from the sm breakpoint up. Phones keep full width. */
+const SHEET_MEDIA_CLASS = "mt-4 sm:max-w-[26rem]";
+
 /**
  * EventSheet — the event side of the shared sheet system (app-like
  * pass, phase 2). Browsing a list of forty events used to cost a full
@@ -180,10 +185,7 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
          *  the content is already in place as the sheet arrives. */}
         <div className="px-5 pt-4">
           <header className="min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</p>
-              <ItineraryButton eventId={event.slug} label={`Add ${eventDisplayTitle(event)} to itinerary`} />
-            </div>
+            <p className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>{categoryLabel}</p>
             <h2 className={`mt-1 break-words text-[1.375rem] font-semibold leading-snug tracking-tight ${isCancelled ? "line-through opacity-80" : ""}`}
               style={{ color: "var(--app-ink)" }}>{eventDisplayTitle(event)}</h2>
           </header>
@@ -357,13 +359,20 @@ function EventSheetContent({ event, onClose }: { event: EventWithMeta; onClose: 
                 Plan around this event <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
               </Link>
             )}
-            <EventActions event={{ ...event, ends_at: eventHasTrustworthyEnd(event) ? event.ends_at : event.starts_at }} actions={canAttend && !isDateOnlyEventAnchor(event) ? ["calendar", "share"] : ["share"]} labeled className="pt-1" />
+            {/* Save leads the labeled actions, with its word beside the
+                bookmark. EventActions lends its two buttons to this row
+                (display: contents), so the three wrap as one set on a
+                narrow phone. */}
+            <div data-event-sheet-actions className="flex flex-wrap items-center gap-2 pt-1">
+              <ItineraryButton eventId={event.slug} eventName={eventDisplayTitle(event)} appearance="labeled" />
+              <EventActions event={{ ...event, ends_at: eventHasTrustworthyEnd(event) ? event.ends_at : event.starts_at }} actions={canAttend && !isDateOnlyEventAnchor(event) ? ["calendar", "share"] : ["share"]} labeled className="contents!" />
+            </div>
           </div>
 
-          {photoVisual && <EventVenuePhoto visual={photoVisual} className="mt-4" />}
+          {photoVisual && <EventVenuePhoto visual={photoVisual} className={SHEET_MEDIA_CLASS} />}
 
           {eventVisual?.presentation === "artwork" && (
-            <EventArtwork visual={eventVisual} className="mt-4" />
+            <EventArtwork visual={eventVisual} className={SHEET_MEDIA_CLASS} />
           )}
 
           {/* What — the cleaned description, clamped; the full page

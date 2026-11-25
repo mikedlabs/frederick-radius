@@ -356,7 +356,7 @@ describe("Today retains a scoped useful answer after checking every category", (
     expect(card?.querySelector("[data-today-pick-fact]")?.textContent).toBe("Hours not posted");
     expect(container.textContent).toContain("Places to try");
     expect(container.textContent).toContain("Brunswick picks · Hours not confirmed; call ahead");
-    expect(container.textContent).not.toContain("Places open now");
+    expect(container.textContent).not.toContain("Confirmed open now");
     expect(state.answer.mock.calls).toEqual(["cat:restaurant", "cat:brewery", "cat:bar"].map((category) => [category, null, "town:brunswick"]));
     const action = card?.querySelector<HTMLAnchorElement>("[data-today-place-lead]");
     expect(new URL(action!.href).searchParams.get("returnTo")).toBe("/today?in=brunswick");

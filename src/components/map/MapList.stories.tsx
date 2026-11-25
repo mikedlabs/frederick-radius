@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import MapList from "./MapList";
+import type { MapPinPlace } from "./types";
 
 let metadataRequests: string[] = [];
 
@@ -221,6 +222,32 @@ export const MetaLineWrapsAsTextAt320: Story = {
     // No dead band: the row ends just below the taller of its text and its
     // fixed 56px frame.
     await expect(box.bottom - Math.max(main.bottom, frame.bottom)).toBeLessThanOrEqual(16);
+  },
+};
+
+const sampleMarket: Omit<MapPinPlace, "slug" | "name" | "geom"> = { category: "market", subcategories: [], open_status: { state: "open", closesAt: "23:00", closingSoon: false }, source: "manual", is_verified: true, municipality: "frederick", short_blurb: "" };
+
+/** Two stores with one name in one town carry a street line. It takes the
+ * town's slot, so the two rows never read identically, and the third row
+ * (a unique name) keeps its town. */
+export const SameNameStoresShowTheirStreet: Story = {
+  globals: { viewport: { value: "radiusMobileNarrow", isRotated: false } },
+  args: { preserveOrder: true, places: [
+    { ...sampleMarket, slug: "story-market-north", name: "Sample Market", name_detail: "2060 Yellow Springs Rd", geom: { lat: 39.45, lng: -77.45 } },
+    { ...sampleMarket, slug: "story-market-south", name: "Sample Market", name_detail: "6920 Crestwood Blvd", geom: { lat: 39.37, lng: -77.41 } },
+    { ...sampleMarket, slug: "story-market-other", name: "Sample Corner Grocery", geom: { lat: 39.414, lng: -77.41 } },
+  ] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [north, south] = canvas.getAllByRole("button", { name: /Sample Market/ });
+    await expect(north).toHaveTextContent("2060 Yellow Springs Rd");
+    await expect(south).toHaveTextContent("6920 Crestwood Blvd");
+    await expect(north).not.toHaveTextContent("Frederick City");
+    await expect(north.textContent).not.toBe(south.textContent);
+    await expect(canvas.getByRole("button", { name: /Sample Corner Grocery/ })).toHaveTextContent("Frederick City");
+    // The longer line still fits a 320px phone without pushing the page wide.
+    const doc = canvasElement.ownerDocument;
+    await expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(doc.defaultView!.innerWidth + 1);
   },
 };
 

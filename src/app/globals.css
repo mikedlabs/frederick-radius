@@ -377,12 +377,25 @@
 }
 
 
-/* The existing wallet still raises and discloses its real saved records.
- * Neutral stock replaces the category paint, gloss, and entrance animation;
- * overlap margins and 44px disclosure/action targets retain their geometry. */
-/* Plain tool: each wallet face is a white sheet with one hairline and a 6px
- * corner. With no lift, the overlapping lips read as ruled rows; the hairline
- * at each face's top edge is the only seam. */
+/* The existing wallet still discloses its real saved records. Neutral stock
+ * replaces the category paint, gloss, and entrance animation; the 44px
+ * disclosure and action targets retain their geometry. */
+/* Plain tool: each wallet face is a white sheet with one hairline. The faces
+ * are real rows, not a tucked deck: a closed face is exactly as tall as its
+ * reading row at any text size, and each row overlaps the one above by its
+ * 1px hairline, so every seam is a single rule and the list keeps one 6px
+ * corner at each end. */
+[data-app-primary-tab="/my-radius"] .sw-stack { margin-inline: 0; }
+[data-app-primary-tab="/my-radius"] .sw-slot:not(:first-child) { margin-top: -1px; }
+[data-app-primary-tab="/my-radius"] .sw-slot:not(.is-open) > .sw-card { min-height: 0; }
+[data-app-primary-tab="/my-radius"] .sw-slot:not(:first-child) > .sw-card {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+[data-app-primary-tab="/my-radius"] .sw-slot:not(:last-child) > .sw-card {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
 [data-app-primary-tab="/my-radius"] .sw-card,
 [data-app-primary-tab="/my-radius"] .sw-card.is-open {
   color: var(--app-ink);
@@ -395,12 +408,9 @@
 [data-app-primary-tab="/my-radius"] .sw-art,
 [data-app-primary-tab="/my-radius"] .sw-glyph { display: none; }
 [data-app-primary-tab="/my-radius"] .sw-face { padding: var(--app-space-4); }
-/* A single closed event needs only its reading row. Multi-item decks retain
- * their covered-card height and tuck so earlier faces cannot protrude below
- * the final card. Expanded cards keep the complete ledger and actions. */
-[data-app-primary-tab="/my-radius"] .sw-slot[id^="swe-slot-"]:first-child:last-child:not(.is-open) > .sw-card {
-  min-height: calc(var(--app-space-4) * 4);
-}
+/* The opened face has no artwork to show, so the ledger starts right under
+ * its name row. */
+[data-app-primary-tab="/my-radius"] .sw-card.is-open .sw-face { min-height: 0; }
 [data-app-primary-tab="/my-radius"] .sw-name { text-shadow: none; }
 [data-app-primary-tab="/my-radius"] .sw-brand svg { filter: none; }
 [data-app-primary-tab="/my-radius"] .sw-brand:focus-visible,
@@ -433,9 +443,13 @@
   box-shadow: none;
   text-shadow: none;
 }
+/* The card's hairline is an inset shadow, which a child's fill paints over.
+ * The ledger takes the card's own ground (set inline), so an opened row keeps
+ * its side rules and, as the last row, the list's closing rule. */
 [data-app-primary-tab="/my-radius"] .sw-stub {
   padding: var(--app-space-3) var(--app-space-4);
   border-top: 1px solid var(--app-border);
+  background: transparent;
 }
 [data-app-primary-tab="/my-radius"] .sw-stub::before,
 [data-app-primary-tab="/my-radius"] .sw-stub::after { display: none; }
@@ -534,11 +548,12 @@
 }
 
 @media (max-width: 63.999rem) {
-  /* The last content must scroll clear of both the bottom bar and the
-     feedback trigger that floats 12px above it: 57px bar + 12px gap + 44px
-     trigger + 13px of air = 126px (7.875rem). FeedbackWidget.spec pins it. */
+  /* The last content must scroll clear of the bottom bar: 57px bar + 15px of
+     air = 72px (4.5rem). Nothing floats above the bar at these widths now
+     that feedback opens from More tools. MobileActionBar.spec pins the
+     floor. */
   .app-main-reading[data-bottom-nav-reserve="true"] {
-    padding-bottom: calc(7.875rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 
   /* A modal sheet owns the full mobile viewport, including the bottom band.
@@ -793,6 +808,32 @@ button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
    unlayered :focus-visible rule above regardless of specificity. */
 #main-content:focus-visible {
   outline: none;
+}
+/* The sticky header covers whatever the browser scrolls to the top edge.
+   "Skip to content" lands the page just under it, and a control that takes
+   keyboard focus stops clear of the header and of the phone tab bar instead
+   of under them. Both rules have no specificity and sit in the BASE layer on
+   purpose: a `scroll-mt-*` utility or a component's own scroll margin still
+   wins, where an unlayered rule here would override every utility. Only the
+   block axis is set, so horizontal rails keep their snapping. */
+@layer base {
+  :where(#main-content) {
+    scroll-margin-top: calc(var(--app-topbar-h) + env(safe-area-inset-top, 0px) + 1px);
+  }
+  :where(.app-main-reading) :where(a, button, summary, input, select, textarea, [tabindex]) {
+    scroll-margin-top: calc(var(--app-topbar-h) + env(safe-area-inset-top, 0px) + 12px);
+    scroll-margin-bottom: calc(var(--app-bottomnav-reserve) + env(safe-area-inset-bottom, 0px) + 12px);
+  }
+  /* A bar pinned directly under the header is already clear of it, and it
+     can never sit 12px lower, so the margin above made the page jump each
+     time one of its controls took focus. These are the reading column's
+     pinned bars: the Events dock head, the Ask composer once it docks, and
+     the Nearby filter bar. The Events filter pane is not in this list: its
+     choices scroll inside the pane and still clear the pane's sticky head.
+     A new pinned bar under the header belongs here too. */
+  :where(.eb-dock > .eb-head, [data-ask-composer-dock="sticky"], [data-nearby-filter-dock]) :where(a, button, summary, input, select, textarea, [tabindex]) {
+    scroll-margin-top: 0;
+  }
 }
 
 /* Range slider thumb — sized to the Apple HIG / Material Design 44pt
@@ -2933,24 +2974,12 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* The wallet is a hand-held object: cap the stack at phone width and center
    it, so desktop doesn't stretch each card to the full content column. */
 .sw-stack { display: flex; flex-direction: column; max-width: 30rem; margin-inline: auto; }
-/* Deck rhythm lives on the SLOT (the listitem wrapper), not the card: each
-   card is the :first-child of its own wrapper, so a card-level first-child
-   margin reset matched every card and the tuck never happened (the shipped
-   bug — do not move these margins onto .sw-card). Each slot tucks under the
-   next leaving a 62px lip: the full brand row, nothing else. */
-.sw-slot {
-  margin-top: -124px;
-  transition: margin .42s cubic-bezier(.22,1,.36,1);
-}
-.sw-slot:first-child { margin-top: 0; }
-/* A raised slot loosens (not leaves) the deck: still overlapping its
-   predecessor, just less, so the card above widens its lip instead of
-   popping fully out alongside the raised one. */
-.sw-slot.is-open { margin-top: -64px; }
-.sw-slot:first-child.is-open { margin-top: 0; }
-/* The deck resumes BELOW the raised pass: the next card drops fully clear so
-   the raised card's stub (ledger + actions) is never covered. */
-.sw-slot.is-open + .sw-slot { margin-top: 10px; }
+/* The tucked deck (each slot pulled 124px under the next, a raised slot
+   loosened to 64px, a 10px drop after it) is retired. The wallet renders
+   only on Saved, whose rules near the top of this file lay the slots out as
+   ruled rows. Row spacing stays on the SLOT (the listitem wrapper), never on
+   .sw-card: each card is the :first-child of its own wrapper, so a
+   card-level first-child rule matches every card. */
 
 .sw-card {
   position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
@@ -3055,7 +3084,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   outline: 2px solid var(--app-ink-inverse); outline-offset: 3px;
 }
 .sw-brand svg { flex: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
-.sw-card-summary { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+/* The summary never shrinks: its fact and its 44px disclosure cannot get
+   narrower, so a shrinking summary pushed the button past the card edge.
+   Only the name gives up room, and it ends in an ellipsis. */
+.sw-card-summary { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 8px; }
 .sw-disclosure {
   flex: none; width: 44px; height: 44px; display: grid; place-items: center;
   margin: -9px -9px -9px 0; border: 0; border-radius: 50%;
@@ -3097,6 +3129,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 .sw-card.is-open .sw-lipfact { display: none; }
 .sw-card.is-open .sw-tier { display: inline; }
+/* Below 375px a place's fact leaves its name too little room, so the name
+   wins and the opened row still lists the hours, rating and town. Measured
+   on Saved beside "Open till 3 PM": the name keeps about 6 letters at 344px
+   and 10 at 360px, against 12 at 375px and 14 at 390px (a place name is 22
+   characters at the median). An event keeps its date, which is shorter. */
+@media (max-width: 374.98px) {
+  .sw-slot[id^="sw-slot-"] .sw-lipfact { display: none; }
+}
 
 /* Raised-only face content: the owner's verified field note + deal tag. */
 .sw-facebody { margin-top: 14px; display: none; }
@@ -3200,7 +3240,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @keyframes sw-reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sw-slot, .sw-card { transition: none; animation: none; }
+  .sw-card { transition: none; animation: none; }
   .sw-card.is-open::before { animation: none; }
   .sw-card.is-open .sw-facebody, .sw-card.is-open .sw-stub { animation: none; }
   .sw-dot { animation: none; }
@@ -8879,6 +8919,13 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   height: 44px !important;
   min-height: 44px !important;
 }
+/* Mapbox draws its info glyph as a 24px background meant for a 24px button.
+   In the 44px target it tiled four times, so draw it once in the middle, as
+   the MapLibre rule above does. */
+.mapboxgl-map .mapboxgl-ctrl-attrib-button {
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}
 
 .radius-hover-popup,
 .radius-hover-popup .mapboxgl-popup-tip {
@@ -8970,8 +9017,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     border: 1px solid color-mix(in srgb, var(--app-ink) 12%, transparent);
     border-radius: 11px;
     background-color: color-mix(in srgb, var(--app-bg-elevated-solid) 84%, transparent);
-    background-position: 50% 50%;
-    background-repeat: no-repeat;
     box-shadow: 0 5px 16px rgba(35, 29, 22, 0.1);
   }
 

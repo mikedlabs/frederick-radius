@@ -74,8 +74,9 @@ export default function AppLayout({ children, modal }: {
               event log (via track(), so opt-out + NFC attribution apply).
               Renders nothing. */}
           <PageViewTracker />
-          {/* "Send feedback" for every visitor. It offsets clear of the
-              BottomNav bar and the map's bottom-right controls. */}
+          {/* "Send feedback" for every visitor. The sheet opens from More
+              tools on every route; the floating trigger shows only at the
+              foot of the desktop rail. */}
           <FeedbackWidget />
           {/* The global Cmd/Ctrl+K search is the TopBar's SearchOverlay
               (full /api/search). A second cmdk palette used to mount here

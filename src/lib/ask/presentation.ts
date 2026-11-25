@@ -10,7 +10,8 @@ import {
 
 const DISCOVERY_KINDS = new Set(["place", "event", "explore"]);
 
-function isDiscoverySource(source: AskSource): boolean {
+/** A source that is itself a place or event in Radius, not evidence about one. */
+export function isDiscoverySource(source: AskSource): boolean {
   return source.href.startsWith("/places/") || source.href.startsWith("/events/");
 }
 
@@ -189,6 +190,66 @@ export function withAskResponsePresentation(
   return {
     ...ranked,
     presentation: askResponsePresentation(ranked),
+  };
+}
+
+export type AskSupportingSourcesDisclosure = {
+  /** Heading on the disclosure's summary row. */
+  label: string;
+  /** Count shown beside the heading, such as "3 more" or "2 sources". */
+  countLabel: string;
+  /** Whether the disclosure starts open. */
+  open: boolean;
+  /** Plural noun for the "Show all 3 ..." control inside the disclosure. */
+  noun: "matches" | "sources";
+};
+
+/**
+ * How the rows after the lead result are introduced.
+ *
+ * When every row of a standard answer is a place or an event, the rows under
+ * the lead are more answers to the question, not citations. An answer that
+ * says "I found 4 events" above one card and a closed "Sources behind this
+ * answer" row hid three of the four. Those rows start open and are named for
+ * what they are. Evidence rows (a guide, an official page, a forecast) keep
+ * the closed sources disclosure, and the place and civic layouts keep their
+ * own headings.
+ */
+export function askSupportingSourcesDisclosure(
+  layout: AskResponsePresentation["layout"],
+  sources: readonly AskSource[],
+): AskSupportingSourcesDisclosure {
+  const count = Math.max(0, sources.length - 1);
+  const sourceCount = `${count} ${count === 1 ? "source" : "sources"}`;
+  if (layout === "place") {
+    return {
+      label: "Other options and sources",
+      countLabel: sourceCount,
+      open: true,
+      noun: "sources",
+    };
+  }
+  if (layout === "civic") {
+    return {
+      label: "More official sources",
+      countLabel: sourceCount,
+      open: false,
+      noun: "sources",
+    };
+  }
+  if (layout === "standard" && count > 0 && sources.every(isDiscoverySource)) {
+    return {
+      label: "More matches",
+      countLabel: `${count} more`,
+      open: true,
+      noun: "matches",
+    };
+  }
+  return {
+    label: "Sources behind this answer",
+    countLabel: sourceCount,
+    open: false,
+    noun: "sources",
   };
 }
 

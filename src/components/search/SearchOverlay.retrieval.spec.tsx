@@ -17,6 +17,7 @@ vi.mock("@/hooks/useRecentSearches", () => ({
   usePushRecentSearch: () => navigation.recent, useClearRecentSearches: () => vi.fn(),
 }));
 import SearchOverlay from "./SearchOverlay";
+import { FIND_FRAME_PANEL_CLASS, FIND_FRAME_ROOT_CLASS, FIND_FRAME_SCRIM_CLASS } from "./find-frame";
 import { setScope } from "@/lib/scope";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -87,6 +88,28 @@ describe("Find retrieval-first interactions", () => {
     expect(navigation.leaveTo).toHaveBeenLastCalledWith("/map?at=39.42000,-77.40000&place=gravel-and-grind-frederick");
     await act(async () => first.click());
     expect(navigation.leaveTo).toHaveBeenLastCalledWith(gravel.href);
+  });
+
+  it("requests restored words at once and keeps the typing debounce for edits", async () => {
+    await render("coffee");
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(requests).toHaveLength(1);
+    expect(new URL(requests[0].url, "https://test.local").searchParams.get("q")).toBe("coffee");
+    await type("coffee shop");
+    expect(requests[0].signal.aborted).toBe(true);
+    await act(async () => vi.advanceTimersByTimeAsync(140));
+    expect(requests).toHaveLength(1);
+    await act(async () => vi.advanceTimersByTimeAsync(20));
+    expect(requests).toHaveLength(2);
+    expect(new URL(requests[1].url, "https://test.local").searchParams.get("q")).toBe("coffee shop");
+  });
+
+  it("draws the shared Find frame, so the header's loading state can match it", async () => {
+    await render("");
+    const dialog = host.querySelector<HTMLElement>("#radius-find-dialog")!;
+    expect(dialog.className).toBe(FIND_FRAME_ROOT_CLASS);
+    expect(dialog.querySelector<HTMLElement>('button[aria-label="Close search"]')?.className).toBe(FIND_FRAME_SCRIM_CLASS);
+    expect(dialog.querySelector<HTMLElement>(":scope > div")?.className).toBe(FIND_FRAME_PANEL_CLASS);
   });
 
   it("uses the same category answer for a polite request's card and Enter", async () => {
@@ -219,6 +242,25 @@ describe("Find states the shared area", () => {
     expect(field().getAttribute("aria-label")).toBe("Ask or find near you");
     await respond(0, [gravel], { qualifiers: { constrained: false }, contextLabel: null });
     expect(areaLine()).toBe("Near me");
+  });
+
+  it("arms one request for restored words when the browser already shared a location", async () => {
+    geo.cached = { lat: 39.4143, lng: -77.4105 };
+    // act() flushes the open's re-render before any timer, so a test cannot
+    // see the doubled request itself. In a browser the 0ms timer fires first,
+    // and a second arming here becomes a second /api/search request.
+    const timer = vi.spyOn(globalThis, "setTimeout");
+    await render("coffee");
+    const requestTimers = timer.mock.calls.filter(([, delay]) => delay === 0);
+    timer.mockRestore();
+    expect(requestTimers).toHaveLength(1);
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(requests).toHaveLength(1);
+    // A geolocation event with the same fix is no reason to ask again.
+    await act(async () => { window.dispatchEvent(new Event("fr:geolocation-change")); });
+    await tick();
+    expect(requests).toHaveLength(1);
+    expect(requests[0].signal.aborted).toBe(false);
   });
 
   it("rounds inside the browser and drops the fix when the chosen area changes", async () => {

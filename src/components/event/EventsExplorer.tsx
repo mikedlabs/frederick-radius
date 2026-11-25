@@ -1466,7 +1466,7 @@ export default function EventsExplorer({
         <ul data-events-sorted-list={sort} className="grid max-w-[720px] grid-cols-1">
           {filtered.slice(0, 100).map((e) => (
             <li key={`${e.slug}-${e.starts_at}`}>
-              <EventCard event={e} nowISO={nowISO} />
+              <EventCard event={e} nowISO={nowISO} saveControl />
             </li>
           ))}
           {filtered.length > 100 && (
@@ -1514,6 +1514,7 @@ export default function EventsExplorer({
                     showDate={showDate(lead)}
                     live={live.has(lead.slug)}
                     nowISO={nowISO}
+                    saveControl
                   />
                 ) : null}
                 {totalRest > 0 && (
@@ -1526,7 +1527,7 @@ export default function EventsExplorer({
                       // one group never mixes two row styles.
                       sort === "recommended" ? <ul data-events-discovery-grid className="grid min-w-0 grid-cols-1">
                         {preview.map((event) => (
-                          <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} schedule={schedule.get(event)} variant="discovery" venuePhotos="free-reviewed" showDate={showDate(event)} live={live.has(event.slug)} nowISO={nowISO} /></li>
+                          <li key={eventIdentity(event)} className="min-w-0"><EventCard event={event} schedule={schedule.get(event)} variant="discovery" venuePhotos="free-reviewed" showDate={showDate(event)} live={live.has(event.slug)} nowISO={nowISO} saveControl /></li>
                         ))}
                       </ul> : <GroupEventList events={preview} schedule={schedule} variant="glance" showDate={showDate} live={live} nowISO={nowISO} />
                     )}
@@ -1669,6 +1670,7 @@ function GroupEventList({
             showDate={showDate(event)}
             live={live.has(event.slug)}
             nowISO={nowISO}
+            saveControl
           />
         </li>
       ))}

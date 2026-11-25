@@ -65,7 +65,7 @@ test("Today keeps the first open-place pick in view when photos fall back", asyn
   await expect(firstPick).not.toHaveAttribute("aria-label");
 
   const rail = page
-    .getByRole("region", { name: "Open places right now" })
+    .getByRole("region", { name: "Places confirmed open right now" })
     .locator(".shelf-rail");
   await expect
     .poll(() => rail.evaluate((element) => element.scrollLeft))

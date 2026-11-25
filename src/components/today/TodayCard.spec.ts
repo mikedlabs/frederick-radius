@@ -72,6 +72,24 @@ describe("TodayCard fallback", () => {
     });
   });
 
+  it("keeps a missing air-quality reading reachable while an alert owns the headline", () => {
+    expect(compactWeatherRead({ verdict: "Wind Advisory is active.", condition: "Mostly cloudy", alertsAvailable: true,
+      airQualityAvailable: false, activeAlertCount: 1, airQualityIndex: null })).toEqual({
+      headline: "Wind Advisory is active.",
+      safetyNote: "The air-quality reading is unavailable.",
+      safetyNoteRoutine: true,
+    });
+  });
+
+  it("adds no routine note to an alert that has no forecast details to hold it", () => {
+    expect(compactWeatherRead({ verdict: "Wind Advisory is active.", condition: "", alertsAvailable: true,
+      airQualityAvailable: false, activeAlertCount: 1, airQualityIndex: null })).toEqual({
+      headline: "Wind Advisory is active.",
+      safetyNote: null,
+      safetyNoteRoutine: false,
+    });
+  });
+
   it("does not soften an active alert or unhealthy air reading", () => {
     expect(
       compactWeatherRead({

@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   EmptyState,
   SavedEventRefreshNotice,
+  savedEventDatesLabel,
+  savedStandfirstParts,
   fetchSavedEventsBySlugs,
   fetchSavedEventsHydration,
   mergeSavedEventHydration,
@@ -311,5 +313,82 @@ describe("SavedList empty state", () => {
     expect(html).toContain("They are still saved");
     expect(html).toContain("1 saved event is no longer listed");
     expect(html).toContain("It remains saved on this device");
+    // A notice with nothing wired to it offers no control it cannot honor.
+    expect(html).not.toContain("<button");
   });
+
+  it("gives each kind of saved-event miss its own way to act", () => {
+    const html = renderToStaticMarkup(
+      createElement(SavedEventRefreshNotice, {
+        unresolvedCount: 2,
+        missingCount: 1,
+        missingSavedAt: ["2026-11-18T15:00:00Z"],
+        onRetry: () => {},
+        onRemoveMissing: () => {},
+      }),
+    );
+
+    expect(html).toContain("Try again");
+    expect(html).toContain("Remove from Saved");
+    // Each accessible name starts with the visible label it extends.
+    expect(html).toContain('aria-label="Remove from Saved: the event that is no longer listed"');
+    expect(html).toContain('aria-label="Try again: saved events"');
+    expect(html.match(/<button/g)).toHaveLength(2);
+    expect(html.match(/tap-44/g)).toHaveLength(2);
+    expect(html.match(/color:var\(--app-link\)/g)).toHaveLength(2);
+
+    const missingOnly = renderToStaticMarkup(
+      createElement(SavedEventRefreshNotice, { unresolvedCount: 0, missingCount: 1, onRetry: () => {}, onRemoveMissing: () => {} }),
+    );
+    expect(missingOnly).not.toContain("Try again");
+    expect(missingOnly).toContain("Remove from Saved");
+    const unresolvedOnly = renderToStaticMarkup(
+      createElement(SavedEventRefreshNotice, { unresolvedCount: 1, missingCount: 0, onRetry: () => {}, onRemoveMissing: () => {} }),
+    );
+    expect(unresolvedOnly).toContain("Try again");
+    expect(unresolvedOnly).not.toContain("Remove from Saved");
+  });
+
+  it("says only what the saved row knows about an event that is no longer listed", () => {
+    const render = (missingSavedAt: string[]) => renderToStaticMarkup(
+      createElement(SavedEventRefreshNotice, { unresolvedCount: 0, missingCount: missingSavedAt.length, missingSavedAt }),
+    );
+
+    expect(render(["2026-11-18T15:00:00Z"])).toContain(
+      "It remains saved on this device, which kept when you saved it (Nov 18) but not its name.",
+    );
+    expect(render(["2026-11-20T15:00:00Z", "2026-11-12T15:00:00Z", "2026-11-18T15:00:00Z"])).toContain(
+      "They remain saved on this device, which kept when you saved them (Nov 12 to Nov 20) but not their names.",
+    );
+    // A row with no usable stamp claims no date.
+    expect(render(["not-a-date"])).toContain("It remains saved on this device, which kept no name for it.");
+    expect(render(["not-a-date"])).not.toContain("when you saved");
+  });
+
+  it("reads saved dates in Frederick time and collapses a single day", () => {
+    expect(savedEventDatesLabel([])).toBeNull();
+    expect(savedEventDatesLabel(["1970-01-01T00:00:00.000Z"])).toBeNull();
+    expect(savedEventDatesLabel(["2026-11-18T15:00:00Z", "2026-11-18T22:00:00Z"])).toBe("Nov 18");
+    // 03:30 UTC on the 19th is still the evening of the 18th in Frederick.
+    expect(savedEventDatesLabel(["2026-11-19T03:30:00Z"])).toBe("Nov 18");
+    expect(savedEventDatesLabel(["2026-11-20T15:00:00Z", "bad", "2026-11-12T15:00:00Z"])).toBe("Nov 12 to Nov 20");
+  });
+
+  it("counts saved events in the standfirst beside places and towns", () => {
+    const texts = (counts: Parameters<typeof savedStandfirstParts>[0]) =>
+      savedStandfirstParts(counts).map((part) => part.text);
+    const none = { places: 0, towns: 0, events: 0, outings: 0, transit: 0 };
+
+    // The reported case: three places in two towns and two saved events.
+    expect(texts({ ...none, places: 3, towns: 2, events: 2 })).toEqual(["3 places", "2 towns", "2 events"]);
+    expect(texts({ ...none, places: 1, towns: 1, events: 1 })).toEqual(["1 place", "1 event"]);
+    expect(texts({ ...none, places: 2, towns: 2, events: 1, outings: 1, transit: 3 })).toEqual([
+      "2 places", "2 towns", "1 event", "1 outing on this device", "3 transit saves",
+    ]);
+    expect(texts(none)).toEqual([]);
+    // The first of places or events leads. Events lead only with no places.
+    expect(savedStandfirstParts({ ...none, events: 2 })).toEqual([{ key: "events", text: "2 events", lead: true }]);
+    expect(savedStandfirstParts({ ...none, places: 3, towns: 2, events: 2 }).map((part) => part.lead)).toEqual([true, false, false]);
+  });
+
 });

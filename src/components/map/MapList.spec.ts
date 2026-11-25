@@ -326,3 +326,31 @@ describe("map list decision telemetry", () => {
     expect(html).not.toContain('data-decision-id="Bushwaller');
   });
 });
+
+describe("map list rows for two stores with one name", () => {
+  const rowSubLines = (html: string) =>
+    [...html.matchAll(/<span class="map-list-sub">(.*?)<\/span><\/span>(?=<\/button>|<span class="map-list-dist">)/g)]
+      .map((match) => match[1].replace(/<[^>]+>/g, ""));
+
+  it("prints each store's street where the town would be, so the rows differ", () => {
+    const html = renderToStaticMarkup(
+      createElement(MapList, {
+        preserveOrder: true,
+        places: [
+          { ...place("food-lion-yellow-springs-frederick", -77.45), name: "Food Lion", name_detail: "2060 Yellow Springs Rd" },
+          { ...place("food-lion-crestwood-frederick", -77.4), name: "Food Lion", name_detail: "6920 Crestwood Blvd" },
+          { ...place("il-porto-restaurant", -77.41), name: "Il Porto Restaurant" },
+        ],
+        events: [],
+        userLoc: null,
+        onPick: () => undefined,
+        onPickEvent: () => undefined,
+      }),
+    );
+    const [first, second, third] = rowSubLines(html);
+    expect(first).toBe("restaurants·2060 Yellow Springs Rd·Open now");
+    expect(second).toBe("restaurants·6920 Crestwood Blvd·Open now");
+    // Every other row keeps its town.
+    expect(third).toBe("restaurants·Frederick City·Open now");
+  });
+});

@@ -120,7 +120,7 @@ it("hydrates a degraded empty brief from the real archive reader and API without
     expect(link?.querySelector("[data-event-photo-credit]")).toBeNull();
     expect(container.querySelector("a a")).toBeNull();
     expect(container.textContent).toContain("1 event pick today · 1 event pick tonight · Whole county");
-    expect(container.textContent).not.toMatch(/Updating today's event picks|Event picks are unavailable|No picks in this brief|Partial coverage/);
+    expect(container.textContent).not.toMatch(/Updating today's event picks|Event picks are unavailable|There are no event picks for the rest of today|Partial coverage/);
     expect(fetchBridge).toHaveBeenCalledTimes(1);
     expect(sql).toHaveBeenCalledTimes(2);
     expect(replies).toEqual([expect.objectContaining({ status: 200,

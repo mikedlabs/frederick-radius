@@ -4,25 +4,47 @@ import { useEventSavedState, useMounted, useSetEventSaved, savedChangeDescriptio
 import { useRef, useState } from "react";
 import { Bookmark } from "lucide-react";
 import { notifyError, notifyRemoved, notifySaved } from "@/lib/feedback/notify";
+import { LABELED_EVENT_ACTION_CLASS } from "@/components/event/EventActions";
+import { SAVE_ICON_CLASS } from "./SaveButton";
+
+// The three shapes share one button and one save path. "boxed" is the
+// original bordered 36px square. "plain" is SaveButton's unboxed glyph, for a
+// list where a box on every row would be noise. "labeled" is EventActions'
+// labeled shape, so Save can lead a row of labeled actions. Every shape keeps
+// a 44px target.
+const SHAPE = {
+  boxed: "tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-md)] border transition-colors",
+  plain: `${SAVE_ICON_CLASS} shrink-0`,
+  labeled: `${LABELED_EVENT_ACTION_CLASS} shrink-0`,
+} as const;
 
 /** Retain the existing event-card call sites while using the same event save
  * authority as the full page and Saved tab. Legacy Day Plan data is untouched. */
 export default function ItineraryButton({
   eventId,
-  label,
+  eventName: name,
+  appearance = "boxed",
   className = "",
 }: {
   eventId: string;
-  label?: string;
+  /** The event's display title. The control is named "Save <title>" or
+   * "Saved <title>", and the toast names it. */
+  eventName?: string;
+  /** "boxed" (default) is the bordered icon, "plain" the unboxed icon for
+   * list rows, and "labeled" prints Save or Saved beside the bookmark. */
+  appearance?: keyof typeof SHAPE;
   className?: string;
 }) {
   const mounted = useMounted();
   const busyRef = useRef(false);
   const [busy, setBusy] = useState(false);
   const savedState = useEventSavedState(eventId);
-  const isSaved = savedState === true;
+  // Before mount the device store has not been read. The placeholder shows
+  // the unsaved control and claims nothing, as SaveButton's does.
+  const isSaved = mounted && savedState === true;
+  const unavailable = mounted && savedState === null;
   const setSaved = useSetEventSaved(eventId);
-  const eventName = label?.replace(/^Add\s+/, "").replace(/\s+to itinerary$/, "") || "event";
+  const eventName = name || "event";
 
   // One path for the tap and for Undo. Undo reports its own failure and stays
   // quiet on success: the bookmark flipping back is the confirmation.
@@ -50,28 +72,45 @@ export default function ItineraryButton({
     }
   }
 
+  // The name and the visible word follow the confirmed state. While a write
+  // is pending they hold still and aria-busy says so, so the labeled shape
+  // never changes width mid-tap.
+  const word = unavailable ? "Unavailable" : isSaved ? "Saved" : "Save";
+
   return (
     <button
       type="button"
       data-save-ref={`event:${eventId}`}
       disabled={!mounted || savedState === null || busy}
-      aria-busy={busy || undefined}
+      aria-hidden={mounted ? undefined : true}
+      tabIndex={mounted ? undefined : -1}
+      aria-busy={!mounted || busy || undefined}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
         void change(!isSaved);
       }}
-      aria-pressed={savedState === null ? undefined : mounted && isSaved}
-      aria-label={busy ? `${isSaved ? "Removing" : "Saving"} ${eventName}` : savedState === null ? `Saved state unavailable for ${eventName}` : isSaved ? `Remove ${eventName} from Saved` : `Save ${eventName}`}
-      title={savedState === null ? "Saved state unavailable" : isSaved ? "Saved" : "Save"}
-      className={`tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-md)] border transition-colors ${className}`}
+      aria-pressed={!mounted || unavailable ? undefined : isSaved}
+      aria-label={!mounted ? undefined : unavailable ? `Saved state unavailable for ${eventName}` : `${word} ${eventName}`}
+      title={!mounted ? undefined : unavailable ? "Saved state unavailable" : word}
+      data-save-appearance={appearance}
+      className={`${SHAPE[appearance]} ${className}`}
       style={{
-        color: isSaved ? "var(--app-link)" : "var(--app-ink)",
-        background: "var(--app-bg)",
-        borderColor: "var(--app-control-border)",
+        // The saved state uses the link color in every shape. Unsaved, each
+        // shape takes the ink of the controls it sits beside.
+        color: isSaved ? "var(--app-link)" : appearance === "boxed" ? "var(--app-ink)" : appearance === "plain" ? "var(--app-ink-3)" : "var(--app-ink-2)",
+        background: appearance === "boxed" ? "var(--app-bg)" : undefined,
+        borderColor: appearance === "boxed" ? "var(--app-control-border)" : appearance === "labeled" ? "var(--app-border)" : undefined,
       }}
     >
-      <Bookmark className="h-4 w-4" strokeWidth={isSaved ? 0 : 1.75} fill={isSaved ? "currentColor" : "none"} aria-hidden />
+      <Bookmark className={appearance === "plain" ? "h-5 w-5" : "h-4 w-4"} strokeWidth={isSaved ? 0 : 1.75} fill={isSaved ? "currentColor" : "none"} aria-hidden />
+      {appearance === "labeled" ? (
+        // A hidden "Saved" shares the word's grid cell, so Save and Saved
+        // take one width and the sheet's action row keeps its wrap.
+        <span data-save-word className="grid justify-items-center after:invisible after:col-start-1 after:row-start-1 after:content-['Saved']">
+          <span className="col-start-1 row-start-1">{word}</span>
+        </span>
+      ) : null}
     </button>
   );
 }

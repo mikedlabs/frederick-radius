@@ -12,8 +12,9 @@ import { cache } from "react";
 import { getSql } from "@/lib/db/client";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { fieldNotesFor, verifiedLabel } from "@/lib/loaders/fieldNotes";
+import { fieldNoteCheck, fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import {
+  checkRank,
   distillOffer,
   extractHours,
   EASTERN_WEEKDAY,
@@ -79,6 +80,7 @@ export async function getDbDealsToday(now: Date, limit = 12): Promise<TodaysDeal
   if (notes.length === 0) return [];
   const todayName = EASTERN_WEEKDAY(now).toLowerCase(); // "tuesday"
   const todayIso = easternIso(now);
+  const nowMs = now.getTime();
   const out: TodaysDeal[] = [];
   for (const n of notes) {
     if (n.kind !== "deal") continue;
@@ -90,6 +92,9 @@ export async function getDbDealsToday(now: Date, limit = 12): Promise<TodaysDeal
     const fn = fieldNotesFor(n.place_slug);
     const offer = n.text.trim();
     const distilled = distillOffer(offer);
+    // The owner's row is judged by its own recorded date, like a JSON row. A
+    // row with no date says it was owner-added and is not a current check.
+    const check = n.last_verified ? fieldNoteCheck(n.last_verified, nowMs) : null;
     out.push({
       slug: n.place_slug,
       name: place.name,
@@ -104,7 +109,8 @@ export async function getDbDealsToday(now: Date, limit = 12): Promise<TodaysDeal
       park: fn?.parking?.text,
       tip: fn?.insider?.[0]?.text,
       source_url: n.source_url ?? undefined,
-      verified: n.last_verified ? verifiedLabel(n.last_verified) : "Owner-added",
+      verified: n.last_verified ? (check?.label ?? null) : "Owner-added",
+      verifiedCurrent: check?.current ?? false,
       confidence: (n.confidence || "medium").toLowerCase(),
     });
   }
@@ -115,9 +121,11 @@ const CONF_RANK: Record<string, number> = { high: 3, medium: 2, low: 1 };
 
 /**
  * Merge the committed-JSON deals with the DB deals into one deck: dedupe by
- * slug (a DB deal for a place WINS over its JSON deal — that's how the owner
- * corrects/overrides), then re-apply the canonical sort (downtown, then
- * confidence, then name) and clamp to `limit`.
+ * slug (a DB deal for a place WINS over its JSON deal, which is how the owner
+ * corrects or overrides), then re-apply the canonical sort (a current source
+ * check first, then downtown, confidence and name) and clamp to `limit`. This
+ * is the order Today renders, so the freshness key must live here and not
+ * only in todaysDeals().
  */
 export function mergeTodaysDeals(
   jsonDeals: TodaysDeal[],
@@ -130,6 +138,7 @@ export function mergeTodaysDeals(
   return [...bySlug.values()]
     .sort(
       (a, b) =>
+        checkRank(b) - checkRank(a) ||
         Number(Boolean(b.downtown)) - Number(Boolean(a.downtown)) ||
         (CONF_RANK[b.confidence] ?? 0) - (CONF_RANK[a.confidence] ?? 0) ||
         a.name.localeCompare(b.name),

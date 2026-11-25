@@ -103,7 +103,7 @@ export const UnavailableFeeds: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Local headlines are unavailable right now.")).toBeVisible();
     await expect(canvas.getByText("Unavailable", { exact: true })).toBeVisible();
-    await expect(canvas.queryByText("No local headlines were returned by these feeds.")).not.toBeInTheDocument();
+    await expect(canvas.queryByText("Radius found no local headlines in Google News from the past week.")).not.toBeInTheDocument();
     await userEvent.click(canvas.getByText("Official updates"));
     await expect(canvas.getByText("Official city and county updates are unavailable right now.")).toBeVisible();
   },
@@ -113,7 +113,7 @@ export const SuccessfulEmptyFeeds: Story = {
   args: { news: { items: [], status: "available" }, official: { items: [], status: "available" } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText("No local headlines were returned by these feeds.")).toBeVisible();
+    await expect(canvas.getByText("Radius found no local headlines in Google News from the past week.")).toBeVisible();
     await userEvent.click(canvas.getByText("Official updates"));
     await expect(canvas.getByText("No civic updates were returned by these newsrooms.")).toBeVisible();
     await expect(canvas.queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();

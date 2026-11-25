@@ -47,7 +47,15 @@ const STATUS_COLOR: Record<DealAvailability["state"], string> = {
   earlier: "var(--app-ink-3)",
 };
 
-/** Collapse repeated source rows into one venue without dropping an offer. */
+/** 1 when any offer at the venue has a source check inside the window. */
+function checkRank(group: DealVenueGroup): number {
+  return group.offers.some((row) => row.verifiedCurrent) ? 1 : 0;
+}
+
+/**
+ * Collapse repeated source rows into one venue without dropping an offer.
+ * Venues with a current source check lead, then the list runs by name.
+ */
 export function groupDealsByVenue(rows: DealRow[]): DealVenueGroup[] {
   const groups = new Map<string, DealVenueGroup>();
   for (const row of rows) {
@@ -55,7 +63,10 @@ export function groupDealsByVenue(rows: DealRow[]): DealVenueGroup[] {
     if (current) current.offers.push(row);
     else groups.set(row.slug, { venue: row, offers: [row] });
   }
-  return [...groups.values()].sort((a, b) => a.venue.name.localeCompare(b.venue.name));
+  return [...groups.values()].sort(
+    (a, b) =>
+      checkRank(b) - checkRank(a) || a.venue.name.localeCompare(b.venue.name),
+  );
 }
 
 function normalized(value: string): string {
@@ -241,11 +252,19 @@ function OfferEntry({ item }: { item: DisplayOffer }) {
         </details>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-x-2">
+        {/* The badge and the positive tone are a claim about now. A check
+            past the window prints its date in muted ink instead. */}
         <span
           className="inline-flex min-h-8 items-center gap-1.5 text-[11px] font-medium"
-          style={{ color: "var(--app-positive)" }}
+          style={{
+            color: item.row.verifiedCurrent
+              ? "var(--app-positive)"
+              : "var(--app-ink-3)",
+          }}
         >
-          <BadgeCheck className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+          {item.row.verifiedCurrent ? (
+            <BadgeCheck className="h-4 w-4" strokeWidth={2.2} aria-hidden />
+          ) : null}
           {verifiedLabel(item.row.verified)}
         </span>
         {item.row.source_url ? (
@@ -539,8 +558,13 @@ export default function DealsBrowser({
           ).rank,
         ),
       );
+    // Today the clock still decides first (on now, later, ended). Within the
+    // same slot a current source check leads a stale one.
     return result.sort(
-      (a, b) => rank(a) - rank(b) || a.venue.name.localeCompare(b.venue.name),
+      (a, b) =>
+        rank(a) - rank(b) ||
+        checkRank(b) - checkRank(a) ||
+        a.venue.name.localeCompare(b.venue.name),
     );
   }, [clock, currentToday, day, filteredRows]);
 

@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import AppTransitionLink from "@/components/nav/AppTransitionLink";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import DaylightScale from "./DaylightScale";
+import { aqiParameterLabel } from "@/lib/air-quality";
 import styles from "./TodayCard.module.css";
 
 export type TodayWeatherViewProps = {
@@ -26,6 +27,9 @@ export type TodayWeatherViewProps = {
   /** The note only reports a missing air-quality reading. The masthead keeps
    *  it inside the forecast details instead of a first-screen line. */
   safetyNoteRoutine?: boolean;
+  /** The fresh AirNow observation with the highest index. It is evidence for
+   *  the forecast details and never a first-read line. */
+  airQuality?: { aqi: number; category: string; parameter: string; observedAt: string | null } | null;
   daylight?: ReactNode;
   children?: ReactNode;
 };
@@ -48,6 +52,34 @@ function forecastIssuance(value: string | null) {
       timeZoneName: "short",
     }).format(issued),
   };
+}
+
+const airClock = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+});
+const airDay = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York", month: "short", day: "numeric",
+});
+
+/** A routine reading is printed with its number, pollutant and observation
+ * hour, so a quiet day shows that the air was checked and what it read. The
+ * claim names its pollutant: AirNow observations are pollutant-specific, so
+ * an ozone value is never a verdict on the air as a whole, and a pollutant
+ * with no fresh reading (PM2.5 during a smoke alert, say) gets no claim. The
+ * day rides with the hour because a late reading can cross midnight. */
+function AirQualityEvidence({ reading }: { reading: NonNullable<TodayWeatherViewProps["airQuality"]> }) {
+  const observed = reading.observedAt ? new Date(reading.observedAt) : null;
+  const pollutant = aqiParameterLabel(reading.parameter).replace(/^./, (character) => character.toUpperCase());
+  return (
+    <p data-weather-air-quality className={styles.safetyNote}>
+      {pollutant} is in the {reading.category.toLowerCase()} range (AQI {reading.aqi}).
+      {observed && Number.isFinite(observed.getTime()) && <>
+        {" "}The AirNow reading is from <time dateTime={observed.toISOString()}>
+          {airClock.format(observed)} on {airDay.format(observed)}
+        </time>.
+      </>}
+    </p>
+  );
 }
 
 function FullForecastLink({ unavailable = false }: { unavailable?: boolean }) {
@@ -113,7 +145,7 @@ export function WeatherUnavailable({ density = "standard", ...facts }: DailyWeat
  * live daylight, and offline capture remain owned by the server composition. */
 export default function TodayWeatherView({
   headline, condition, temperatureF, highF, lowF, sunriseTime, sunsetTime, daylightAsOf, retainedHighIssuedAt, actionableHeadline, sun, variant,
-  forecastAvailable, issuedAt, safetyNote, safetyNoteRoutine = false, daylight, children, density = "standard",
+  forecastAvailable, issuedAt, safetyNote, safetyNoteRoutine = false, airQuality = null, daylight, children, density = "standard",
 }: TodayWeatherViewProps) {
   const issuance = forecastIssuance(issuedAt);
   const hasDistinctRead = Boolean(headline && headline !== condition);
@@ -167,6 +199,7 @@ export default function TodayWeatherView({
               {provenance}
               <EarlierHighSource issuedAt={retainedHighIssuedAt} />
               {hasDistinctRead && !actionableHeadline && <p className={styles.safetyNote}>{headline}</p>}
+              {airQuality && <AirQualityEvidence reading={airQuality} />}
               {noteInDetails && safetyLine}
               {daylight && <p className={styles.safetyNote}>{daylight}</p>}
               <FullForecastLink />
@@ -220,6 +253,7 @@ export default function TodayWeatherView({
       ) : (
         <p className={styles.safetyNote}>The NWS forecast is briefly unavailable.</p>
       )}
+      {forecastAvailable && airQuality && <AirQualityEvidence reading={airQuality} />}
       {safetyNote && <p className={styles.safetyNote}>{safetyNote}</p>}
     </section>
   );

@@ -172,6 +172,44 @@ describe("multi-day all-day ingested visibility", () => {
       "ethics-commission-meeting-2026-08-11",
     );
     expect(card?.geom).not.toEqual({ lng: -77.4105, lat: 39.4143 });
+    // A venue with its own words after the street keeps them.
+    expect(card?.venue_name).toBe("12 East Church Street, Winchester Room");
+  });
+
+  it("gives a stored county copy its reviewed venue name without moving its slug", async () => {
+    const title = "Line Dancing";
+    const startsAt = "2026-12-02T15:00:00.000Z";
+    mocks.getSql.mockReturnValue(
+      vi.fn(async () => [
+        {
+          source_uid: "18068",
+          source_domain: "www.frederickcountymd.gov",
+          source_url: "https://www.frederickcountymd.gov/calendar.aspx?EID=18068",
+          title,
+          description: "Line dancing at the 50+ center.",
+          starts_at_utc: startsAt,
+          ends_at_utc: "2026-12-02T16:00:00.000Z",
+          all_day: false,
+          // The county RSS gives only the street; its event page names the center.
+          venue_name: "1440 Taney Avenue",
+          address: "1440 Taney Avenue, Frederick, MD 21702",
+          lat: null,
+          lng: null,
+          municipality: "Frederick County",
+          category: "Recreation Programs",
+          hero_image: null,
+          hero_image_alt: null,
+        },
+      ]) as never,
+    );
+
+    const slug = cleanEventSlug({ title, startsAt });
+    await expect(getIngestedCardBySlug(slug)).resolves.toMatchObject({
+      slug,
+      source: "county",
+      venue_name: "Frederick 50+ Community Center",
+      address: "1440 Taney Avenue, Frederick, MD 21702",
+    });
   });
 
   it("infers Frederick City only from a complete street-level county address", async () => {

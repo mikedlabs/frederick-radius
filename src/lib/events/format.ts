@@ -85,6 +85,28 @@ export function formatEventWhen(e: Event): string {
   return `${dateFmt.format(start)} – ${dateFmt.format(end)}`;
 }
 
+/**
+ * The first day of a date-range listing that is in its run: it has opened and
+ * has not closed. That first day can be months old, so a row prints the
+ * closing date ("through Dec 8") and must not print this day as the event's
+ * date. Returns it as "Sep 8" for a quiet "Started" label, or null for every
+ * other event, including a range that opens later (opening day is a real
+ * date claim).
+ *
+ * It answers only for the rows where eventDateBlock prints "through <end>" as
+ * the time. An all-day or date-only row prints "All day" or "Time not listed"
+ * there, so it still needs its date.
+ */
+export function runningRangeStart(e: Event, now: Date): string | null {
+  const start = Date.parse(e.starts_at);
+  const nowMs = now.getTime();
+  if (
+    !isRangeListing(e) || publishedEventTime(e) === "date" ||
+    !Number.isFinite(nowMs) || start > nowMs || Date.parse(e.ends_at) <= nowMs
+  ) return null;
+  return new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" }).format(new Date(start));
+}
+
 export function eventDateBlock(e: Event): { weekday: string; day: string; month: string; time: string } {
   const start = new Date(e.starts_at);
   const tz = "America/New_York";

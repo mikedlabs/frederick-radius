@@ -5,6 +5,10 @@
  * town-spread query so smaller municipalities actually surface — merged,
  * de-duplicated by headline, and sorted newest-first. Refreshed hourly.
  * No fabricated items: only what the feeds return.
+ *
+ * Freshness: the search feed ranks by relevance, not recency, so without a
+ * limit it can lead with stories that are weeks or years old. Each query asks
+ * for the past week, and a dated item older than that is dropped here too.
  */
 
 import { XMLParser, XMLValidator } from "fast-xml-parser";
@@ -26,6 +30,8 @@ export type NewsHeadlinesResult = {
 };
 
 export const NEWS_FETCH_DEADLINE_MS = 2_500;
+/** A headline older than this is no longer shown as local news. */
+export const NEWS_MAX_AGE_DAYS = 7;
 
 // Each query becomes its own Google News RSS feed. County-wide first,
 // then town-spread queries so Thurmont/Brunswick/etc. are not drowned
@@ -36,8 +42,10 @@ const QUERIES = [
   "Thurmont OR Brunswick OR Walkersville OR Middletown OR Emmitsburg OR Woodsboro Maryland",
   '"Mount Airy" OR "New Market" OR Myersville OR Burkittsville Maryland',
 ];
+// `when:7d` is Google News' own recency operator. It applies to the whole
+// query, including the OR lists.
 const feedUrl = (q: string) =>
-  `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
+  `https://news.google.com/rss/search?q=${encodeURIComponent(`${q} when:${NEWS_MAX_AGE_DAYS}d`)}&hl=en-US&gl=US&ceid=US:en`;
 
 const parser = new XMLParser({ ignoreAttributes: false, parseTagValue: false });
 
@@ -211,8 +219,11 @@ function obituaryKeys(headlines: NewsHeadline[]): Set<string> {
   return keys;
 }
 
-/** Health-aware read of the existing four Google News RSS queries. */
-export async function getLocalHeadlinesResult(): Promise<NewsHeadlinesResult> {
+/** Health-aware read of the existing four Google News RSS queries. The clock
+ * is injectable so the freshness cutoff can be tested against fixed dates. */
+export async function getLocalHeadlinesResult(
+  { now = new Date() }: { now?: Date } = {},
+): Promise<NewsHeadlinesResult> {
   if (isPromotedDataBuild()) return { items: [], status: "unavailable" };
   const feeds = await Promise.all(QUERIES.map(async (query) => {
     const deadline = createAbortDeadline(NEWS_FETCH_DEADLINE_MS);
@@ -236,10 +247,15 @@ export async function getLocalHeadlinesResult(): Promise<NewsHeadlinesResult> {
 
   const candidates = feeds.flatMap((feed) => feed.items);
   const corroboratedObituaries = obituaryKeys(candidates);
+  // Backstop for the query operator: a feed that ignores it must not put a
+  // stale story under "Local news". An undated item carries no age to judge,
+  // so it stays and sorts last.
+  const oldestAllowed = now.getTime() - NEWS_MAX_AGE_DAYS * 86_400_000;
   const seen = new Set<string>();
   const merged: NewsHeadline[] = [];
   for (const headline of candidates) {
-    if (!isPublishableHeadline(headline) || !hasLocalNewsContext(headline)) continue;
+    if (headline.published_at && Date.parse(headline.published_at) < oldestAllowed) continue;
+    if (!isPublishableHeadline(headline, now) || !hasLocalNewsContext(headline)) continue;
     const person = personKey(headline.title);
     if (person && corroboratedObituaries.has(person)) continue;
     const key = normTitle(headline.title);

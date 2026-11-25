@@ -1515,6 +1515,17 @@ describe("askFrederick structured answers", () => {
       ).toBe(true);
       expect(result.sources.some((source) => source.name === "Orioles Nest 331")).toBe(false);
       expect(result.answer).toContain("confirmed happy hour");
+      // "Verified" only while the row's own source check is inside the Field
+      // Notes window; an older check is listed without the claim.
+      const { fieldNoteCheck, placesWithFieldHappyHour } = await import("@/lib/loaders/fieldNotes");
+      const checks = new Map(placesWithFieldHappyHour().map(({ slug, happy_hour }) => [
+        slug, fieldNoteCheck(happy_hour.last_verified, Date.now())?.current === true,
+      ]));
+      for (const source of result.sources) {
+        expect(source.eyebrow).toBe(
+          checks.get(source.slug) ? "Verified happy hour · On now" : "Happy hour · On now",
+        );
+      }
     } finally {
       vi.useRealTimers();
     }

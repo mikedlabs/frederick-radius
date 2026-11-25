@@ -19,7 +19,7 @@ describe("daypartNeeds", () => {
     expect(daypartNeeds(2).map((n) => n.category)).toEqual(["bar", "restaurant"]);
   });
   it("sends every 'see all' to the availability-ordered Nearby journey", () => {
-    // The server HTML renders these hrefs under a "Places open now" heading,
+    // The server HTML renders these hrefs under a "Confirmed open now" heading,
     // so they must never point at a popularity-sorted /category page.
     expect(daypartNeeds(8).map((n) => n.href)).toEqual([
       "/nearby?c=coffee",

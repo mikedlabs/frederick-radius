@@ -8,6 +8,13 @@
 .scroll:global(.eb-pane-scroll) {
   min-height: 0;
   overscroll-behavior-y: contain;
+  padding-top: 0;
+}
+/* A sticky head stops at the scroller's content edge, below its top padding,
+   and scrolled choices showed through that 10px strip. The head carries the
+   space instead, so its opaque ground reaches the top of the pane. */
+.scroll:global(.eb-pane-scroll) :global(.dock-pane-head) {
+  padding-top: 10px;
 }
 .toolbar[data-filter-paused="true"] {
   /* Retain its flow height so opening at the page bottom cannot clamp

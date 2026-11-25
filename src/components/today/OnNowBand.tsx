@@ -23,6 +23,29 @@ import { loadOutdoorSafetyHold } from "@/lib/outdoor-safety-live";
 import TodaySectionHeading from "@/components/today/TodaySectionHeading";
 
 type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
+type BandBlockKey = ReturnType<typeof clusterOrder>[number];
+
+// The name each block prints as its own heading or lead phrase.
+const BLOCK_NAMES: Record<BandBlockKey, string> = {
+  happy: "Happy hour",
+  deals: "Specials",
+  markets: "Farmers markets",
+  parking: "Event parking",
+};
+
+/** Name what the closed disclosure holds. A count of "sections" tells the
+ *  reader nothing about whether happy hours or parking sit behind it. The
+ *  "Also today" prefix keeps the disclosure's region and heading distinct
+ *  from the block inside it: with one hidden block, a bare "Happy hour"
+ *  region would hold HappyHourWallet's own "Happy hour" region and heading. */
+export function onNowMoreTitle(keys: readonly BandBlockKey[]): string {
+  const names = keys.map((key) => BLOCK_NAMES[key].toLowerCase());
+  if (names.length === 0) return "";
+  const list = names.length === 1
+    ? names[0]
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  return `Also today: ${list}`;
+}
 
 /** Count verified happy hours that are live now or still ahead today. */
 function happyHourAvailability(now: Date): { currentCount: number; laterCount: number } {
@@ -108,7 +131,7 @@ export default async function OnNowBand({
   const hasHappyHour = happy.currentCount + happy.laterCount > 0;
   const hasDeals = dealCurrentCount + dealLaterCount + dealTodayCount > 0;
   const hasMarkets = marketCurrentCount + marketLaterCount + marketTodayCount > 0;
-  const blocks: Record<string, ReactNode> = {
+  const blocks: Record<BandBlockKey, ReactNode> = {
     happy: hasHappyHour ? <HappyHourWallet now={now} /> : null,
     deals: hasDeals ? <TodaysDeals now={now} embedded /> : null,
     markets: !marketTeaserAbove && hasMarkets ? <MarketsTodayBeat now={now} /> : null,
@@ -141,9 +164,7 @@ export default async function OnNowBand({
             like an endless list of equal-weight cards. */}
         {additional.length > 0 ? (
           <CollapsibleSection
-            title="Other scheduled updates"
-            count={additional.length}
-            countLabel={additional.length === 1 ? "section" : "sections"}
+            title={onNowMoreTitle(additional.map(({ key }) => key))}
             storageKey="fr.today.on-now-more"
             defaultOpen={false}
             headingLevel={3}

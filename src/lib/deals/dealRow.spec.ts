@@ -14,7 +14,8 @@ function deal(overrides: Partial<DealRow> = {}): DealRow {
     fullOffer: "Tuesday: $5 drafts, 4 PM-7 PM",
     hours: "4 PM-7 PM",
     days: [2],
-    verified: "Verified July 2026",
+    verified: "verified 2w ago",
+    verifiedCurrent: true,
     confidence: "high",
     ...overrides,
   };

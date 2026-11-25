@@ -9,6 +9,6 @@
 .detail summary { color: var(--app-ink-2); font-size: .85rem; font-weight: 550; }
 .detail p { max-width: 62ch; margin: .3rem 0 .7rem; color: var(--app-ink-2); font-size: .88rem; line-height: 1.4; }
 .sources { display: flex; flex-wrap: wrap; gap: .25rem 1rem; }
-.sources a { display: inline-flex; align-items: center; color: var(--app-brand); text-decoration: underline; text-underline-offset: .17rem; }
+.sources a { display: inline-flex; align-items: center; color: var(--app-link); text-decoration: underline; text-underline-offset: .17rem; }
 
-.railLink { display: inline-block; align-content: center; min-height: 2.75rem; color: var(--app-brand); text-decoration: underline; text-underline-offset: .15rem; }
+.railLink { display: inline-block; align-content: center; min-height: 2.75rem; color: var(--app-link); text-decoration: underline; text-underline-offset: .15rem; }

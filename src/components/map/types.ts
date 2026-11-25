@@ -321,6 +321,11 @@ export type MapPinPlace = Pick<
   // radius) still carry them and still satisfy this type.
   Partial<Pick<PlaceCardData, "google_place_id" | "feature_score">> & {
     distance_m?: number;
+    /** The street line of a place that shares its name and town with another
+     *  one ("2060 Yellow Springs Rd"), printed where the town would be so two
+     *  rows never read identically. Absent on every other pin, so it costs
+     *  the county payload about a dozen short strings. */
+    name_detail?: string;
   };
 
 /** A tapped bare spot on the canvas (or a temporary search result pin) —

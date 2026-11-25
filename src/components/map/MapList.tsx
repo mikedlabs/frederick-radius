@@ -76,7 +76,9 @@ function MapListPlaceRow({ p, userLoc, onPick }: {
   const cat = CATEGORY_BY_SLUG[p.category];
   const color = cat?.color ?? "var(--app-brand)";
   const open = openLine(p);
-  const town = MUNICIPALITY_BY_SLUG[p.municipality]?.name;
+  // Two same-named stores in one town carry a street line, which takes the
+  // town's slot so their rows do not read identically.
+  const locality = p.name_detail ?? MUNICIPALITY_BY_SLUG[p.municipality]?.name;
   const dist = userLoc && p.geom ? distanceFrom(haversineMeters(userLoc, p.geom), "from you") : null;
   return (
     <li>
@@ -122,10 +124,10 @@ function MapListPlaceRow({ p, userLoc, onPick }: {
               <span className="map-list-category">
                 {cat?.name ?? p.category}
               </span>
-              {town && (
+              {locality && (
                 <>
                   <span aria-hidden className="map-list-mid">·</span>
-                  <span>{town}</span>
+                  <span>{locality}</span>
                 </>
               )}
               {open && (

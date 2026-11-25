@@ -47,7 +47,9 @@ for (const viewport of [
     const appearance = disclosure.getByRole("button", { name: /Switch to (dark|light) appearance/ });
     await expect(compass.getByText("Tools", { exact: true })).toBeVisible();
     await expect(appearance.getByText(/Switch to (dark|light) appearance/)).toBeVisible();
-    for (const choice of [compass, appearance]) {
+    // Feedback is a row here on every route and at every width.
+    const feedbackRow = disclosure.getByRole("button", { name: "Send feedback", exact: true });
+    for (const choice of [compass, feedbackRow, appearance]) {
       await expect(choice).toBeVisible();
       const box = await choice.boundingBox();
       expect(box?.width).toBeGreaterThanOrEqual(44);
@@ -354,13 +356,16 @@ test("short phone at 200% text keeps the last area and More actions above primar
   }
 });
 
-for (const route of ["/today", "/parking"]) {
+// Below the desktop rail there is no floating feedback trigger. More tools is
+// the way in on every route, so nothing floats over the page's own controls.
+for (const route of ["/today", "/parking", "/events", "/my-radius"]) {
   test(`feedback in More tools keeps ${route} clear and restores keyboard focus`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto(route, { waitUntil: "domcontentloaded" });
     const more = page.getByLabel("More tools", { exact: true });
     const feedback = page.getByRole("button", { name: "Send feedback", exact: true });
+    await expect(page.locator("[data-feedback-trigger]")).toBeHidden();
     await expect(feedback).toBeHidden();
     await more.click();
     await expect(feedback).toBeVisible();
@@ -374,3 +379,52 @@ for (const route of ["/today", "/parking"]) {
     await expect(feedback).toBeHidden();
   });
 }
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 375, height: 667 }]) {
+  test(`the map's location action takes its own taps at ${viewport.width}px, with no floating feedback trigger over it`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/map", { waitUntil: "domcontentloaded" });
+    const dock = page.locator("[data-map-dock]");
+    await expect(dock).toBeVisible();
+    // This half needs no map renderer, so it runs in every build.
+    await expect(page.locator("[data-feedback-trigger]")).toBeHidden();
+    // The dock offers "Use my location" only when the map renderer is
+    // configured. CI and local builds have no Mapbox token, so the hit test
+    // runs only where the dock reports the map is available.
+    test.skip(
+      (await dock.getAttribute("data-map-available")) !== "true",
+      "The hit test needs the map renderer, which this build does not have.",
+    );
+    // The first-visit sheet offers this action. The trigger used to cover the
+    // left 37px of it and took those taps.
+    const useLocation = page.getByRole("button", { name: "Use my location", exact: true });
+    await expect(useLocation).toBeVisible();
+    const hits = await useLocation.evaluate(button => {
+      const box = button.getBoundingClientRect();
+      const y = box.top + box.height / 2;
+      return [8, 20, 36, box.width / 2].map(dx => button.contains(document.elementFromPoint(box.left + dx, y)));
+    });
+    expect(hits, "every tap on the action reaches the action").toEqual([true, true, true, true]);
+  });
+}
+
+test("the floating feedback trigger sits at the foot of the desktop rail and opens the same sheet", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/events", { waitUntil: "domcontentloaded" });
+  const trigger = page.locator("[data-feedback-trigger]");
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAccessibleName("Send feedback");
+  const rail = (await page.getByRole("navigation", { name: "Primary", exact: true }).boundingBox())!;
+  const box = (await trigger.boundingBox())!;
+  expect(box.x + box.width, "the trigger stays inside the rail's column").toBeLessThanOrEqual(rail.x + rail.width);
+  // The trigger is server-rendered. Click it only once the shell can answer.
+  await expect(page.locator("button[data-find-interaction-ready]").first()).toHaveAttribute("data-find-interaction-ready", "true");
+  await trigger.click();
+  const dialog = page.getByRole("dialog", { name: "Send feedback" });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(trigger).toBeFocused();
+});
