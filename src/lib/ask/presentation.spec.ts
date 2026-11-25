@@ -3,6 +3,7 @@ import type { AskIntent } from "@/lib/ask/intent";
 import type { AskResult, AskSource } from "@/lib/ask/contracts";
 import {
   askResponseSectionOrder,
+  askSupportingSourcesDisclosure,
   withAskResponsePresentation,
   withPrimaryRankedResult,
 } from "@/lib/ask/presentation";
@@ -286,5 +287,75 @@ describe("Ask response hierarchy", () => {
       "The event is at 3 N. Main St. starting at 4:00 PM tonight.",
     );
     expect(decorated.presentation?.detail).toBe("Doors open at 3:30 PM.");
+  });
+});
+
+describe("askSupportingSourcesDisclosure", () => {
+  const event = (slug: string): AskSource => ({
+    slug,
+    name: slug,
+    category: "event",
+    href: `/events/${slug}`,
+  });
+  const guide: AskSource = {
+    slug: "parking-guide",
+    name: "Parking guide",
+    category: "civic",
+    href: "/parking",
+  };
+
+  it("opens the rows under the lead and calls them matches when every row is a place or an event", () => {
+    expect(
+      askSupportingSourcesDisclosure("standard", [
+        event("bluegrass-jam"),
+        event("grunge-live"),
+        event("friendsgiving-concert"),
+        event("trivia-night"),
+      ]),
+    ).toEqual({
+      label: "More matches",
+      countLabel: "3 more",
+      open: true,
+      noun: "matches",
+    });
+    expect(
+      askSupportingSourcesDisclosure("standard", [...SOURCES]),
+    ).toMatchObject({ label: "More matches", countLabel: "1 more", open: true });
+  });
+
+  it("keeps evidence rows in the closed sources disclosure", () => {
+    const closed = {
+      label: "Sources behind this answer",
+      open: false,
+      noun: "sources",
+    };
+    expect(
+      askSupportingSourcesDisclosure("standard", [SOURCES[0], guide]),
+    ).toEqual({ ...closed, countLabel: "1 source" });
+    // A lead that is not itself a match cannot be followed by "more" matches.
+    expect(
+      askSupportingSourcesDisclosure("standard", [guide, ...SOURCES]),
+    ).toEqual({ ...closed, countLabel: "2 sources" });
+    // Plan stops are the plan, not further answers to the question.
+    expect(
+      askSupportingSourcesDisclosure("plan", [...SOURCES]),
+    ).toEqual({ ...closed, countLabel: "1 source" });
+  });
+
+  it("leaves the place and civic headings as they were", () => {
+    expect(askSupportingSourcesDisclosure("place", [...SOURCES])).toEqual({
+      label: "Other options and sources",
+      countLabel: "1 source",
+      open: true,
+      noun: "sources",
+    });
+    expect(
+      askSupportingSourcesDisclosure("civic", [guide, guide, guide]),
+    ).toEqual({
+      label: "More official sources",
+      countLabel: "2 sources",
+      open: false,
+      noun: "sources",
+    });
   });
 });

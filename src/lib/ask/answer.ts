@@ -38,6 +38,7 @@ import {
   type AskFitContext,
 } from "@/lib/ask/fit";
 import type { AskAction, AskResult, AskSource } from "@/lib/ask/contracts";
+import { isDiscoverySource } from "@/lib/ask/presentation";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, formatDistance, haversineMeters } from "@/lib/geo";
@@ -88,6 +89,7 @@ import {
   type Municipality,
 } from "@/data/municipalities";
 import {
+  fieldNoteCheck,
   fieldNotesFor,
   placesWithFieldHappyHour,
 } from "@/lib/loaders/fieldNotes";
@@ -419,9 +421,12 @@ function answerHappyHourRequest(
       null,
       canExposeDistance(context),
     );
+    // "Verified" only while the recorded source check is inside the Field
+    // Notes check window; an older check is still listed, without the claim.
+    const verified = fieldNoteCheck(happyHour.last_verified, now.getTime())?.current === true;
     source.eyebrow = currentOnly
-      ? "Verified happy hour · On now"
-      : "Verified happy-hour schedule";
+      ? `${verified ? "Verified happy hour" : "Happy hour"} · On now`
+      : verified ? "Verified happy-hour schedule" : "Happy-hour schedule";
     source.status = activeWindow
       ? `On now · until ${happyHourClock(activeWindow.end)}`
       : happyHour.schedule;
@@ -447,7 +452,7 @@ function answerHappyHourRequest(
       usedModel: false,
       answer: currentOnly
         ? `I couldn’t confirm a happy hour running right now ${scope}. I won’t substitute a bar just because it stays open late.`
-        : `I don’t have a verified happy-hour schedule that fits ${scope}. The full guide shows the checked schedules Radius does have.`,
+        : `I don’t have a happy-hour schedule on file that fits ${scope}. The full guide lists every schedule Radius has, with the date each one was last checked.`,
       sources: [],
       context: context.contextLabel ?? "Frederick County",
       intent,
@@ -3511,7 +3516,23 @@ export async function askFrederick(
       answer = null;
     }
   }
-  const renderedAnswer = answer ?? deterministicAnswer({ count: sources.length });
+  // No model wrote this answer, so compose it from the rows the cards show.
+  // A bare "I found 4 results" above one visible card read as a miscount.
+  // A time-scoped list whose matches are all events is a fact Radius can
+  // state, so it names the lead event. Every other list here is keyword
+  // retrieval for an open-ended question, which is too weak to call any row
+  // the best match, so it keeps the neutral line with no count.
+  const fallbackMatches = sources.filter(isDiscoverySource);
+  const timedEventList =
+    Boolean(intent.timeNeed) &&
+    fallbackMatches.length > 0 &&
+    fallbackMatches[0] === sources[0] &&
+    fallbackMatches.every((source) => source.href.startsWith("/events/"));
+  const renderedAnswer = answer ?? deterministicAnswer(
+    timedEventList
+      ? { count: fallbackMatches.length, sources: fallbackMatches, eventIntent: true }
+      : { count: sources.length },
+  );
   // Citation candidates = everything the prompt actually showed the model,
   // not just the ranked response slice — a named pick must always find its
   // card. Response-slice entries keep priority on slug collisions.
@@ -3645,7 +3666,12 @@ function deterministicAnswer({
     const subject = category.toLowerCase();
     return `I found ${count} match${count === 1 ? "" : "es"} for ${subject}${openNow ? " with current open hours" : ""}.`;
   }
-  return `I found ${count} result${count === 1 ? "" : "s"} that match the wording of your request.`;
+  // No count here: the cards under this line may be evidence rows, and the
+  // interface shows one lead card first, so a number would not match the view.
+  // This is keyword ranking, not distance, so it never says "closest".
+  return count === 1
+    ? "This listing in Radius matches the words in your question."
+    : "These listings in Radius match the words in your question.";
 }
 
 /**

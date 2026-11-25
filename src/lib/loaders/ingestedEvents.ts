@@ -261,9 +261,19 @@ function occurrenceToCard(
     municipality,
     category,
     audience: audienceFromText(s.title, s.description),
-    // No reliable admission signal on these feeds — withhold the "Free" claim
-    // rather than mislabel a bingo buy-in as free.
-    is_free: false,
+    // Neither feed carries an admission field. The library states that all of
+    // its programs are available at no cost (the general questions on
+    // https://www.fcpl.org/srpfaq/general-questions, read 2026-11-25), so a
+    // library row is free unless its own text states a price, a fee or a
+    // ticket. The fire company feed has no such statement, so it withholds
+    // the "Free" claim rather than mislabel a bingo buy-in as free. "No cost",
+    // "at no cost", "free of cost" and "without cost" say the opposite of a
+    // price, so they are removed before the test.
+    is_free:
+      source === "fcpl" &&
+      !/\$\s?\d|\bfees?\b|\bcosts?\b|\btickets?\b/i.test(
+        `${s.title} ${s.description ?? ""}`.replace(/\b(?:no|free\s+of|without)\s+costs?\b/gi, " "),
+      ),
     attendance_mode,
     online_url,
     hero_image: s.heroImage ?? undefined,

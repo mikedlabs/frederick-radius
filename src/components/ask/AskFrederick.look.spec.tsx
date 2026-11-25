@@ -188,4 +188,61 @@ describe("Ask workspace follows the plain tool direction", () => {
     expect(container.innerHTML).not.toMatch(/color:\s*var\(--app-brand\)/);
     expect(coralFields()).toHaveLength(1);
   });
+
+  it("shows further places and events open under the lead as more matches", async () => {
+    await mount("Where is good coffee in Frederick County?");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const more = container.querySelector<HTMLDetailsElement>(
+      '[data-ask-section="supporting-sources"]',
+    );
+    expect(more).not.toBeNull();
+    expect(more!.open).toBe(true);
+    const summary = more!.querySelector("summary");
+    expect(summary?.textContent).toContain("More matches");
+    expect(summary?.textContent).toContain("1 more");
+    expect(summary?.textContent).not.toMatch(/sources?/i);
+    expect(more!.querySelector('a[href="/places/second-place"]')).not.toBeNull();
+  });
+
+  it("keeps evidence behind the closed sources row", async () => {
+    fetchMock.mockReset().mockResolvedValue(
+      Response.json({
+        status: "matches",
+        configured: true,
+        usedModel: false,
+        answer: "Downtown garages are open.",
+        context: "Frederick County",
+        sources: [
+          {
+            slug: "lead-place",
+            name: "Lead place",
+            category: "coffee",
+            href: "/places/lead-place",
+          },
+          {
+            slug: "parking-guide",
+            name: "Parking guide",
+            category: "civic",
+            href: "/parking",
+          },
+        ],
+      }),
+    );
+    await mount("Where can I park near coffee downtown?");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const sources = container.querySelector<HTMLDetailsElement>(
+      '[data-ask-section="supporting-sources"]',
+    );
+    expect(sources).not.toBeNull();
+    expect(sources!.open).toBe(false);
+    const summary = sources!.querySelector("summary");
+    expect(summary?.textContent).toContain("Sources behind this answer");
+    expect(summary?.textContent).toContain("1 source");
+  });
 });
