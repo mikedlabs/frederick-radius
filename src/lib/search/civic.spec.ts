@@ -63,6 +63,18 @@ describe("searchCivicActions", () => {
     expect(searchCivicActions("health food")).toEqual([]);
   });
 
+  it("does not answer everyday searches with a trash or recycling schedule", () => {
+    // Each of these shares only "day", "pickup" or "curbside" with a schedule keyword.
+    expect(searchCivicActions("thanksgiving day and black friday hours")).toEqual([]);
+    expect(searchCivicActions("day care and preschool")).toEqual([]);
+    expect(searchCivicActions("veterans day parade and ceremony")).toEqual([]);
+    expect(searchCivicActions("pickup and delivery")).toEqual([]);
+    expect(searchCivicActions("curbside pickup")).toEqual([]);
+    expect(searchCivicActions("restaurants with curbside pickup")).toEqual([]);
+    expect(searchCivicActions("yard waste pickup")[0]).toMatchObject({ id: "civic:trash-schedule" });
+    expect(searchCivicActions("curbside recycling")[0]).toMatchObject({ id: "civic:recycling-schedule" });
+  });
+
   it("does not let a plural government title outrank actual parks", () => {
     expect(searchCivicActions("park")).toEqual([
       expect.objectContaining({ id: "civic:parks-rec-centers" }),

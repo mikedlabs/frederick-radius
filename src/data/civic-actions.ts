@@ -134,8 +134,18 @@ export const CIVIC_ACTIONS_BY_VERB = (verb: CivicVerb) =>
 const FOOD_CONTROL_INTENT =
   /\b(?:(?:food|restaurant|vendor)\s+(?:license|permit)|(?:license|permit)\s+(?:for\s+)?(?:food|restaurant|vendor)|health inspection)\b/i;
 
-/** Keep broad discovery phrases such as "health food" out of Food Control. */
+/** The two schedule actions carry phrase keywords such as "trash day" and
+ *  "when is recycling". Both matchers split those into single words, so "day",
+ *  "when" and "pickup" alone scored a match: "when is election day" answered
+ *  with recycling, and "day care and preschool" returned only the trash
+ *  schedule in Find. The question has to name the service itself. */
+const COLLECTION_INTENT =
+  /\b(?:trash|garbage|refuse|rubbish|recycl\w*|yard waste|curbside (?:collection|recycling)|collection (?:day|schedule))\b/i;
+
+/** Keep broad discovery phrases such as "health food" out of Food Control,
+ *  and everyday words out of the trash and recycling schedules. */
 export function civicActionFitsQuery(actionId: string, query: string): boolean {
+  if (actionId === "trash-schedule" || actionId === "recycling-schedule") return COLLECTION_INTENT.test(query);
   return actionId !== "food-license" || FOOD_CONTROL_INTENT.test(query);
 }
 

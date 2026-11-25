@@ -77,6 +77,16 @@ describe("matchCivicAction", () => {
     expect(matchCivicAction("restaurants with curbside pickup")).toBeNull();
   });
 
+  it("needs the question to name the service before answering with a collection schedule", () => {
+    // "when" and "day" are words inside the schedule keywords, not a match.
+    expect(matchCivicAction("when is election day")?.id).toBe("register-vote");
+    expect(matchCivicAction("when is trash day")?.id).toBe("trash-schedule");
+    expect(matchCivicAction("garbage day")?.id).toBe("trash-schedule");
+    expect(matchCivicAction("yard waste pickup")?.id).toBe("trash-schedule");
+    expect(matchCivicAction("when is recycling pickup")?.id).toBe("recycling-schedule");
+    expect(matchCivicAction("curbside recycling")?.id).toBe("recycling-schedule");
+  });
+
   it("routes a trash-pickup-schedule question to the trash schedule", () => {
     expect(matchCivicAction("trash pickup schedule")?.id).toBe("trash-schedule");
   });
