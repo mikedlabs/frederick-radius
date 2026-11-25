@@ -9,7 +9,6 @@ import TodayHeadlineCard from "./TodayHeadlineCard";
 import { EventWeekendCalendar } from "./EventWeekendCalendar";
 import EventStartScale from "./EventStartScale";
 import choiceStyles from "./TodayEventChoices.module.css";
-import DismissibleSection from "@/components/today/DismissibleSection";
 import { parseRecoveryEventVisual, type EventCardVisual } from "@/components/event/eventVisuals";
 import { createAbortDeadline } from "@/lib/promise-deadline";
 import { eventDisplayTitle } from "@/lib/events/display-title";
@@ -181,71 +180,35 @@ export function TodayEventsRecoveryView({
     scopeLabel,
   });
 
-  if (events.length === 0) {
-    const status = healthyEmpty
-      ? "No picks in this brief"
-      : failed
-        ? "Event picks are unavailable here"
-        : "Updating today's event picks";
+  const status = healthyEmpty
+    ? "No picks in this brief"
+    : failed ? "Event picks are unavailable here" : "Updating today's event picks";
+  const hasEvents = events.length > 0;
 
-    return (
-      <section
-        className="mt-1"
-        aria-label="Events today"
-        data-today-event-recovery="true"
-        data-today-event-shortlist
-      >
-        <div
-          className="flex min-h-14 items-center justify-between gap-3 border-y px-0.5 py-2"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <div className="min-w-0">
-            <h2 className={choiceStyles.recoveryHeading}>Events today</h2>
-            <p role="status" className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
-              {status}
-            </p>
-          </div>
-          <Link
-            href={eventsHref}
-            prefetch={false}
-            aria-label="Open the full events board"
-            className={`tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold ${choiceStyles.boardLink}`}
-            style={{ color: "var(--app-link)" }}
-          >
-            Full board
-            <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          </Link>
-        </div>
-        {weekendFriday && <EventWeekendCalendar friday={weekendFriday} eventsHref={eventsHref} />}
-      </section>
-    );
-  }
-
+  // Recovery may complete while either board action has keyboard focus.
+  // Render the same anchors throughout, including while appending the picks.
   return (
-    <section
-      className="space-y-3"
-      aria-label="Events today"
-      data-today-event-recovery="true"
-      data-today-event-shortlist
-    >
-      <DismissibleSection
-        id="upcoming"
-        title="Events today"
-        href={eventsHref}
-        prefetch={false}
-        cta="See all"
-        flat
-        meta={meta}
-      >
-        <ul className={choiceStyles.choices}>
-          {events.map((event, index) => {
-            const visual = parseRecoveryEventVisual(event.visual);
-            return <li key={event.slug}>
-              <TodayEventBriefCard event={event} visual={visual} lead={index === 0} />
-            </li>;
-          })}
-        </ul>
-      </DismissibleSection>
+    <section aria-label="Events today" data-today-event-recovery="true" data-today-event-shortlist>
+      <header data-today-section-heading="true" className="flex min-h-14 items-center justify-between gap-3 border-y px-0.5 py-2"
+        style={{ borderColor: "var(--app-border)" }}>
+        <div className="min-w-0">
+          <h2 className={choiceStyles.recoveryHeading}>Events today</h2>
+          <p role={hasEvents ? undefined : "status"} className="mt-1 text-sm leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            {hasEvents ? meta : status}
+          </p>
+        </div>
+        <Link href={eventsHref} prefetch={false} aria-label={hasEvents ? "See all: Events today" : "Open the full events board"}
+          className={`tap-44-y inline-flex min-h-11 shrink-0 items-center gap-1 text-sm font-semibold ${choiceStyles.boardLink}`}
+          style={{ color: "var(--app-link)" }}>
+          {hasEvents ? "See all" : "Full board"}<ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </Link>
+      </header>
+      {hasEvents && <ul className={choiceStyles.choices}>
+        {events.map((event, index) => <li key={event.slug}>
+          <TodayEventBriefCard event={event} visual={parseRecoveryEventVisual(event.visual)} lead={index === 0} />
+        </li>)}
+      </ul>}
+      {weekendFriday && <EventWeekendCalendar friday={weekendFriday} eventsHref={eventsHref} />}
     </section>
   );
 }

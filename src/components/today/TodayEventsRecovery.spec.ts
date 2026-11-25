@@ -96,6 +96,25 @@ describe("TodayEventsRecoveryView", () => {
     expect(read("11:00 PM", "1:00 AM").querySelector<HTMLElement>("[data-event-start-scale] i + span")?.style.width).toBe("0%");
   });
 
+  it.each(["/events?in=brunswick", "/events?in=brunswick&when=weekend"])("keeps focus on %s as timed picks replace a pending brief", async (href) => {
+    const container = document.body.appendChild(document.createElement("div"));
+    const root = createRoot(container);
+    const shared = { weekendFriday: "2026-11-27", eventsHref: "/events?in=brunswick" };
+    try {
+      await act(async () => root.render(createElement(TodayEventsRecoveryView, { ...shared, response: null })));
+      const action = container.querySelector<HTMLAnchorElement>(`a[href="${href}"]`)!;
+      action.focus();
+      expect(document.activeElement).toBe(action);
+      await act(async () => root.render(createElement(TodayEventsRecoveryView, { ...shared, response: { events: [event], partial: false } })));
+      expect(container.textContent).toContain(event.title);
+      expect(container.querySelector(`a[href="${href}"]`)).toBe(action);
+      expect(document.activeElement).toBe(action);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
   it("counts an open on every later event row", () => {
     const later = { ...event, slug: "later-pick-2026-08-27", title: "Later pick", time: "8:00 PM" };
     const html = renderToStaticMarkup(
