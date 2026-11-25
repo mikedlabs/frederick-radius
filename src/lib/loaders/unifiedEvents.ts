@@ -71,6 +71,7 @@ import {
   type EventAdapterResult,
 } from "@/lib/integrations/event-adapter-result";
 import { mapEventSourcesWithConcurrency } from "@/lib/integrations/event-source-circuit";
+import { createAbortDeadline } from "@/lib/promise-deadline";
 import { rememberServedEvents } from "@/lib/events/served-event-snapshot";
 import { isPromotedDataBuild } from "@/lib/data-release-mode";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
@@ -177,6 +178,37 @@ export function withAbortableTimeout<T>(
 
 // A single slow/hanging events upstream can't stall the board past this.
 const FEED_MS = 8000;
+// The municipal calendar reads stop this long before FEED_MS, so the loader
+// returns the calendars that answered before the group's fallback can win.
+const MUNICIPAL_READ_HEADROOM_MS = 500;
+
+/**
+ * Read the municipal calendars and keep every one that answered.
+ *
+ * The group has FEED_MS in total, and each calendar had the same FEED_MS for
+ * itself. One calendar that used its whole budget therefore lost the group its
+ * race: the empty fallback won and every calendar that had already answered
+ * was dropped with it. Stopping the remaining reads shortly before the group
+ * deadline lets the loader settle with what it has. A calendar that was still
+ * being read comes back as failed and is named in source health.
+ */
+async function readMunicipalCalendars(
+  groupSignal: AbortSignal,
+): ReturnType<typeof getLiveEvents> {
+  const reads = createAbortDeadline(
+    FEED_MS - MUNICIPAL_READ_HEADROOM_MS,
+    groupSignal,
+  );
+  try {
+    return await getLiveEvents(60, {
+      includeTicketmaster: false,
+      signal: reads.signal,
+      readMode: "public",
+    });
+  } finally {
+    reads.dispose();
+  }
+}
 
 function readAdapter<T>(
   resultFactory: () => Promise<EventAdapterResult<T>>,
@@ -452,12 +484,7 @@ export async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     // adapter below. Excluding it from this municipal-feed fanout prevents the
     // same Discovery request from running twice on every cold assembly.
     withAbortableTimeout(
-      (signal) =>
-        getLiveEvents(60, {
-          includeTicketmaster: false,
-          signal,
-          readMode: "public",
-        }),
+      readMunicipalCalendars,
       FEED_MS,
       {
         events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
