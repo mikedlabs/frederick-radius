@@ -5,8 +5,9 @@
  * field-guide specimen PLATES (owner concept 2026-07-02; specimen-stub
  * redesign approved 2026-07-08, scratchpad/saved-redesign.html).
  *
- * The deck: every card tucks to a 62px lip showing the serif name and ONE
- * mono fact chosen by value (walletFacts.lipFact). Tapping a lip raises the
+ * The deck: each closed card is one ruled row, as tall as its name line,
+ * showing the serif name and ONE mono fact chosen by value
+ * (walletFacts.lipFact). Tapping a row opens the
  * card (accordion, one at a time); the place name and the explicit action
  * open its page.
  * Neutral card faces and hairlines keep place details readable in both
@@ -61,10 +62,11 @@ function motifClass(category: string): string {
 /**
  * A removed card takes its Remove button with it. When that button held
  * focus, call the returned function once the removal is confirmed: focus
- * moves to the neighboring card, or to the Saved heading when the deck is
- * empty, instead of falling to <body>. Shared by the place and event decks.
+ * moves to the neighboring card, else to the element named by `nearestId`
+ * when it is still on the page, else to the Saved heading, instead of falling
+ * to <body>. Shared by the place and event decks and the event notice.
  */
-export function walletFocusAfterRemoval(button: HTMLButtonElement): () => void {
+export function walletFocusAfterRemoval(button: HTMLButtonElement, nearestId?: string): () => void {
   if (document.activeElement !== button) return () => {};
   const slot = button.closest(".sw-slot");
   const neighborId = (slot?.nextElementSibling ?? slot?.previousElementSibling)?.id;
@@ -72,7 +74,8 @@ export function walletFocusAfterRemoval(button: HTMLButtonElement): () => void {
     // The confirmed store update has removed the old control by now.
     if (document.activeElement !== button && document.activeElement !== document.body) return;
     const neighbor = neighborId ? document.getElementById(neighborId)?.querySelector<HTMLElement>(".sw-brand") : null;
-    (neighbor ?? document.getElementById("saved-page-heading"))?.focus();
+    const nearest = nearestId ? document.getElementById(nearestId) : null;
+    (neighbor ?? nearest ?? document.getElementById("saved-page-heading"))?.focus();
   });
 }
 
@@ -116,6 +119,7 @@ function Card({
       : null;
   const price = priceGlyphs(place.price_band);
   const sched = todayHoursLine(place.hours);
+  const address = place.address?.trim() || null;
   const dist = distanceLabel(place.distance_m);
   const saved = savedDateLabel(savedAt);
   const dash = "Not available";
@@ -163,7 +167,7 @@ function Card({
       <div className="sw-face">
         {/* Lockup — the place's own photo medallion (category mark fallback)
             + serif name left. Right slot: the ONE
-            mono lip fact while tucked; the category TIER wordmark on raise
+            mono lip fact while closed; the category TIER wordmark when open
             (the ledger below takes over the facts). */}
         <div className="sw-top">
           <Link
@@ -254,6 +258,18 @@ function Card({
               <dt>{sched?.label ?? "Hours"}</dt>
               <dd>{sched?.value ?? dash}</dd>
             </div>
+            {/* The street address exactly as stored. Some records end at the
+                street and some carry the city, state and ZIP, so nothing is
+                appended here. The Town cell below names the town either way.
+                Ledger values are one clipped line by default. About a fifth
+                of stored addresses are longer than a 320px card, so this one
+                wraps: a clipped address is not the address. */}
+            {address && (
+              <div className="sw-cell sw-cell-wide">
+                <dt>Address</dt>
+                <dd style={{ whiteSpace: "normal" }}>{address}</dd>
+              </div>
+            )}
             {dist && (
               <div className="sw-cell">
                 <dt>From you</dt>
@@ -358,8 +374,8 @@ export default function SavedWallet({
         // or the parent's controlled openSlug (the On-now line).
         const open = openValid ? p.slug === current : false;
         return (
-          // The SLOT carries the stack geometry (the -124px tuck and the
-          // raise). It must live on this wrapper, not .sw-card: each card is
+          // The SLOT carries the row seam (1px, so neighbours share one
+          // hairline). It must live on this wrapper, not .sw-card: each card is
           // the :first-child of its own listitem, so a card-level
           // margin-top:0 first-child reset matched EVERY card and the wallet
           // rendered as full-height cards with no overlap (the shipped bug).

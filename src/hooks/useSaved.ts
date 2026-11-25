@@ -124,8 +124,10 @@ export function savedChangeDescription(error: unknown, fallback = "We could not 
  * Read inside the lock, never from a rendered snapshot, and publish only after
  * readback. Older app tabs and raw same-origin writers do not honor this lock.
  * Without Web Locks a per-tab queue cannot protect the whole list, so changes
- * fail closed while existing saves remain readable. */
-async function mutateSaved(type: SavedRef["type"], id: string, desired?: boolean, canCommit?: () => boolean, vibrateOnSave = true): Promise<boolean> {
+ * fail closed while existing saves remain readable. `savedAt` is the stamp a
+ * newly added row carries, so an Undo can put a row back as it was; it is
+ * ignored when the row already exists or is not a date. */
+async function mutateSaved(type: SavedRef["type"], id: string, desired?: boolean, canCommit?: () => boolean, vibrateOnSave = true, savedAt?: string): Promise<boolean> {
   if (typeof window === "undefined" || !navigator.locks?.request) {
     throw new SavedCoordinationError();
   }
@@ -136,7 +138,7 @@ async function mutateSaved(type: SavedRef["type"], id: string, desired?: boolean
       const exists = items.some((item) => item.type === type && item.id === id);
       const saved = desired ?? !exists;
       const nextItems = exists === saved ? items : saved
-        ? [...items, { type, id, saved_at: new Date().toISOString() }]
+        ? [...items, { type, id, saved_at: savedAt && Number.isFinite(Date.parse(savedAt)) ? savedAt : new Date().toISOString() }]
         : items.filter((item) => !(item.type === type && item.id === id));
       const next = JSON.stringify(nextItems);
       if (exists !== saved) {
@@ -167,9 +169,10 @@ async function mutateSaved(type: SavedRef["type"], id: string, desired?: boolean
   }
 }
 
-/** Apply the displayed save/remove intent instead of reversing a newer save. */
-export function setEventSaved(id: string, saved: boolean): Promise<boolean> {
-  return mutateSaved("event", id, saved, undefined, false);
+/** Apply the displayed save/remove intent instead of reversing a newer save.
+ *  An Undo passes the removed row's `savedAt` to restore it unchanged. */
+export function setEventSaved(id: string, saved: boolean, savedAt?: string): Promise<boolean> {
+  return mutateSaved("event", id, saved, undefined, false, savedAt);
 }
 
 export function useSetEventSaved(id: string) {
