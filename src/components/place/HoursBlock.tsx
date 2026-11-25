@@ -8,12 +8,38 @@ import { placeHoursTrust } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
 import { ChevronDown, AlertCircle } from "lucide-react";
 
+/** Everything the block says about today, computed against one clock. */
+function hoursTodayFacts(hours: Hours, verified: boolean, qualified: boolean, now: Date) {
+  const status = getOpenStatus(hours, { verified }, now);
+  const dayKey = easternDayKey(now);
+  const scheduleCurrent = verified && isScheduleEvidenceCurrent(hours, now);
+  const holidayUnconfirmed = needsThanksgivingConfirmation(hours, dayKey);
+  return {
+    today: hoursForDate(hours, now),
+    exception: hours._official?.exceptions.find((item) => item.date === dayKey),
+    trust: placeHoursTrust(status, { hours, verified, now }),
+    scheduleCurrent,
+    holidayUnconfirmed,
+    needsNewCheck: holidayUnconfirmed || (qualified ? !scheduleCurrent : (!verified || status.state === "unknown")),
+  };
+}
 
 /**
  * The weekly schedule disclosure for a place that HAS hours. A place with no
  * schedule renders no hours block at all: its status line under the title
  * already states "Hours not recently confirmed" and the date the hours were
  * last checked, and the page's action bar carries Call and Website.
+ *
+ * Like LiveOpenStatus, nothing that depends on today is painted from the
+ * server. The place page is prerendered and cached, so a build on Tuesday
+ * night baked "Hours today · Closed" and a Tuesday trust chip into the HTML a
+ * Wednesday-morning visitor received (November 2026 feedback review), and the
+ * server and client text disagreed at hydration. Until the first effect sets
+ * the visitor's clock, the summary is the plain label and the details hold
+ * the weekly table, sources and provenance, which are true on any day. The
+ * today line, the trust chip, today's dated exception and the "needs a new
+ * check" warning arrive with that first tick, and a minute tick keeps them
+ * current.
  */
 export default function HoursBlock({
   hours,
@@ -27,19 +53,18 @@ export default function HoursBlock({
    *  without competing with the open/closed dot in the decision zone. */
   provenance?: string;
 }) {
-  const [now, setNow] = useState(() => new Date());
+  // Null means "not computed in this browser yet" (see the comment above).
+  const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    const tick = () => setNow(new Date());
+    tick();
+    const timer = window.setInterval(tick, 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  const status = getOpenStatus(hours, { verified }, now);
-  const today = hoursForDate(hours, now);
-  const exception = hours._official?.exceptions.find((item) => item.date === easternDayKey(now));
   const week = formatFullHours(hours);
   const qualification = isDisplayOnlyHours(hours) ? hours._official?.qualification : undefined;
-  const scheduleCurrent = verified && isScheduleEvidenceCurrent(hours, now);
-  const holidayUnconfirmed = needsThanksgivingConfirmation(hours, easternDayKey(now));
-  const needsNewCheck = holidayUnconfirmed || (qualification ? !scheduleCurrent : (!verified || status.state === "unknown"));
+  const todayFacts = now ? hoursTodayFacts(hours, verified, Boolean(qualification), now) : null;
+  const label = qualification ? qualification.label : "Hours";
 
   const disclosure = (
     // PLAIN TOOL: an unboxed disclosure; the page's hairlines frame it.
@@ -50,9 +75,11 @@ export default function HoursBlock({
               is the page's one status voice, and this summary used to
               restate it (the duplicate the July 2026 review flagged). */}
           <span className="text-[17px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            {qualification ? `${qualification.label} today` : "Hours today"} · {today ? formatWindows(today) : "Hours not confirmed"}
+            {todayFacts
+              ? `${label} today · ${todayFacts.today ? formatWindows(todayFacts.today) : "Hours not confirmed"}`
+              : label}
           </span>
-          <TrustChip signal={placeHoursTrust(status, { hours, verified, now })} className="shrink-0" />
+          {todayFacts && <TrustChip signal={todayFacts.trust} className="shrink-0" />}
         </span>
         <ChevronDown
           aria-hidden
@@ -63,14 +90,14 @@ export default function HoursBlock({
         />
       </summary>
       <div className="pt-2">
-        {needsNewCheck && (
+        {todayFacts?.needsNewCheck && (
           <p
             className="mb-2 flex items-start gap-1.5 text-[11px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
           >
             <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-warning)" }} />
             <span>
-              {holidayUnconfirmed ? "Thanksgiving hours haven’t been confirmed. Check with the venue before going." : qualification
+              {todayFacts.holidayUnconfirmed ? "Thanksgiving hours haven’t been confirmed. Check with the venue before going." : qualification
                 ? "This posted schedule needs a new source check. Check the official source before going."
                 : "These stored weekly hours are not current enough to confirm a visit. Check the official source before going."}
             </span>
@@ -84,7 +111,7 @@ export default function HoursBlock({
                 : qualification
                   ? "Special-date changes may not be included in this posted schedule. Check the official website before going."
                 : "The table shows the business's posted weekly hours. Special-date changes may not be included. Check the official website before going."
-              : <>{exception && today ? `${exception.reason}. ` : ""}The table shows normal weekly hours. Dated closures take priority.</>}
+              : <>{todayFacts?.exception && todayFacts.today ? `${todayFacts.exception.reason}. ` : ""}The table shows normal weekly hours. Dated closures take priority.</>}
           </p>
         )}
         <ul aria-label={qualification ? `${qualification.label} by day` : "Weekly hours"} className="divide-y divide-[var(--app-border)] border-t text-[15px]" style={{ borderColor: "var(--app-border)" }}>
@@ -115,7 +142,7 @@ export default function HoursBlock({
   return (
     <section aria-label={qualification.label} className="space-y-2">
       <p className="text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        {!scheduleCurrent && <span className="font-medium">Previously posted: </span>}
+        {todayFacts && !todayFacts.scheduleCurrent && <span className="font-medium">Previously posted: </span>}
         {qualification.note}
       </p>
       {disclosure}

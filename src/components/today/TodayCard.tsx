@@ -6,7 +6,7 @@ import { forecastTemperatureF } from "@/lib/today/forecast-range";
 import { frederickForecastRange } from "@/lib/today/retained-forecast-high";
 import { weatherVerdict } from "@/lib/weather-verdict";
 import { getNwsAlertsResult, type NwsAlertsResult } from "@/lib/integrations/nws-alerts";
-import { getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
+import { airQualityObservedAt, getAirQuality, isFreshAqiObservation, pickWorstAqi } from "@/lib/integrations/airnow";
 import type { SkyVariant } from "./AnimatedSkyGlyph";
 import TodayWeatherView, { WeatherUnavailable, type TodayWeatherViewProps } from "./TodayWeatherView";
 
@@ -68,11 +68,12 @@ export function compactWeatherRead({
   const hasActionableSafetySignal =
     activeAlertCount > 0 ||
     (airQualityIndex !== null && airQualityIndex > 100);
+  const hasForecast = Boolean(condition.trim());
 
   if (
     safetyFeedsIncomplete &&
     !hasActionableSafetySignal &&
-    condition.trim()
+    hasForecast
   ) {
     const safetyNote =
       !alertsAvailable && !airQualityAvailable
@@ -84,6 +85,17 @@ export function compactWeatherRead({
       headline: sentenceCaseForecast(condition),
       safetyNote,
       safetyNoteRoutine: alertsAvailable,
+    };
+  }
+
+  // An active alert owns the headline. It does not make a missing reading
+  // disappear: the routine note still waits behind the forecast details, so
+  // an alert day never reads as though the air was checked and found fine.
+  if (alertsAvailable && !airQualityAvailable && hasForecast) {
+    return {
+      headline: verdict,
+      safetyNote: "The air-quality reading is unavailable.",
+      safetyNoteRoutine: true,
     };
   }
 
@@ -209,6 +221,12 @@ export default async function TodayCard({ density = "standard" }: { density?: To
       issuedAt={forecast?.asOf ?? null}
       safetyNote={weatherRead.safetyNote}
       safetyNoteRoutine={weatherRead.safetyNoteRoutine}
+      airQuality={worstAir ? {
+        aqi: worstAir.aqi,
+        category: worstAir.category.name,
+        parameter: worstAir.parameter,
+        observedAt: airQualityObservedAt(worstAir)?.toISOString() ?? null,
+      } : null}
       daylight={density === "standard" && cur && (highF != null || sun) ? <DaylightLeftInline /> : undefined}
     >
       <OfflineTodayCapture

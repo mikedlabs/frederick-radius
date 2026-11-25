@@ -33,6 +33,15 @@ describe("findQuickAnswers (extracted SearchOverlay logic, single source)", () =
     expect(findQuickAnswers("what's open")[0]?.key).toBe("open-now");
   });
 
+  it("titles the open-now answer as confirmed, because it covers only places with current hours", () => {
+    const openNow = QUICK_INTENTS.find((intent) => intent.key === "open-now")!;
+    expect(openNow.title).toBe("Confirmed open now");
+    expect(openNow.sub).toBe("Places with recently confirmed open hours");
+    // The chip stays the short interface label.
+    expect(openNow.chip).toBe("Open now");
+    expect(`${openNow.title} ${openNow.sub}`).not.toMatch(/what's open|everything open|all open/i);
+  });
+
   it.each([
     ["Bushwaller’s Irish Pub", "transit"],
     ["In Fit Personal Training Studio", "transit"],

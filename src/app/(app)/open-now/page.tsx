@@ -10,6 +10,9 @@ import {
   type PlaceCardData,
 } from "@/lib/loaders/places";
 import { formatTime } from "@/lib/hours";
+import { publicDataSnapshot } from "@/lib/public-data-snapshot";
+import { openNowHeaderCopy } from "./coverage-note";
+import { openNowNameQualifiers } from "./name-qualifiers";
 import { isRecommendable } from "@/lib/relevance";
 import { MUNICIPALITY_BY_SLUG, MUNICIPALITIES } from "@/data/municipalities";
 import ScopeBar from "@/components/nav/ScopeBar";
@@ -46,9 +49,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/open-now" },
   title: "Open now",
   description:
-    "What's open right now across Frederick County, based on verified posted hours and ranked from your town.",
+    "Places confirmed open right now in Frederick County, from recently checked hours and ranked from your town.",
   openGraph: { title: "Open now", description:
-    "What's open right now across Frederick County, based on verified posted hours and ranked from your town." },
+    "Places confirmed open right now in Frederick County, from recently checked hours and ranked from your town." },
 };
 
 export default async function OpenNowPage() {
@@ -122,6 +125,10 @@ export default async function OpenNowPage() {
       .slice(0, 6)
       .map((p) => p.slug),
   );
+  // A repeated name gets a qualifier computed over exactly the rows printed
+  // below (see openNowNameQualifiers).
+  const likelyShown = likely.slice(0, 12);
+  const nameQualifiers = openNowNameQualifiers([...verified, ...likelyShown]);
   const toRow = (p: PlaceCardData, withStatus: boolean): IndexRow => {
     const cat = CATEGORY_BY_SLUG[p.category];
     // Support line takes CURATED intel only (known_for); scraped blurbs leak
@@ -166,7 +173,7 @@ export default async function OpenNowPage() {
     return {
       slug: p.slug,
       name: p.name,
-      meta: `${cat?.name ?? p.category}${hook ? ` · ${hook}` : ""}`,
+      meta: [cat?.name ?? p.category, nameQualifiers.get(p.slug), hook].filter(Boolean).join(" · "),
       photo: inlinePhotoSlugs.has(p.slug) ? p.google_photo_url ?? null : null,
       category: p.category,
       accent: cat?.color ?? "var(--app-ink-2)",
@@ -201,11 +208,28 @@ export default async function OpenNowPage() {
     { key: "shop", label: "Shops & markets", rows: shop },
     { key: "everyday", label: "Everyday & services", rows: everyday },
   ];
+  // A supporting sentence must never take the page down, so a snapshot that
+  // cannot be built leaves the coverage sentence out. openNowHeaderCopy owns
+  // when that sentence may print (only beside the count lede).
+  let coverage: { current: number; total: number } | null = null;
+  try {
+    const { counts } = publicDataSnapshot();
+    coverage = { current: counts.placesWithCurrentHours.value, total: counts.activePublicPlaces.value };
+  } catch {
+    coverage = null;
+  }
+  const { lede, coverageNote } = openNowHeaderCopy({
+    confirmedOpen: snapshot.count,
+    likelyOpen: likely.length,
+    currentHours: coverage?.current ?? null,
+    totalPlaces: coverage?.total ?? null,
+  });
+
   const likelySections: IndexSection[] = [
     {
       key: "likely",
       label: "Likely open · check hours",
-      rows: likely.slice(0, 12).map((p) => toRow(p, false)),
+      rows: likelyShown.map((p) => toRow(p, false)),
     },
   ];
 
@@ -214,11 +238,23 @@ export default async function OpenNowPage() {
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
       <GuideHeader title="Open now" href="/today" parent="Today" detail={`${dateline} · ${asOf} Eastern`}>
-        {snapshot.count > 0
-          ? `${snapshot.count} ${snapshot.count === 1 ? "place is" : "places are"} confirmed open.`
-          : likely.length > 0
-            ? "Some places are usually open at this hour. Check with the venue before going."
-            : "No county listings have recently checked hours confirming they are open."}
+        {lede}
+        {/* Supporting detail under the count lede, never the headline: the
+            list covers only the places whose hours are current, and /trust
+            shows the same count. */}
+        {coverageNote && (
+          <>
+            {" "}
+            {coverageNote}{" "}
+            <Link
+              href="/trust"
+              className="tap-44-y inline-block font-semibold underline underline-offset-2"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              How Radius checks data
+            </Link>
+          </>
+        )}
       </GuideHeader>
 
       {/* Where the list ranks from — always shown, always changeable, writes

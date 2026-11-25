@@ -116,9 +116,11 @@ function PlaceSheetContent({
   mapReturnTo?: string | null;
   onClose: () => void;
 }) {
-  // First-paint status only: LiveOpenStatus recomputes from the same hours on
-  // mount and on its own minute tick. An official schedule is computed at
-  // open time so its dated closures apply before that first tick.
+  // Seed only: when the place has hours, LiveOpenStatus paints no open,
+  // closing-soon or closed state until its first effect tick has computed one
+  // against the visitor's clock, then keeps it current on a minute tick. An
+  // official schedule is computed at open time so a held or expired one shows
+  // its caveat at once.
   const [openedAt] = useState(() => new Date());
   const currentHoursStatus = place.hours?._official
     ? getOpenStatus(place.hours, { verified: place.hours_verified }, openedAt)

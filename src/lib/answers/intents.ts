@@ -4,7 +4,7 @@ import { primaryAnswerFor } from "@/lib/search/answer";
 /**
  * Quick-answer intents — recognized needs that resolve in ONE tap to
  * the right pre-filtered view, instead of making the user browse.
- * Phrased as the answer, not a search ("What's open right now"). North
+ * Phrased as the answer, not a search ("Confirmed open now"). North
  * Star: answer the question, ≤2 taps. Each entry's href IS the answer.
  *
  * Extracted from SearchOverlay so the overlay AND the /today AnswerCards
@@ -15,7 +15,9 @@ export const QUICK_INTENTS: QuickIntent[] = [
   {
     key: "open-now",
     terms: ["open now", "whats open", "what's open", "open right now", "open late", "anything open"],
-    title: "What's open right now",
+    // "Confirmed", as on Today's shelf: the answer covers the places whose
+    // hours are current, which is a small part of the county.
+    title: "Confirmed open now",
     sub: "Places with recently confirmed open hours",
     chip: "Open now",
     href: "/map?mode=browse&open=now",

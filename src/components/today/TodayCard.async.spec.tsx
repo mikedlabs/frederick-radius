@@ -72,6 +72,15 @@ const WARNING: NwsAlert = {
 async function renderCard() {
   return renderToStaticMarkup(await TodayCard());
 }
+const visibleText = (html: string) => html.replace(/<[^>]+>/g, "");
+const AIR_READING = "PM2.5 is in the good range (AQI 42). The AirNow reading is from 9:00 AM EDT on Oct 8.";
+const SMOKE_ALERT: NwsAlert = {
+  id: "fixture-smoke", event: "Air Quality Alert", headline: "Code Orange Air Quality Alert Thursday",
+  description: "The Maryland Department of the Environment has issued a Code Orange Air Quality Alert Thursday for fine particulate matter from wildfire smoke.",
+  severity: "Moderate", urgency: "Expected", certainty: "Likely",
+  starts_at: "2026-10-08T10:00:00.000Z", ends_at: "2026-10-09T04:00:00.000Z",
+  area: "Frederick County, MD", url: "https://api.weather.gov/alerts/fixture-smoke",
+};
 
 describe("TodayCard provider composition", () => {
   beforeEach(() => {
@@ -128,6 +137,57 @@ describe("TodayCard provider composition", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("prints a routine air-quality reading as evidence inside the forecast details", async () => {
+    const html = renderToStaticMarkup(await TodayCard({ density: "masthead" }));
+    const details = html.slice(html.indexOf("</summary>"), html.indexOf("</details>"));
+    expect(visibleText(details)).toContain(AIR_READING);
+    expect(details).toMatch(/data-weather-air-quality[^>]*>[^]*datetime="2026-10-08T13:00:00.000Z"/i);
+    // The reading is evidence. It never joins the summary or the first read.
+    expect(html.slice(0, html.indexOf("</summary>"))).not.toContain("Air quality");
+    expect(html.slice(html.indexOf("</details>"))).not.toContain("Air quality");
+    expect(html).not.toContain("The air-quality reading is unavailable.");
+    expect(visibleText(await renderCard())).toContain(AIR_READING);
+  });
+
+  it("names the pollutant in sentence case and keeps an elevated category readable", async () => {
+    providers.air.mockResolvedValue([
+      GOOD_AIR,
+      { ...GOOD_AIR, parameter: "O3", aqi: 112, category: { id: 3, name: "Unhealthy for Sensitive Groups", color: "#C58A32" } },
+    ]);
+    const text = visibleText(renderToStaticMarkup(await TodayCard({ density: "masthead" })));
+    expect(text).toContain("Ozone is in the unhealthy for sensitive groups range (AQI 112).");
+    expect(text).not.toContain("AQI 42");
+  });
+
+  it("scopes the reading to its pollutant when a smoke alert has no fresh PM2.5 observation", async () => {
+    providers.alerts.mockResolvedValue({ alerts: [SMOKE_ALERT], available: true });
+    providers.air.mockResolvedValue([
+      { ...GOOD_AIR, parameter: "O3", aqi: 35, reportingArea: "Maryland Piedmont" },
+    ]);
+    const text = visibleText(renderToStaticMarkup(await TodayCard({ density: "masthead" })));
+    expect(text).toContain("A Code Orange air-quality alert is in effect.");
+    expect(text).toContain("Ozone is in the good range (AQI 35).");
+    // One pollutant is never a verdict on the air as a whole, and the
+    // unmeasured PM2.5 gets no claim at all.
+    expect(text).not.toMatch(/Air quality is (good|moderate)/);
+    expect(text).not.toMatch(/PM2\.5 is in/);
+  });
+
+  it("keeps a missing reading behind the forecast details while an alert leads", async () => {
+    providers.alerts.mockResolvedValue({ alerts: [WARNING], available: true });
+    providers.air.mockResolvedValue(null);
+    const html = renderToStaticMarkup(await TodayCard({ density: "masthead" }));
+    const details = html.slice(html.indexOf("</summary>"), html.indexOf("</details>"));
+    expect(details).toContain("data-weather-routine-note");
+    expect(details).toContain("The air-quality reading is unavailable.");
+    // The first read is unchanged: the warning leads and carries no feed note.
+    const firstRead = html.slice(html.indexOf("</details>"));
+    expect(firstRead).toContain("Flash Flood Warning is active.");
+    expect(firstRead).not.toContain("The air-quality reading is unavailable.");
+    expect(html).not.toContain("data-weather-safety-note");
+    expect(html).not.toContain("data-weather-air-quality");
+  });
+
   it("keeps the masthead unavailable state honest instead of supplying a default temperature", async () => {
     providers.forecast.mockResolvedValue(null);
     const html = renderToStaticMarkup(await TodayCard({ density: "masthead" }));
@@ -143,8 +203,9 @@ describe("TodayCard provider composition", () => {
   it.each([null, "", "not-a-date"])("does not fabricate an issuance for %s", async (asOf) => {
     providers.forecast.mockResolvedValue({ ...FORECAST, asOf });
     const html = await renderCard();
-    expect(html).toContain("Issue time unavailable");
-    expect(html).not.toMatch(/datetime=/i);
+    expect(html.match(/<p data-weather-issuance[^>]*>(.*?)<\/p>/)?.[1]).toBe("Issue time unavailable");
+    // The only timestamp left is the AirNow observation hour, which is not an issuance.
+    expect(html.match(/datetime="[^"]+"/gi)).toEqual(['dateTime="2026-10-08T13:00:00.000Z"']);
     expect(html).not.toContain("Just updated");
     expect(html).toContain("72°");
   });
@@ -235,6 +296,9 @@ describe("TodayCard provider composition", () => {
     expect(html).toContain("The air-quality reading is unavailable.");
     expect(html).toContain("Mostly sunny");
     expect(html).not.toContain("It is clear and comfortable.");
+    // A stale number is not evidence of the air right now.
+    expect(html).not.toContain("data-weather-air-quality");
+    expect(html).not.toContain("AQI 42");
   });
 
   it("starts all three reads together and bounds a stalled provider at the existing deadline", async () => {
@@ -265,6 +329,17 @@ describe("TodayCard provider composition", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+
+  it("prints a reading without inventing its observation time", () => {
+    const html = renderToStaticMarkup(createElement(TodayWeatherView, {
+      density: "masthead", headline: "Mostly sunny", condition: "Mostly sunny", temperatureF: 72,
+      highF: 76, sun: null, variant: "Sun", forecastAvailable: true, issuedAt: null, safetyNote: null,
+      airQuality: { aqi: 58, category: "Moderate", parameter: "PM2.5", observedAt: null },
+    }));
+    expect(visibleText(html)).toContain("PM2.5 is in the moderate range (AQI 58).");
+    expect(html).not.toContain("The AirNow reading is from");
+    expect(html).not.toMatch(/datetime=/i);
+  });
 
   it("retains live daylight when the forecast high is present without a sun label", () => {
     const html = renderToStaticMarkup(createElement(TodayWeatherView, {

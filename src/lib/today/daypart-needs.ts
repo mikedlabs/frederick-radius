@@ -24,7 +24,7 @@ export type DaypartNeed = {
 /**
  * The availability-ordered "see all" destination for a daypart need. This
  * lives here, in the pure server-safe module, because the SERVER html must
- * already carry it: a heading that says "Places open now" cannot send a
+ * already carry it: a heading that says "Confirmed open now" cannot send a
  * pre-hydration tap (or the fallback after a failed live refresh) to a
  * popularity-sorted /category page that never orders by open status. The
  * client shelf refines the same href with the person's coarse browsing

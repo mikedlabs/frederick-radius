@@ -63,7 +63,7 @@ describe("TodayEventsRecoveryView", () => {
       }),
     );
 
-    expect(html).toContain("No picks in this brief");
+    expect(html).toContain("There are no event picks for the rest of today.");
     expect(html).not.toContain("Event picks are unavailable here");
   });
 
@@ -76,7 +76,7 @@ describe("TodayEventsRecoveryView", () => {
     expect(link.getAttribute("href")).toBe("/events?in=brunswick&when=weekend");
     expect(link.getAttribute("aria-label")).toContain("Friday, October 30, 2026 evening through Sunday, November 1, 2026");
     expect(Array.from(link.querySelectorAll("b"), day => day.textContent)).toEqual(["30", "31", "1"]);
-    expect(doc.querySelector("[role=status]")?.textContent).toBe("No picks in this brief");
+    expect(doc.querySelector("[role=status]")?.textContent).toBe("There are no event picks for the rest of today.");
   });
 
   it("plots only the imageless lead's published start, and never infers an all-day start or an overnight duration", () => {
@@ -314,7 +314,7 @@ describe("TodayEventsRecovery attempt deadline", () => {
         expect(fetchMock.mock.calls.every((call) => call[1].signal.aborted)).toBe(true);
         expect(container.textContent).toContain("Event picks are unavailable here");
         expect(container.textContent).not.toContain("Updating today's event picks");
-        expect(container.textContent).not.toContain("No picks in this brief");
+        expect(container.textContent).not.toContain("There are no event picks for the rest of today.");
         expect(container.querySelector('a[href="/events"]')).not.toBeNull();
         // A late rejected body/fetch remains handled after both deadlines.
         await act(async () => {
@@ -395,7 +395,7 @@ describe("TodayEventsRecovery attempt deadline", () => {
   );
 
   it.each([
-    { response: { partial: false, events: [] }, text: "No picks in this brief" },
+    { response: { partial: false, events: [] }, text: "There are no event picks for the rest of today." },
     { response: { partial: true, events: [event] }, text: "Partial coverage" },
   ])("keeps completed response semantics: $text", async ({ response, text }) => {
     vi.useFakeTimers();
@@ -426,7 +426,7 @@ describe("TodayEventsRecovery attempt deadline", () => {
       await advanceRecovery(750);
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(container.textContent).toContain("Event picks are unavailable here");
-      expect(container.textContent).not.toContain("No picks in this brief");
+      expect(container.textContent).not.toContain("There are no event picks for the rest of today.");
       expect(vi.getTimerCount()).toBe(0);
     } finally {
       await act(async () => root.unmount());

@@ -367,9 +367,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
                 footer, so the first screen answers "is it open" before any
                 badge (November 2026 detail audit). */}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              {/* Recomputed against the visitor's clock (LiveOpenStatus):
-                  the ISR-baked value said "Closing soon" while HoursBlock said
-                  "Closed" around closing time (fresh-eyes audit, Jul 2026). */}
+              {/* Computed against the visitor's clock (LiveOpenStatus). The
+                  baked value can be many hours old on a page nobody has opened
+                  since the last build, so an open, closing-soon or closed
+                  state is never painted from it (November 2026 feedback
+                  review). */}
               {cityGarage ? <CityGarageStatus /> : (
                 <LiveOpenStatus
                   hours={place.hours}

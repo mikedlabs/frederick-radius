@@ -58,7 +58,7 @@ export type QuickIntent = {
   key: string;
   /** Phrases that match this intent in free-text search. */
   terms: string[];
-  /** The answer phrasing, e.g. "What's open right now". */
+  /** The answer phrasing, e.g. "Confirmed open now". */
   title: string;
   /** One-line support, e.g. "Places confirmed open near you". */
   sub: string;

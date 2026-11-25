@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getLocalHeadlines, getLocalHeadlinesResult, isPublishableHeadline } from "./news";
+import { getLocalHeadlines, getLocalHeadlinesResult, isPublishableHeadline, NEWS_MAX_AGE_DAYS } from "./news";
 
 const NOW = new Date("2026-07-26T16:00:00.000Z");
 
@@ -185,7 +185,42 @@ describe("local news publication and availability boundary", () => {
     expect(body).not.toHaveBeenCalled();
   });
 
-  it("preserves the existing query set and hourly cache without activating publisher feeds", async () => {
+  it("drops a dated headline older than a week and keeps the newer and undated ones", async () => {
+    expect(NEWS_MAX_AGE_DAYS).toBe(7);
+    vi.mocked(fetch).mockResolvedValueOnce(response(rss(
+      item("County reviews last month's storm response", "Sat, 18 Jul 2026 15:00:00 GMT", "https://news.google.com/rss/articles/eight-days"),
+      item("Library announces new weekend hours", "Sun, 19 Jul 2026 17:00:00 GMT", "https://news.google.com/rss/articles/under-seven-days"),
+      item("County announces a public workshop", undefined, "https://news.google.com/rss/articles/undated"),
+      item("County opens a cooling center", "Sun, 26 Jul 2026 12:00:00 GMT", "https://news.google.com/rss/articles/today"),
+    )) as Response);
+    const { items, status } = await getLocalHeadlinesResult();
+    expect(status).toBe("available");
+    expect(items.map((row) => row.title)).toEqual([
+      "County opens a cooling center", "Library announces new weekend hours", "County announces a public workshop",
+    ]);
+  });
+
+  it("measures headline age against the injected clock, not the machine clock", async () => {
+    const feed = response(rss(
+      item("Library announces new weekend hours", "Fri, 24 Jul 2026 16:00:00 GMT"),
+    )) as Response;
+    vi.mocked(fetch).mockResolvedValue(feed);
+    expect((await getLocalHeadlinesResult({ now: new Date("2026-07-31T15:59:00.000Z") })).items).toHaveLength(1);
+    // One week and a minute after publication, the same story is no longer local news.
+    expect(await getLocalHeadlinesResult({ now: new Date("2026-07-31T16:01:00.000Z") }))
+      .toEqual({ items: [], status: "available" });
+  });
+
+  it("does not let an old copy of a headline hide its fresh republication", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(response(rss(
+      item("County council approves its capital plan", "Wed, 01 Jul 2026 16:00:00 GMT", "https://news.google.com/rss/articles/old-copy"),
+      item("County council approves its capital plan", "Sat, 25 Jul 2026 16:00:00 GMT", "https://news.google.com/rss/articles/fresh-copy"),
+    )) as Response);
+    const { items } = await getLocalHeadlinesResult();
+    expect(items.map((row) => row.url)).toEqual(["https://news.google.com/rss/articles/fresh-copy"]);
+  });
+
+  it("asks each existing query for the past week and keeps the hourly cache without activating publisher feeds", async () => {
     await getLocalHeadlinesResult();
     const queries = vi.mocked(fetch).mock.calls.map(([url, init]) => {
       const parsed = new URL(String(url));
@@ -195,10 +230,10 @@ describe("local news publication and availability boundary", () => {
       return parsed.searchParams.get("q");
     });
     expect(queries).toEqual([
-      "Frederick County Maryland",
-      '\"Frederick, Md.\" OR \"Frederick, Maryland\"',
-      "Thurmont OR Brunswick OR Walkersville OR Middletown OR Emmitsburg OR Woodsboro Maryland",
-      '\"Mount Airy\" OR \"New Market\" OR Myersville OR Burkittsville Maryland',
+      "Frederick County Maryland when:7d",
+      '\"Frederick, Md.\" OR \"Frederick, Maryland\" when:7d',
+      "Thurmont OR Brunswick OR Walkersville OR Middletown OR Emmitsburg OR Woodsboro Maryland when:7d",
+      '\"Mount Airy\" OR \"New Market\" OR Myersville OR Burkittsville Maryland when:7d',
     ]);
   });
 

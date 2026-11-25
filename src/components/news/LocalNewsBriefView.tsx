@@ -129,7 +129,9 @@ export default function LocalNewsBriefView({
               ))}
             </ol>
           ) : news.status === "available" ? (
-            <p className={styles.note}>No local headlines were returned by these feeds.</p>
+            // The loader keeps only the past week (NEWS_MAX_AGE_DAYS), so an
+            // empty healthy read means the week was quiet, not that a feed failed.
+            <p className={styles.note}>Radius found no local headlines in Google News from the past week.</p>
           ) : null}
         </div>
         <details className={styles.official} open={updates.length > 0}>

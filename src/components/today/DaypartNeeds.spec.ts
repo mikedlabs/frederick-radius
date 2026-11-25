@@ -337,7 +337,7 @@ describe("DaypartNeeds", () => {
     const html = renderToStaticMarkup(createElement(DaypartEmptyState));
 
     expect(html).toContain('role="status"');
-    expect(html).toContain("Places open now");
+    expect(html).toContain("Confirmed open now");
     expect(html).toContain("Across Frederick County");
     expect(html).toContain(
       "Current hours do not confirm an open match for this group across Frederick County.",
@@ -720,8 +720,8 @@ describe("DaypartNeeds", () => {
         soon,
       ),
     ).toEqual({
-      title: "Open now and soon",
-      aria: "Places open now and opening soon",
+      title: "Confirmed open now and soon",
+      aria: "Places confirmed open now and opening soon",
     });
     expect(
       daypartShelfHeading(
@@ -796,7 +796,7 @@ describe("DaypartNeeds", () => {
     expect(html).toContain('data-decision-position="opening-soon"');
     expect(html).toContain("Gravel &amp; Grind");
     expect(html).toContain("Likely opens at 8am · check hours");
-    expect(html).not.toContain("Places open now");
+    expect(html).not.toContain("Confirmed open now");
     expect(html).not.toContain('data-today-place-lead="true"');
     expect(html).not.toContain("data-today-opening-soon-preview");
     expect(html).not.toContain('aria-label="Map: Gravel &amp; Grind"');
@@ -908,8 +908,8 @@ describe("DaypartNeeds", () => {
     );
 
     expect(html).toContain('data-today-decision-density="brief"');
-    expect(html).toContain('aria-label="Open places right now"');
-    expect(html).not.toContain("Open now and soon");
+    expect(html).toContain('aria-label="Places confirmed open right now"');
+    expect(html).not.toContain("open now and soon");
     expect(html).toContain("Lead");
     expect(html).not.toContain("Second");
     expect(html).not.toContain("Third");
@@ -930,7 +930,7 @@ describe("DaypartNeeds", () => {
     expect(html).toContain("Across Frederick County");
     expect(html).toContain('href="/nearby?c=coffee&amp;in=county"');
     expect(html).toContain('aria-label="Place opening soon"');
-    expect(html).not.toContain('aria-label="Open places right now"');
+    expect(html).not.toContain('aria-label="Places confirmed open right now"');
   });
 
   it("lets an opening-soon transition replace an uncertain briefing pick", () => {
