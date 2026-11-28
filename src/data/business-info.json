@@ -1035,7 +1035,7 @@
     "name": "Bonefish Grill",
     "commerce_source": {
       "url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-28T12:41:48.030Z"
     },
     "commerce_links": [
       {
@@ -1063,9 +1063,21 @@
         "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
       },
       {
+        "type": "order",
+        "url": "https://www.bonefishgrill.com/order",
+        "anchor_text": "Order Now",
+        "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
+      },
+      {
         "type": "reservation",
         "url": "https://www.bonefishgrill.com/reservations?unit=8105",
         "anchor_text": "Make Reservation",
+        "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
+      },
+      {
+        "type": "reservation",
+        "url": "https://www.bonefishgrill.com/reservations",
+        "anchor_text": "here",
         "source_url": "https://locations.bonefishgrill.com/maryland/frederick/1305-w.-7th-street"
       },
       {
@@ -1251,7 +1263,7 @@
     "name": "Black Hog BBQ Bar",
     "commerce_source": {
       "url": "https://blackhogbbq.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-28T12:41:47.900Z"
     },
     "commerce_links": [
       {
@@ -1319,7 +1331,7 @@
     "name": "7th Street Cafe",
     "commerce_source": {
       "url": "https://www.7thstreetsandwich.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-28T12:41:45.280Z"
     },
     "commerce_links": [
       {
@@ -1983,7 +1995,7 @@
     "name": "Bakehouse",
     "commerce_source": {
       "url": "https://www.bakehousemd.com/",
-      "checkedAt": "2026-07-29T12:40:47.382Z"
+      "checkedAt": "2026-11-28T12:41:46.971Z"
     },
     "commerce_links": [
       {
@@ -2907,6 +2919,10 @@
       "fetchedAt": "2026-08-01T09:52:01.577Z",
       "contentHash": "6b0357ce0f6239595dd2c08a345ce96fee6b60b25cbddcd94b56520bf37444ba",
       "extractorVersion": "business-deep-info-v2-plain-copy"
+    },
+    "commerce_source": {
+      "url": "https://bentztown.com/",
+      "checkedAt": "2026-11-28T12:41:47.573Z"
     }
   },
   "quartermasters-cigars": {
@@ -3273,6 +3289,21 @@
         "url": "https://sarakepskitchen.com/catering-private-events/",
         "anchor_text": "Catering & Private Events",
         "source_url": "https://sarakepskitchen.com/"
+      }
+    ]
+  },
+  "beans-in-the-belfry-brunswick": {
+    "name": "Beans in the Belfry",
+    "commerce_source": {
+      "url": "https://beansinthebelfry.com/",
+      "checkedAt": "2026-11-28T12:41:47.290Z"
+    },
+    "commerce_links": [
+      {
+        "type": "gift_card",
+        "url": "https://app.squareup.com/gift/ML4E4YSP8R2SZ/order",
+        "anchor_text": "Gift Cards",
+        "source_url": "https://beansinthebelfry.com/"
       }
     ]
   }
