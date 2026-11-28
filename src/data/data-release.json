@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "data_version": "sha256:7d01e6e092a41e83a25e89580be25e8703fb393ca2cb46678fc7de0cd6e02302",
+  "data_version": "sha256:b9adff57104e8743db5f040fa1afe71803c91b4a340186daab052a32383cec2c",
   "streams": {
     "basemap": {
       "promoted_at": "2026-08-06T00:00:00Z",
@@ -14,7 +14,7 @@
       ]
     },
     "places": {
-      "promoted_at": "2026-11-25T01:35:52.624Z",
+      "promoted_at": "2026-11-28T09:23:24.432Z",
       "artifacts": [
         {
           "path": "src/data/places.ts",
@@ -66,15 +66,15 @@
         },
         {
           "path": "src/data/places-official-hours.json",
-          "sha256": "4ff04d6189e35b985d7b5dd20a3c228eeade6de3d2f6eefa4e7efd68b745fe98",
+          "sha256": "8ee48c6b22622c500d8155ff1b09b71669a52418df4d09a02c0568301f7b9151",
           "records": 9,
-          "bytes": 12037
+          "bytes": 11689
         },
         {
           "path": "src/data/places-merchant-hours.json",
-          "sha256": "07e784346cf29b99e1e692c8e76b41fc141e9c10a079f8666ba4118b8209c0f4",
+          "sha256": "4eb86b992204068526f25ac0508ae5f554f7f7a39bc971030ff6f28d2895daec",
           "records": 35,
-          "bytes": 46918
+          "bytes": 53546
         },
         {
           "path": "src/data/business-status.json",
@@ -618,9 +618,9 @@
         },
         {
           "path": "src/data/places-client.json",
-          "sha256": "36d7e068fda8917c8189c6a85271773b64e39ccff8b0607ff910e68c25bb5979",
+          "sha256": "07a46ee90d1d954dd707e8df4e2428ba27c691e1e85594f5d995166c79010e0e",
           "records": 1571,
-          "bytes": 2316774
+          "bytes": 2312599
         },
         {
           "path": "src/data/copy-scores.json",
@@ -630,9 +630,9 @@
         },
         {
           "path": "src/data/places-client-hours.json",
-          "sha256": "ceb23c2e34cc4e138baa4c6b704d8f0661229bf41de70af223f5057f7cc5459a",
-          "records": 39,
-          "bytes": 47367
+          "sha256": "c2737924fc5359880ec9bf60226408caaea99238b56c7fef31f0189f8773fcb4",
+          "records": 36,
+          "bytes": 42945
         },
         {
           "path": "src/data/event-venue-photo-credits.json",
